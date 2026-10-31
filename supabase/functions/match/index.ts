@@ -21,11 +21,8 @@ function cors(req: Request) {
 const json = (req: Request, body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors(req), "Content-Type": "application/json" } });
 
-const SYSTEM = `Tu aides à sortir une bouteille d'une cave. On te donne la photo d'une bouteille (souvent prise vite, de biais, dans la pénombre) et la liste numérotée des bouteilles en stock.
-Lis l'étiquette (producteur, cuvée, millésime, appellation, type) et trouve la ligne correspondante.
-Le millésime départage deux lignes de la même cuvée ; s'il est illisible, choisis la plus probable et mets les autres dans alternatives.
-Si aucune ligne ne correspond, item = null.
-Réponds uniquement avec ce JSON : {"item": numéro de ligne ou null, "confidence": 0 à 1, "alternatives": [numéros, 3 au plus], "read": {"producer": string|null, "name": string|null, "vintage": number|null}}`;
+const SYSTEM = `On te donne la photo d'une bouteille (souvent de biais, peu éclairée) et la liste numérotée du stock. Lis l'étiquette et trouve la ligne. Même cuvée sur plusieurs lignes : le millésime tranche ; illisible : la plus probable, les autres en alternatives. Aucune ligne : item null.
+Réponds uniquement par ce JSON : {"item":n|null,"confidence":0-1,"alternatives":[n, 3 au plus],"read":{"producer":"","name":"","vintage":int|null}}`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors(req) });
@@ -57,7 +54,8 @@ Deno.serve(async (req) => {
   type Item = { id: string; name: string; producer: string | null; vintage: number | null; category: string; style: string | null; appellation: string | null; region: string | null };
   const seen = new Map<string, Item>();
   for (const r of rows ?? []) { const it = (r as unknown as { items: Item }).items; if (it && !seen.has(it.id)) seen.set(it.id, it); }
-  const list = [...seen.values()];
+  // Ordre stable : la liste fait partie du préfixe mis en cache, réutilisé d'une photo à l'autre.
+  const list = [...seen.values()].sort((a, b) => a.id.localeCompare(b.id));
   if (!list.length) return json(req, { item_id: null, alternatives: [], read: null, message: "Aucune bouteille en stock ici." });
 
   const lines = list.map((it, i) => `${i + 1}. ${[it.producer, it.name, it.vintage, it.appellation || it.region, it.category === "wine" ? it.style : it.category].filter(Boolean).join(" | ")}`).join("\n");
@@ -73,17 +71,15 @@ Deno.serve(async (req) => {
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       output_config: { effort: "low" },
-      system: SYSTEM,
-      messages: [{ role: "user", content: [
-        { type: "image", source: { type: "base64", media_type: media, data: body.image } },
-        { type: "text", text: `Bouteilles en stock :\n${lines}` },
-      ] }],
+      system: [{ type: "text", text: SYSTEM }, { type: "text", text: `Stock :\n${lines}`, cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content: [{ type: "image", source: { type: "base64", media_type: media, data: body.image } }] }],
     });
   } catch (e) {
     console.error("anthropic error", e);
     await admin.from("ai_calls").update({ ok: false }).eq("id", callRow?.id);
     return json(req, { error: "ai", message: "La reconnaissance ne répond pas. Choisissez dans la liste." }, 502);
   }
+  console.log("usage", JSON.stringify(msg.usage));
   if (msg.stop_reason === "refusal") return json(req, { error: "ai", message: "Reconnaissance impossible. Choisissez dans la liste." }, 422);
 
   const text = msg.content.filter((b) => b.type === "text").map((b) => (b as { text: string }).text).join("\n");

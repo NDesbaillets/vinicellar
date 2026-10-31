@@ -20,13 +20,12 @@ function cors(req: Request) {
 const json = (req: Request, body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors(req), "Content-Type": "application/json" } });
 
-const SYSTEM = `Tu es le sommelier personnel d'un amateur exigeant. On te donne un menu (un plat ou plusieurs services) et la liste numérotée des bouteilles disponibles dans sa cave, avec leur statut de garde cette année.
-Choisis dans cette liste uniquement. Priorité aux bouteilles « à l'apogée », puis « prête » ou « à boire vite » ; une bouteille « trop jeune » seulement si rien d'autre ne convient, en le disant. Évite « fenêtre dépassée » sauf si c'est un choix délibéré (et dis-le).
-Raisonne en accord mets-vins concret : structure, acidité, tanins, sucre résiduel, sauce, cuisson, gras, épices, intensité aromatique. Pour un menu en plusieurs services, propose une progression (un vin par service ou un vin qui couvre l'ensemble).
-Ton sobre et précis, en français, sans superlatifs. Chaque justification tient en 1 à 2 phrases.
-Réponds uniquement avec ce JSON :
-{"intro": "1 phrase sur l'approche", "picks": [{"n": numéro de ligne, "course": "service concerné ou null", "why": "pourquoi cet accord", "serve": "température, carafage, verre ; court"}], "missing": "si rien ne convient vraiment : le style de vin à acheter, sinon null"}
-3 propositions au plus, la meilleure d'abord.`;
+const SYSTEM = `Sommelier personnel d'un amateur exigeant. On te donne la liste numérotée des bouteilles de sa cave, avec leur statut de garde, puis un menu. Choisis uniquement dans cette liste.
+Priorité : « à l'apogée », puis « prête » ou « à boire vite ». « Trop jeune » seulement faute de mieux, « fenêtre dépassée » seulement par choix délibéré, en le disant.
+Accord concret : structure, acidité, tanins, sucre, sauce, cuisson, gras, épices, intensité. Menu en plusieurs services : un vin par service ou un vin pour l'ensemble.
+Français, sobre, sans superlatifs ; chaque justification en 1 à 2 phrases.
+Réponds uniquement par ce JSON, 3 propositions au plus, la meilleure d'abord :
+{"intro":"1 phrase sur l'approche","picks":[{"n":ligne,"course":"service ou null","why":"pourquoi cet accord","serve":"température, carafage, verre"}],"missing":"si rien ne convient : style à acheter, sinon null"}`;
 
 const year = new Date().getFullYear();
 type Item = { id: string; name: string; producer: string | null; vintage: number | null; category: string; style: string | null; grapes: string[] | null;
@@ -77,7 +76,7 @@ Deno.serve(async (req) => {
     const cur = seen.get(it.id);
     seen.set(it.id, { it, qty: (cur?.qty ?? 0) + (r as { quantity: number }).quantity });
   }
-  const list = [...seen.values()];
+  const list = [...seen.values()].sort((a, b) => a.it.id.localeCompare(b.it.id));   // ordre stable pour le cache
   if (!list.length) return json(req, { intro: null, picks: [], missing: null, message: "Aucune bouteille en stock ici." });
 
   const lines = list.map(({ it, qty }, i) => `${i + 1}. ${[
@@ -96,14 +95,16 @@ Deno.serve(async (req) => {
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       output_config: { effort: "medium" },
-      system: SYSTEM,
-      messages: [{ role: "user", content: `Menu :\n${menu}\n\nBouteilles disponibles (année ${year}) :\n${lines}` }],
+      // Consignes + liste de la cave en préfixe mis en cache (plusieurs menus de suite), le menu à la fin.
+      system: [{ type: "text", text: SYSTEM }, { type: "text", text: `Cave (année ${year}) :\n${lines}`, cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content: `Menu :\n${menu}` }],
     });
   } catch (e) {
     console.error("anthropic error", e);
     await admin.from("ai_calls").update({ ok: false }).eq("id", callRow?.id);
     return json(req, { error: "ai", message: "Le sommelier ne répond pas. Réessayez dans un instant." }, 502);
   }
+  console.log("usage", JSON.stringify(msg.usage));
   if (msg.stop_reason === "refusal") return json(req, { error: "ai", message: "Conseil impossible pour ce menu." }, 422);
 
   const text = msg.content.filter((b) => b.type === "text").map((b) => (b as { text: string }).text).join("\n");

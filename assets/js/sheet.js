@@ -89,22 +89,19 @@
   };
 
   // Consigne à coller dans Claude (app ou claude.ai) avec les photos : renvoie un fichier Excel au bon format.
-  const PROMPT = `Je t'envoie des photos de bouteilles de ma cave (étiquettes, parfois contre-étiquettes). Pour chaque bouteille différente :
-1. Lis l'étiquette : producteur, cuvée, millésime, appellation, degré, contenance. Si plusieurs photos montrent la même bouteille, regroupe-les en une seule ligne et compte les exemplaires dans « Quantité ».
-2. Cherche cette bouteille précise sur le web (site du producteur d'abord, puis cavistes, de préférence suisses pour le prix, puis Vivino ou CellarTracker pour la note et la garde). Si la recherche web n'est pas disponible, remplis ce que tu sais avec certitude et laisse le reste vide.
-3. Ne jamais inventer un chiffre : une donnée introuvable reste vide. Fenêtre de garde : tu peux l'estimer d'après l'appellation et le millésime.
+  const PROMPT = `Voici des photos de bouteilles de ma cave (étiquettes, parfois contre-étiquettes). Une ligne par vin ; photos d'une même bouteille regroupées, exemplaires comptés dans « Quantité ».
+Pour chaque vin : lis l'étiquette, puis cherche-le sur le web (producteur, puis cavistes, suisses de préférence pour le prix, puis Vivino ou CellarTracker pour note et garde). Aucun chiffre inventé : introuvable = vide. Garde estimable d'après appellation et millésime.
 
-Rends-moi un fichier Excel (.xlsx) nommé « vinicellar-import.xlsx », une ligne par vin, avec exactement ces colonnes dans cet ordre :
+Rends un fichier Excel « vinicellar-import.xlsx » avec exactement ces colonnes, dans cet ordre :
 ${COLUMNS.map((c) => c.h).join(" | ")}
 
 Formats :
-- Type : Vin, Whisky, Saké, Rhum, Cognac, Gin, Liqueur ou Autre. Couleur (vins seulement) : Rouge, Blanc, Rosé, Mousseux, Liquoreux, Muté ou Orange.
-- Pays en français. Pour la France, la Suisse et l'Italie, Région = une grande région : France : Alsace, Beaujolais, Bordeaux, Bourgogne, Champagne, Corse, Jura, Languedoc-Roussillon, Loire, Provence, Rhône, Savoie, Sud-Ouest. Suisse : Lavaux, Chablais, La Côte, Côtes de l'Orbe, Bonvillars, Vully, Valais, Genève, Neuchâtel, Lac de Bienne, Tessin, Suisse alémanique. Italie : Piémont, Toscane, Vénétie, etc. Le détail va dans Appellation.
-- Cépages séparés par des virgules ; Accords séparés par des points-virgules (3 à 5 accords concrets).
-- Années, quantités, températures (°C), contenance (cl) : nombres entiers. Degré, prix, note : nombres (point ou virgule).
-- Note moyenne avec son Échelle (5, 10, 20 ou 100) et sa Source. Prix marché d'une bouteille avec la Devise (CHF, EUR, USD ou GBP) et sa Source.
-- Description, Vinification, Terroir : 1 à 3 phrases chacune, en français, ton sobre de caviste. Notes millésime : 1 à 2 phrases.
-- Laisse vides : Cave, Emplacement, Prix d'achat, Année d'achat, Acheté chez, Ma note, Remarques (je les compléterai), sauf si je te les donne.`;
+- Type : Vin, Whisky, Saké, Rhum, Cognac, Gin, Liqueur, Autre. Couleur (vins) : Rouge, Blanc, Rosé, Mousseux, Liquoreux, Muté, Orange.
+- Pays en français. France, Suisse, Italie : Région = grande région, détail dans Appellation. Suisse : Lavaux, Chablais, La Côte, Côtes de l'Orbe, Bonvillars, Vully, Valais, Genève, Neuchâtel, Lac de Bienne, Tessin, Suisse alémanique. France : Alsace, Beaujolais, Bordeaux, Bourgogne, Champagne, Corse, Jura, Languedoc-Roussillon, Loire, Provence, Rhône, Savoie, Sud-Ouest. Italie : Piémont, Toscane, Vénétie, etc.
+- Cépages séparés par des virgules, Accords (3 à 5) par des points-virgules.
+- Nombres : années, quantité, °C, cl en entiers ; degré, prix, note en décimaux. Note avec Échelle (5, 10, 20, 100) et Source ; Prix marché d'une bouteille avec Devise (CHF, EUR, USD, GBP) et Source.
+- Description, Vinification, Terroir : 1 à 3 phrases ; Notes millésime : 1 à 2. Français, ton sobre de caviste.
+- Laisse vides Cave, Emplacement, Prix d'achat, Année d'achat, Acheté chez, Ma note, Remarques, sauf si je les donne.`;
 
   VC.table = { COLUMNS, columnFor, readRow, cell, PROMPT, fold };
 })();
