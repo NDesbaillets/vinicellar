@@ -40,16 +40,10 @@
 
   function drawInvites(list) {
     $("#invites").innerHTML = (list || []).map((i) => `<div class="invite" data-id="${i.id}">
-      <div><b>${esc(i.invited_by_name || "Quelqu'un")}</b> vous invite à partager « ${esc(i.collection_name)} ».<br><small class="muted">Vous verrez et gérerez ensemble les mêmes caves et bouteilles.</small></div>
+      <div><b>${esc(i.invited_by_name || "Quelqu'un")}</b> vous invite à partager « ${esc(i.collection_name)} »${i.role === "viewer" ? " en lecture seule" : ""}.<br><small class="muted">${i.role === "viewer" ? "Vous pourrez consulter ses caves et ses bouteilles, sans les modifier." : "Vous verrez et gérerez ensemble les mêmes caves et bouteilles."}</small></div>
       <div class="row"><button class="btn" data-acc>${I.check}Accepter</button><button class="btn ghost" data-dec>Refuser</button></div></div>`).join("");
   }
   drawInvites(invites);
-  if (ctx.profile.is_admin) {
-    const { count } = await sb.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "pending");
-    if (count) $("#invites").insertAdjacentHTML("afterbegin", `<a class="invite" href="/app/admin.html" style="text-decoration:none;color:inherit"><div><b>${count} demande${count > 1 ? "s" : ""} d'invitation</b> à valider.</div></a>`);
-  }
-  const { count: ready } = await sb.from("drafts").select("id", { count: "exact", head: true }).eq("status", "ready");
-  if (ready) $("#invites").insertAdjacentHTML("beforeend", `<a class="invite" href="/app/ajouter.html" style="text-decoration:none;color:inherit"><div><b>${ready} fiche${ready > 1 ? "s" : ""} prête${ready > 1 ? "s" : ""}</b> à vérifier avant d'entrer en cave.</div></a>`);
   $("#invites").addEventListener("click", async (e) => {
     const box = e.target.closest(".invite");
     if (!box) return;
@@ -63,4 +57,10 @@
       box.remove();
     }
   });
+  if (ctx.profile.is_admin) {
+    const { count } = await sb.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "pending");
+    if (count) $("#invites").insertAdjacentHTML("afterbegin", `<a class="invite" href="/app/admin.html" style="text-decoration:none;color:inherit"><div><b>${count} demande${count > 1 ? "s" : ""} d'invitation</b> à valider.</div></a>`);
+  }
+  const { count: ready } = await sb.from("drafts").select("id", { count: "exact", head: true }).eq("status", "ready");
+  if (ready) $("#invites").insertAdjacentHTML("beforeend", `<a class="invite" href="/app/ajouter.html" style="text-decoration:none;color:inherit"><div><b>${ready} fiche${ready > 1 ? "s" : ""} prête${ready > 1 ? "s" : ""}</b> à vérifier avant d'entrer en cave.</div></a>`);
 })();

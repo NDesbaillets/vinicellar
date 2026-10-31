@@ -27,7 +27,7 @@
   function collBlock(c) {
     const ps = places.filter((p) => p.collection_id === c.id);
     const members = people.get(c.id) || [];
-    const pend = invites.filter((i) => i.collection_id === c.id);
+    const pend = invites.filter((i) => i.collection_id === c.id && !(people.get(c.id) || []).some((m) => (m.email || "").toLowerCase() === i.email));
     const owner = isOwner(c);
     const me = members.find((m) => m.user_id === ctx.user.id);
     const editor = owner || (me && me.role === "member");
