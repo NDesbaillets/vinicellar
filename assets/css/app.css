@@ -328,3 +328,54 @@ dialog h2 { margin-bottom: 14px; }
 .nav a.btn:hover { background: var(--wine-2); }
 :root[data-theme="dark"] .nav a.btn { color: #1E1916; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .nav a.btn { color: #1E1916; } }
+
+/* --------------------------------------------------------- choix de la cave */
+.cellars { display: grid; gap: 12px; }
+@media (min-width: 700px) { .cellars { grid-template-columns: repeat(2, 1fr); } }
+.cellar-card { display: grid; grid-template-columns: 52px 1fr auto; gap: 14px; align-items: center; padding: 18px; text-decoration: none; color: inherit; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); transition: transform .12s, border-color .12s; }
+.cellar-card:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--wine) 35%, var(--line)); }
+.cellar-card .ico { width: 52px; height: 52px; border-radius: 14px; background: var(--wine-soft); color: var(--wine); display: grid; place-items: center; }
+.cellar-card .ico svg { width: 26px; height: 26px; }
+.cellar-card h3 { margin: 0 0 2px; font-size: 1.15rem; }
+.cellar-card small { color: var(--ink-2); }
+.cellar-card b.n { font-family: var(--font-display); font-size: 1.6rem; font-weight: 500; }
+.cellar-card.all .ico { background: var(--sunk); color: var(--ink-2); }
+.invite { display: grid; gap: 10px; background: var(--wine-soft); border: 1px solid color-mix(in srgb, var(--wine) 25%, var(--line)); border-radius: var(--radius); padding: 16px; margin: 16px 0; }
+
+/* --------------------------------------------------------- tableau de bord */
+.dash { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 16px 0 10px; }
+@media (min-width: 760px) { .dash { grid-template-columns: repeat(6, 1fr); } }
+.dash .stat { padding: 12px; }
+.dash .stat b { font-size: 1.5rem; }
+.dash .stat i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.dash .stat.total { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.dash .stat.total span { color: color-mix(in srgb, var(--bg) 75%, transparent); }
+.mix { display: flex; height: 8px; border-radius: 8px; overflow: hidden; background: var(--sunk); margin: 4px 0 14px; }
+.mix span { display: block; height: 100%; }
+.grapes { margin: 6px 0 4px; }
+.grapes h3 { font-size: 1rem; margin: 0 0 8px; }
+.cta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 6px; }
+
+/* carte bouteille avec bouton « Sortir » */
+.bottle-wrap { position: relative; }
+.bottle-wrap .bottle { padding-right: 64px; height: 100%; }
+.out-btn { position: absolute; right: 10px; top: 50%; translate: 0 -50%; width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--wine); display: grid; place-items: center; cursor: pointer; }
+.out-btn:hover { background: var(--wine-soft); }
+.out-btn svg { width: 22px; height: 22px; }
+
+/* --------------------------------------------------------- sortie d'une bouteille */
+.choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 18px 0 6px; }
+.choice { appearance: none; display: grid; justify-items: center; gap: 4px; padding: 16px 8px; border-radius: var(--radius); border: 1.5px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; font: inherit; text-align: center; }
+.choice svg { width: 30px; height: 30px; color: var(--wine); }
+.choice b { font-size: 1.02rem; }
+.choice small { font-size: .74rem; color: var(--ink-3); line-height: 1.25; }
+.choice:hover, .choice[aria-pressed="true"] { border-color: var(--wine); background: var(--wine-soft); }
+.choice[data-r="drunk"] { border-color: color-mix(in srgb, var(--wine) 45%, var(--line)); }
+.match { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: center; }
+.match .thumb { width: 96px; height: 128px; }
+.pick-list { display: grid; gap: 8px; max-height: 50vh; overflow: auto; margin-top: 10px; }
+.pick { appearance: none; text-align: left; display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--card); color: var(--ink); font: inherit; cursor: pointer; }
+.pick:hover { border-color: var(--wine); }
+.pick small { display: block; color: var(--ink-3); }
+.member { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+.member:first-child { border-top: 0; }

@@ -13,12 +13,12 @@
   async function load() {
     const [a, b, c, d] = await Promise.all([
       sb.from("items").select("*").eq("id", id).single(),
-      sb.from("locations").select("*").order("position").order("created_at"),
+      VC.loadPlaces(),
       sb.from("stock").select("*").eq("item_id", id),
       sb.from("tastings").select("*").eq("item_id", id).order("tasted_on", { ascending: false }).order("created_at", { ascending: false })
     ]);
     if (a.error || !a.data) { main.innerHTML = `<div class="empty"><p>Fiche introuvable.</p><a class="btn" href="/app/">Retour à la cave</a></div>`; return false; }
-    it = a.data; places = b.data || []; stock = c.data || []; tastings = d.data || [];
+    it = a.data; places = (b || []).filter((p) => p.collection_id === a.data.collection_id); stock = c.data || []; tastings = d.data || [];
     getUrl = await signed([it.bottle_path, it.label_path]);
     document.title = `${it.name}${it.vintage ? " " + it.vintage : ""} · Vinicellar`;
     return true;
@@ -52,7 +52,7 @@
           <output>${s.quantity}</output><button class="icon-btn" data-adj="1" data-loc="${s.location_id}" aria-label="Ajouter une bouteille">+</button></div></li>`;
       }).join("") : `<li><span class="muted">Plus aucune bouteille en cave.</span></li>`}</ul>
       <div style="display:grid;gap:8px;margin-top:14px">
-        <button class="btn big block" id="drink"${n ? "" : " disabled"}>${I.glass}J'ouvre une bouteille</button>
+        <button class="btn big block" id="drink"${n ? "" : " disabled"}>${I.glass}Sortir une bouteille</button>
         <div class="row"><button class="btn quiet" id="add-stock">${I.plus}Ajouter des bouteilles</button>${withStock().length && places.length > 1 ? `<button class="btn quiet" id="move">${I.move}Déplacer</button>` : ""}</div>
       </div></div>`;
   }
@@ -128,12 +128,12 @@
   }
 
   function tastingList() {
-    return `<div class="card"><div class="row"><h3 style="margin:0">Mes dégustations</h3><span class="spacer"></span><span class="faint">${tastings.length || ""}</span></div>
+    return `<div class="card"><div class="row"><h3 style="margin:0">Sorties et dégustations</h3><span class="spacer"></span><span class="faint">${tastings.length || ""}</span></div>
       <div style="margin-top:12px">${tastings.length ? tastings.map((t) => `<div class="tasting">
-        <div class="tasting-head"><b>${date(t.tasted_on)}</b><span class="stars-slot" data-r="${t.rating ?? ""}"></span><span class="faint">${esc([t.location_id && placeName(t.location_id), t.occasion].filter(Boolean).join(" · "))}</span>
+        <div class="tasting-head"><b>${date(t.tasted_on)}</b><span class="stars-slot" data-r="${t.rating ?? ""}"></span><span class="tag ${t.reason === "drunk" ? "ready" : t.reason === "gifted" ? "peak" : ""}">${VC.REASON[t.reason] || "Bue"}${t.recipient ? " à " + esc(t.recipient) : ""}</span><span class="faint">${esc([t.location_id && placeName(t.location_id), t.occasion].filter(Boolean).join(" · "))}</span>
         <span class="spacer"></span><button class="btn quiet" data-undo="${t.id}" title="Supprimer et remettre la bouteille en cave">${I.trash}</button></div>
         ${t.pairing ? `<p class="pair">${I.plate.replace("<svg", '<svg width="15" height="15" style="vertical-align:-2px;margin-right:4px"')}${esc(t.pairing)}</p>` : ""}
-        ${t.notes ? `<p>${esc(t.notes)}</p>` : ""}</div>`).join("") : `<p class="muted" style="margin:0">Pas encore de dégustation. Le bouton « J'ouvre une bouteille » retire la bouteille du stock et ouvre votre carnet.</p>`}</div></div>`;
+        ${t.notes ? `<p>${esc(t.notes)}</p>` : ""}</div>`).join("") : `<p class="muted" style="margin:0">Aucune sortie pour l'instant. « Sortir une bouteille » la retire du stock : bue, offerte ou autre.</p>`}</div></div>`;
   }
 
   function sources() {
@@ -145,7 +145,7 @@
   function render() {
     const kind = it.category === "wine" ? (STYLE[it.style] ? `Vin ${STYLE[it.style].toLowerCase()}` : "Vin") : CATEGORY[it.category];
     const prodUrl = safeUrl(it.producer_url);
-    main.innerHTML = `<p style="margin:16px 0 0"><a class="btn quiet" href="/app/">${I.back}Ma cave</a></p>
+    main.innerHTML = `<p style="margin:16px 0 0"><a class="btn quiet" href="/app/cave.html?loc=${encodeURIComponent(VC.getLoc() || "all")}">${I.back}Retour à la cave</a></p>
       <div class="sheet">
         <aside class="sheet-aside"><div class="visual" id="visual"></div><div class="visual-switch" id="vswitch"></div><div id="stock" style="margin-top:16px">${stockCard()}</div></aside>
         <div style="display:grid;gap:16px;min-width:0">
@@ -221,27 +221,7 @@
   const locOptions = (list, sel) => list.map((p) => `<option value="${p.id}"${p.id === sel ? " selected" : ""}>${esc(p.name)}</option>`).join("");
 
   function openDrink() {
-    const avail = withStock().map((s) => ({ id: s.location_id, name: `${placeName(s.location_id)} (${s.quantity})` }));
-    let rating = null;
-    const f = dialog(`<h2>J'ouvre une bouteille</h2>
-      <div class="grid2"><label>Depuis la cave<select name="loc">${locOptions(avail, avail[0] && avail[0].id)}</select></label>
-      <label>Date<input type="date" name="day" value="${today()}" max="${today()}"></label></div>
-      <label style="margin-top:14px">Ma note de dégustation<span id="dlg-stars"></span></label>
-      <label style="margin-top:14px">Accord : avec quel plat ?<input name="pairing" maxlength="300" placeholder="ex. Filets de perche, sauce au beurre"></label>
-      <label style="margin-top:14px">Occasion<input name="occasion" maxlength="120" placeholder="ex. Dîner avec Viviane, anniversaire"></label>
-      <label style="margin-top:14px">Commentaire de dégustation<textarea name="notes" rows="4" placeholder="Robe, nez, bouche, finale, évolution à l'aération…"></textarea></label>
-      <div class="row end" style="margin-top:18px"><button type="button" class="btn ghost" data-close>Annuler</button><button type="submit" class="btn">${I.glass}Valider</button></div>`,
-    async (f) => {
-      const { data: tid, error } = await sb.rpc("drink_bottle", {
-        p_item: id, p_location: f.loc.value, p_tasted_on: f.day.value || today(), p_rating: rating,
-        p_notes: f.notes.value.trim() || null, p_pairing: f.pairing.value.trim() || null, p_occasion: f.occasion.value.trim() || null
-      });
-      if (error) throw error;
-      if (rating && !it.my_rating) await sb.from("items").update({ my_rating: rating }).eq("id", id);
-      toast("Santé ! Bouteille retirée du stock.", { label: "Annuler", run: async () => { await sb.rpc("undo_tasting", { p_tasting: tid }); refresh(); } });
-      refresh();
-    });
-    $("#dlg-stars", f).append(stars(null, (v) => (rating = v), { label: "Note de dégustation" }));
+    VC.takeOut({ item: it, stock, places, loc: VC.getLoc(), onDone: refresh });
   }
 
   function openAddStock() {
@@ -333,7 +313,7 @@
     const { error } = await sb.from("items").delete().eq("id", id);
     if (error) return fail(error);
     if (files.length) await sb.storage.from("labels").remove(files);
-    location.replace("/app/");
+    location.replace(`/app/cave.html?loc=${encodeURIComponent(VC.getLoc() || "all")}`);
   }
 
   if (await load()) render();

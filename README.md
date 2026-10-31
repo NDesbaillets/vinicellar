@@ -19,15 +19,19 @@ Le dépôt est public : rien de secret n'y va. La clé `publishable` de `assets/
 index.html                  accueil + connexion + création de compte
 bienvenue.html              première connexion : mot de passe, nom, caves
 nouveau-mot-de-passe.html   lien « mot de passe oublié »
-app/index.html              Ma cave (stats, filtres par cave/fenêtre/type, recherche)
+app/index.html              choix de la cave (et invitations de partage en attente)
+app/cave.html?loc=…         tableau de bord d'une cave (rouges, blancs, cépages…), filtres, liste, sortie en un geste
+app/sortir.html             sortir une bouteille : photo reconnue parmi le stock, ou liste ; bue / offerte / autre
 app/fiche.html?id=…         fiche bouteille, stock par lieu, « J'ouvre une bouteille », garde, accords, dégustations
 app/ajouter.html            photo (appareil ou album) ou nom → analyse → fiche à vérifier → stock
 app/journal.html            carnet de dégustation
-app/caves.html              lieux de stockage
+app/caves.html              caves et partage (inviter conjoint ou famille par e-mail)
 app/compte.html             profil, mot de passe, export CSV, déconnexion
 assets/js/core.js           client Supabase, session, navigation, formulaire de fiche, étoiles
 supabase/schema.sql         tables, RLS, fonctions (drink_bottle, adjust_stock, move_stock, undo_tasting), bucket `labels`
-supabase/functions/identify Edge Function d'identification
+supabase/sharing.sql        partage (collections, membres, invitations) et sorties (bue, offerte, autre)
+supabase/functions/identify Edge Function d'identification (photo → fiche complète, recherche web)
+supabase/functions/match    Edge Function de reconnaissance d'une bouteille du stock (photo → sortie)
 supabase/templates/         e-mails (invitation, lien de connexion, mot de passe)
 ```
 
@@ -67,4 +71,4 @@ Compléments possibles, par ordre d'intérêt :
 
 ## Cache des navigateurs
 
-Les pages chargent CSS et JS avec `?v=20261031`. Après modification, changer ce suffixe partout.
+Les pages chargent CSS et JS avec `?v=20261101`. Après modification, changer ce suffixe partout.

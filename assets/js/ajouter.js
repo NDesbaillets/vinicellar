@@ -4,7 +4,8 @@
   const { sb, $, esc, I, CATEGORY, toast, fail } = VC;
   const ctx = await VC.boot("add");
   const main = $("#main");
-  const { data: places } = await sb.from("locations").select("*").order("position").order("created_at");
+  const places = await VC.loadPlaces().catch(() => []);
+  const here = VC.getLoc();
 
   let draft = {};          // fiche en cours
   let labelPath = null;    // photo de l'étiquette déjà envoyée
@@ -88,7 +89,7 @@
       <form id="item-form" class="card" novalidate style="margin-top:16px">
         ${thumb ? `<div class="preview" style="margin-bottom:20px"><img src="${esc(thumb)}" alt=""><div class="muted">${esc([it.producer, it.vintage, it.region, it.country].filter(Boolean).join(" · "))}</div></div>` : ""}
         <fieldset><legend>En cave</legend><div class="grid3">
-          <label>Cave<select name="loc">${(places || []).map((p) => `<option value="${p.id}">${esc(p.name)}</option>`).join("")}</select></label>
+          <label>Cave<select name="loc">${places.map((p) => `<option value="${p.id}"${p.id === here ? " selected" : ""}>${esc(VC.placeLabel(p, places))}</option>`).join("")}</select></label>
           <label>Bouteilles<input type="number" name="qty" value="1" min="0" max="999" inputmode="numeric"></label>
           <label>Emplacement<input name="bin" maxlength="60" placeholder="ex. Casier B3"></label>
         </div>${(places || []).length ? "" : `<p class="notice">Aucune cave créée. <a href="/app/caves.html">Créer une cave</a> d'abord.</p>`}</fieldset>
@@ -116,7 +117,9 @@
 
     try {
       // Doublon : même cuvée, même producteur, même millésime → on ajoute les bouteilles à la fiche existante.
+      const coll = (places.find((p) => p.id === loc) || places[0] || {}).collection_id;
       let q = sb.from("items").select("id, name").ilike("name", data.name);
+      if (coll) q = q.eq("collection_id", coll);
       q = data.vintage ? q.eq("vintage", data.vintage) : q.is("vintage", null);
       if (data.producer) q = q.ilike("producer", data.producer);
       const { data: dup } = await q.limit(1);
@@ -126,7 +129,7 @@
       }
 
       if (labelUpload) await labelUpload;
-      const row = { ...data, label_path: labelPath, bottle_path: draft.bottle_path || null, bottle_image_url: draft.bottle_image_url || null,
+      const row = { ...data, ...(coll ? { collection_id: coll } : {}), label_path: labelPath, bottle_path: draft.bottle_path || null, bottle_image_url: draft.bottle_image_url || null,
         sources: draft.sources || [], ai_enriched_at: draft.ai_enriched_at || null };
       const { data: ins, error } = await sb.from("items").insert(row).select("id").single();
       if (error) throw error;

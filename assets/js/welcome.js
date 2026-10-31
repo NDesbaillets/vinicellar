@@ -39,7 +39,13 @@
 
     const { data: prof } = await sb.from("profiles").select("*").eq("id", user.id).single();
     if (prof && prof.onboarded_at) return location.replace("/app/");
-    const { data: existing } = await sb.from("locations").select("id").limit(1);
+    const [{ data: existing }, { data: invites }] = await Promise.all([sb.from("locations").select("id").limit(1), sb.rpc("my_invites")]);
+    if ((invites || []).length) {
+      $("#invites-set").hidden = false;
+      $("#invite-list").innerHTML = invites.map((i) => `<label class="row" style="font-weight:400;color:var(--ink)"><input type="checkbox" name="invite" value="${i.id}" checked>
+        <span><b>${esc(i.invited_by_name || "Quelqu'un")}</b> vous invite à partager « ${esc(i.collection_name)} ».</span></label>`).join("") +
+        `<p class="hint" style="margin:0">En acceptant, vous gérez ensemble les mêmes caves. Créer vos propres caves ci-dessous devient facultatif.</p>`;
+    }
 
     const full = ((prof && prof.full_name) || (user.user_metadata || {}).full_name || "").trim().split(/\s+/);
     f.first_name.value = (prof && prof.first_name) || (full.length > 1 ? full[0] : "");
@@ -62,13 +68,15 @@
       if (pw.length < 10) return msg(out, T.pwShort, "error");
       if (pw !== f.confirm.value) return msg(out, T.pwMismatch, "error");
       if (!first || !last) return msg(out, T.names, "error");
-      if (!$("#places-set").hidden && !places.length) return msg(out, T.places, "error");
+      const accepted = $$('input[name="invite"]:checked').map((x) => x.value);
+      if (!$("#places-set").hidden && !places.length && !accepted.length) return msg(out, T.places, "error");
       const btn = f.querySelector('button[type="submit"]');
       btn.disabled = true;
       msg(out, T.saving);
       const { error: pwError } = await sb.auth.updateUser({ password: pw });
       if (pwError) { btn.disabled = false; return msg(out, pwError.message || T.error, "error"); }
-      if (places.length && $("#places-set").hidden === false) {
+      for (const inv of accepted) await sb.rpc("accept_invite", { p_invite: inv });
+      if (places.length && $("#places-set").hidden === false && !(accepted.length && places.length === 1 && places[0].name === "Maison")) {
         const { error: le } = await sb.from("locations").insert(places);
         if (le) { btn.disabled = false; console.error(le); return msg(out, T.error, "error"); }
       }
@@ -77,6 +85,7 @@
         currency: f.currency.value, onboarded_at: new Date().toISOString()
       }).eq("id", user.id);
       if (error) { btn.disabled = false; console.error(error); return msg(out, T.error, "error"); }
+      await sb.from("collections").update({ name: `Cave de ${first}` }).eq("owner_id", user.id).eq("name", "Ma cave");
       msg(out, T.done, "ok");
       setTimeout(() => (location.href = "/app/"), 900);
     });

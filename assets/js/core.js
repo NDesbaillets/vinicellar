@@ -40,6 +40,9 @@
     thermo: P('<path d="M10 4a2 2 0 0 1 4 0v10a4 4 0 1 1-4 0z"/><path d="M12 9v7"/>'),
     clock: P('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'),
     plate: P('<circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="9"/>'),
+    gift: P('<rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M3 9h18M12 9v11M12 9C10 5 6.5 5 6.5 7.2S9.5 9 12 9zm0 0c2-4 5.5-4 5.5-1.8S14.5 9 12 9z"/>'),
+    dots: P('<circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/>'),
+    share: P('<circle cx="8" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M3 20a5 5 0 0 1 10 0M14 20a4 4 0 0 1 7 0"/>'),
     download: P('<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>')
   };
 
@@ -107,10 +110,10 @@
 
   // ------------------------------------------------------------------ navigation
   const NAV = [
-    { id: "cellar", href: "/app/", label: "Ma cave", icon: "cellar" },
+    { id: "cellar", href: "/app/", label: "Caves", icon: "cellar" },
     { id: "journal", href: "/app/journal.html", label: "Journal", icon: "journal" },
     { id: "add", href: "/app/ajouter.html", label: "Ajouter", icon: "plus" },
-    { id: "places", href: "/app/caves.html", label: "Caves", icon: "places" },
+    { id: "out", href: "/app/sortir.html", label: "Sortir", icon: "glass" },
     { id: "account", href: "/app/compte.html", label: "Compte", icon: "user" }
   ];
   function renderNav(active) {
@@ -119,7 +122,7 @@
       top.className = "topbar";
       top.innerHTML = `<div class="wrap"><a class="brand" href="/app/">${I.logo}<span>Vinicellar</span></a>
         <nav class="nav" aria-label="Navigation principale">
-          ${NAV.filter((n) => n.id !== "add").map((n) => `<a href="${n.href}"${n.id === active ? ' aria-current="page"' : ""}>${n.label}</a>`).join("")}
+          ${NAV.filter((n) => n.id !== "add").map((n) => `<a href="${n.href}"${n.id === active ? ' aria-current="page"' : ""}>${n.id === "out" ? "Sortir une bouteille" : n.label}</a>`).join("")}
           <a class="btn" href="/app/ajouter.html">${I.plus}Ajouter</a>
         </nav></div>`;
     }
@@ -330,10 +333,122 @@
     } finally { URL.revokeObjectURL(url); }
   }
 
+
+  // ------------------------------------------------------------------ cave affichée (mémorisée sur l'appareil)
+  const LOC_KEY = "vc.loc";
+  const getLoc = () => { try { return localStorage.getItem(LOC_KEY) || ""; } catch { return ""; } };
+  const setLoc = (id) => { try { localStorage.setItem(LOC_KEY, id || ""); } catch { /* stockage indisponible */ } };
+
+  // Caves accessibles (les miennes et celles partagées avec moi), avec le nom de leur collection.
+  async function loadPlaces() {
+    const { data, error } = await sb.from("locations").select("*, collections(id, name, owner_id)").order("position").order("created_at");
+    if (error) throw error;
+    return data || [];
+  }
+  const placeLabel = (p, all) => {
+    const shared = new Set((all || []).map((x) => x.collection_id)).size > 1;
+    return shared && p.collections ? `${p.name} · ${p.collections.name}` : p.name;
+  };
+
+  // ------------------------------------------------------------------ feuille (dialogue en bas d'écran sur mobile)
+  function sheet(html) {
+    const d = document.createElement("dialog");
+    d.innerHTML = `<div class="dlg">${html}</div>`;
+    document.body.append(d);
+    d.addEventListener("close", () => d.remove());
+    d.addEventListener("click", (e) => { if (e.target === d || e.target.closest("[data-close]")) d.close(); });
+    d.showModal();
+    return d;
+  }
+
+  // ------------------------------------------------------------------ sortir une bouteille : bue, offerte, autre
+  // item : la fiche ; stock : ses lignes de stock ; places : caves ; loc : cave affichée (facultatif).
+  function takeOut({ item, stock, places, loc, onDone }) {
+    const rows = stock.filter((s) => s.quantity > 0);
+    const here = rows.filter((s) => s.location_id === loc);
+    const list = here.length ? here : rows;
+    if (!list.length) { toast("Plus aucune bouteille en stock."); return; }
+    const pname = (id) => (places.find((p) => p.id === id) || {}).name || "Cave";
+    const d = sheet(`<h2>${esc(item.name)}${item.vintage ? ` <span class="faint">${item.vintage}</span>` : ""}</h2>
+      ${list.length > 1
+        ? `<label>Depuis<select id="to-loc">${list.map((s) => `<option value="${s.location_id}">${esc(pname(s.location_id))} (${s.quantity})</option>`).join("")}</select></label>`
+        : `<p class="muted" style="margin:0">Depuis ${esc(pname(list[0].location_id))} · ${list[0].quantity} en stock</p>`}
+      <div class="choices">
+        <button type="button" class="choice" data-r="drunk">${I.glass}<b>Bue</b><small>On l'a ouverte</small></button>
+        <button type="button" class="choice" data-r="gifted">${I.gift}<b>Offerte</b><small>Cadeau, invitation</small></button>
+        <button type="button" class="choice" data-r="other">${I.dots}<b>Autre</b><small>Bouchonnée, cassée, vendue</small></button>
+      </div>
+      <form id="to-extra" hidden novalidate>
+        <label id="to-extra-label">À qui ?<input name="who" maxlength="120" autocomplete="off"></label>
+        <div class="row end" style="margin-top:14px"><button type="submit" class="btn">${I.check}Valider</button></div>
+      </form>
+      <div class="row end" style="margin-top:8px"><button type="button" class="btn quiet" data-close>Annuler</button></div>`);
+    const locId = () => (d.querySelector("#to-loc") || {}).value || list[0].location_id;
+    let reason = null;
+
+    async function record(r, extra) {
+      const { data: tid, error } = await sb.rpc("take_bottle", {
+        p_item: item.id, p_location: locId(), p_reason: r,
+        p_recipient: r === "gifted" ? extra || null : null, p_notes: r === "other" ? extra || null : null
+      });
+      if (error) { fail(error); return null; }
+      onDone && onDone();
+      return tid;
+    }
+    const undo = (tid) => async () => { await sb.rpc("undo_tasting", { p_tasting: tid }); toast("Sortie annulée."); onDone && onDone(); };
+
+    d.querySelector(".choices").addEventListener("click", async (e) => {
+      const b = e.target.closest(".choice");
+      if (!b) return;
+      reason = b.dataset.r;
+      d.querySelectorAll(".choice").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      if (reason !== "drunk") {
+        const f = d.querySelector("#to-extra");
+        f.hidden = false;
+        d.querySelector("#to-extra-label").firstChild.textContent = reason === "gifted" ? "À qui ? (facultatif)" : "Que s'est-il passé ? (facultatif)";
+        f.who.placeholder = reason === "gifted" ? "ex. Famille Sciboz, dîner chez Paul" : "ex. Bouchonnée";
+        f.who.focus();
+        return;
+      }
+      // Bue : retirée tout de suite, puis note de dégustation facultative.
+      d.querySelectorAll(".choice").forEach((x) => (x.disabled = true));
+      const tid = await record("drunk");
+      if (!tid) return d.close();
+      let rating = null;
+      d.querySelector(".dlg").innerHTML = `<h2>Santé !</h2><p class="muted">Bouteille retirée du stock. Une note pour vous en souvenir ?</p>
+        <label>Ma note<span id="to-stars"></span></label>
+        <label style="margin-top:12px">Avec quel plat ?<input name="pairing" maxlength="300" placeholder="ex. Filets de perche"></label>
+        <label style="margin-top:12px">Commentaire<textarea name="notes" rows="3" placeholder="Nez, bouche, évolution…"></textarea></label>
+        <div class="row" style="margin-top:16px"><button type="button" class="btn quiet" id="to-undo">Annuler la sortie</button><span class="spacer"></span>
+        <button type="button" class="btn ghost" data-close>Plus tard</button><button type="button" class="btn" id="to-save">Enregistrer</button></div>`;
+      d.querySelector("#to-stars").append(stars(null, (v) => (rating = v), { label: "Note de dégustation" }));
+      d.querySelector("#to-undo").addEventListener("click", async () => { d.close(); await undo(tid)(); });
+      d.querySelector("#to-save").addEventListener("click", async () => {
+        const patch = { rating, pairing: d.querySelector("[name=pairing]").value.trim() || null, notes: d.querySelector("[name=notes]").value.trim() || null };
+        const { error } = await sb.from("tastings").update(patch).eq("id", tid);
+        if (error) return fail(error);
+        if (rating && !item.my_rating) await sb.from("items").update({ my_rating: rating }).eq("id", item.id);
+        d.close(); toast("Note enregistrée."); onDone && onDone();
+      });
+    });
+
+    d.querySelector("#to-extra").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const who = e.target.who.value.trim();
+      e.target.querySelector("button").disabled = true;
+      const tid = await record(reason, who);
+      d.close();
+      if (tid) toast(reason === "gifted" ? "Bouteille offerte, retirée du stock." : "Bouteille retirée du stock.", { label: "Annuler", run: undo(tid) });
+    });
+  }
+
+  const REASON = { drunk: "Bue", gifted: "Offerte", other: "Sortie" };
+
   window.VC = {
     sb, cfg, I, CATEGORY, CATEGORY_SHORT, STYLE, KIND, CURRENCIES, AI_FIELDS,
     $, $$, esc, money, date, today, year, range, safeUrl, host, isWine, title,
     windowStatus, bottleSvg, signed, mainImagePath, renderNav, boot, toast, fail, stars,
-    renderItemForm, readItemForm, identify, shrink
+    renderItemForm, readItemForm, identify, shrink,
+    getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, REASON
   };
 })();
