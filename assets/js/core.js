@@ -63,9 +63,16 @@
       Loire: "loire|sancerre|pouilly-fume|vouvray|chinon|bourgueil|saumur|anjou|muscadet|savennieres|montlouis|menetou|quincy|reuilly|touraine",
       Provence: "provence|bandol|cassis|palette|bellet|baux", Rhone: "rhone|hermitage|cote-rotie|condrieu|cornas|saint-joseph|crozes|chateauneuf|gigondas|vacqueyras|rasteau|lirac|tavel|ventoux|luberon",
       Savoie: "savoie|apremont|chignin|abymes|roussette|crepy", "Sud-Ouest": "sud-ouest|cahors|madiran|jurancon|gaillac|bergerac|irouleguy|fronton|marcillac|buzet|monbazillac" },
-    Suisse: { Vaud: "vaud|lavaux|dezaley|calamin|epesses|saint-saphorin|villette|lutry|chablais|yvorne|aigle|la cote|mont-sur-rolle|feschy|morges|cotes de l'orbe|bonvillars",
+    // Vaud : ses six régions AOC, Lavaux à part ; « Vaud » seul quand la région précise est introuvable.
+    Suisse: { Lavaux: "lavaux|dezaley|calamin|epesses|saint-saphorin|st-saphorin|villette|lutry|cully|chexbres|riex|puidoux|chardonne|vevey|montreux|corseaux|grandvaux|aran|savuit|rivaz|treytorrens",
+      Chablais: "chablais|yvorne|aigle|ollon|bex|villeneuve|antagnes",
+      "La Cote": "la cote|mont-sur-rolle|rolle|fechy|feschy|morges|aubonne|nyon|begnins|vinzel|luins|tartegnin|bursins|perroy|coinsins|founex|allaman|yens|villars-sous-yens|essertines|gilly|bougy|mont-sur-nyon|duillier|coppet|tolochenaz|lully vd",
+      "Cotes de l'Orbe": "cotes de l'orbe|orbe|arnex|valeyres|agiez|chavornay",
+      Bonvillars: "bonvillars|grandson|concise|onnens|corcelles-pres-concise|champagne vd",
+      Vully: "vully|motier|praz|mur vd|nant",
+      Vaud: "vaud",
       Valais: "valais|wallis|sion|fully|chamoson|salquenen|salgesch|visperterminen|conthey|vetroz|leytron|sierre|saint-leonard", Geneve: "geneve|satigny|dardagny|lully|peissy|mandement",
-      Neuchatel: "neuchatel|auvernier|cortaillod|cressier|boudry", "Trois-Lacs": "trois-lacs|vully|bielersee|lac de bienne|ligerz|twann|schafis",
+      Neuchatel: "neuchatel|auvernier|cortaillod|cressier|boudry", "Lac de Bienne": "trois-lacs|bielersee|lac de bienne|ligerz|twann|schafis|erlach|cerlier|chavannes|tuscherz",
       Tessin: "tessin|ticino|mendrisio|lugano", "Suisse alemanique": "suisse alemanique|deutschschweiz|zurich|schaffhouse|schaffhausen|argovie|aargau|grisons|graubunden|bundner|malans|fläsch|flasch|jenins|thurgovie|thurgau|saint-gall|bale|basel|lucerne" },
     Italie: { Piemont: "piemont|piemonte|barolo|barbaresco|roero|langhe|asti|alba|gavi|ghemme|gattinara|monferrato|dogliani", "Vallee d'Aoste": "aoste|aosta",
       Lombardie: "lombardie|lombardia|franciacorta|valtellina|oltrepo|lugana", "Trentin-Haut-Adige": "trentin|trentino|haut-adige|alto adige|sudtirol|südtirol|teroldego",
@@ -77,7 +84,7 @@
       Sicile: "sicile|sicilia|etna|marsala|nero d'avola|pantelleria", Sardaigne: "sardaigne|sardegna|cannonau|vermentino di gallura" }
   };
   // Noms affichés (les clés ci-dessus sont sans accents pour la comparaison).
-  const REGION_LABEL = { Rhone: "Rhône", Geneve: "Genève", Neuchatel: "Neuchâtel", "Suisse alemanique": "Suisse alémanique", Piemont: "Piémont",
+  const REGION_LABEL = { "La Cote": "La Côte", "Cotes de l'Orbe": "Côtes de l'Orbe", Rhone: "Rhône", Geneve: "Genève", Neuchatel: "Neuchâtel", "Suisse alemanique": "Suisse alémanique", Piemont: "Piémont",
     "Vallee d'Aoste": "Vallée d'Aoste", Venetie: "Vénétie", "Frioul-Venetie julienne": "Frioul-Vénétie julienne", "Emilie-Romagne": "Émilie-Romagne" };
   const COUNTRY = { france: "France", suisse: "Suisse", switzerland: "Suisse", schweiz: "Suisse", svizzera: "Suisse", italie: "Italie", italy: "Italie", italia: "Italie",
     espagne: "Espagne", spain: "Espagne", "espana": "Espagne", portugal: "Portugal", allemagne: "Allemagne", germany: "Allemagne", deutschland: "Allemagne",
@@ -97,7 +104,9 @@
     const raw = (it.region || "").trim();
     if (!table) return raw || null;
     const r = fold(raw);
-    for (const k of Object.keys(table)) if (fold(k) === r || fold(REGION_LABEL[k] || k) === r) return REGION_LABEL[k] || k;
+    // Une région générique (« Vaud », « Trois-Lacs ») ne suffit pas : on cherche d'abord la région précise.
+    const generic = ["vaud", "trois-lacs", "trois lacs"].includes(r);
+    if (!generic) for (const k of Object.keys(table)) if (fold(k) === r || fold(REGION_LABEL[k] || k) === r) return REGION_LABEL[k] || k;
     const hay = fold([it.region, it.appellation, it.name].join(" "));
     for (const [k, words] of Object.entries(table)) if (new RegExp(`(^|[^a-z])(${words})([^a-z]|$)`).test(hay)) return REGION_LABEL[k] || k;
     return raw || null;

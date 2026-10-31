@@ -41,7 +41,7 @@ Règles :
 - Pays en français (France, Suisse, Italie, Espagne…).
 - Pour la France, la Suisse et l'Italie, region = exactement l'une de ces grandes régions, le détail (sous-région, AOC, DOC, commune) allant dans appellation :
   France : Alsace, Beaujolais, Bordeaux, Bourgogne, Champagne, Corse, Jura, Languedoc-Roussillon, Loire, Provence, Rhône, Savoie, Sud-Ouest.
-  Suisse : Vaud, Valais, Genève, Neuchâtel, Trois-Lacs, Tessin, Suisse alémanique.
+  Suisse : Lavaux, Chablais, La Côte, Côtes de l'Orbe, Bonvillars, Vully (les six régions vaudoises, jamais « Vaud » seul), Valais, Genève, Neuchâtel, Lac de Bienne, Tessin, Suisse alémanique.
   Italie : Piémont, Vallée d'Aoste, Lombardie, Trentin-Haut-Adige, Vénétie, Frioul-Vénétie julienne, Ligurie, Émilie-Romagne, Toscane, Ombrie, Marches, Latium, Abruzzes, Molise, Campanie, Pouilles, Basilicate, Calabre, Sicile, Sardaigne.
 
 Réponds uniquement avec un objet JSON (sans texte autour) qui suit exactement ce schéma :
