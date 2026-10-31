@@ -457,3 +457,13 @@ dialog h2 { margin-bottom: 14px; }
 .pick-card + .pick-card { margin-top: 0; }
 .pick-card .match { grid-template-columns: 72px 1fr; }
 .pick-card .match .thumb { width: 72px; height: 100px; }
+.rank-grid > .card { min-width: 0; } .rank li span { min-width: 0; }
+.geo > label { min-width: 0; } .geo select { min-width: 0; width: 100%; text-overflow: ellipsis; }
+/* empêcher les textes sur une ligne d'élargir la page sur mobile */
+.list { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 700px) { .list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1060px) { .list { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.bottle > div { min-width: 0; }
+.rank-grid { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 760px) { .rank-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.rank { grid-template-columns: minmax(0, 1fr); }

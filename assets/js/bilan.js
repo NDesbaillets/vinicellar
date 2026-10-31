@@ -65,10 +65,10 @@
         <div class="stat"><b>${inP.filter((r) => r.reason === "other").length}</b><span>autres sorties</span></div>
         <div class="stat"><b>${new Set(drunk.map((r) => r.item_id)).size}</b><span>vins différents bus</span></div>
       </div>
-      <div class="card"><h3>Bouteilles bues par mois</h3><p class="muted" style="margin:-4px 0 12px;font-size:.85rem">12 derniers mois${peak.n ? ` · pic en ${esc(peak.full)} (${peak.n})` : ""}</p>
+      <div class="card"><h3>Bouteilles bues par mois</h3><p class="muted" style="margin:-4px 0 12px;font-size:.85rem">12 derniers mois${peak.n ? ` · au plus ${max} bouteille${max > 1 ? "s" : ""} en un mois` : ""}</p>
         <div class="months" role="img" aria-label="Bouteilles bues par mois sur les 12 derniers mois">
           ${ms.map((m) => `<div class="mcol" tabindex="0" data-tip="${esc(m.full)} : ${m.n} bouteille${m.n > 1 ? "s" : ""}">
-            <span class="mval">${m === peak && m.n ? m.n : ""}</span>
+            <span class="mval">${m.n === max && m.n && ms.filter((x) => x.n === max).length === 1 ? m.n : ""}</span>
             <span class="mbar" style="height:${m.n ? Math.max(4, (m.n / max) * 100) : 0}%"></span>
             <span class="mlab">${esc(m.label)}</span></div>`).join("")}
         </div>
