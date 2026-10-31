@@ -8,7 +8,7 @@ Web-app de gestion de cave (vins, whiskies, sakés, rhums, cognacs, gins, liqueu
 | --- | --- | --- |
 | Pages | GitHub Pages (dépôt `NDesbaillets/vinicellar`, branche `main`) | gratuit |
 | Comptes, base, photos | Supabase, projet `vinicellar` (`ysdkbkujgbkrpjishttp`, eu-central-2 Zurich) | gratuit jusqu'à 500 Mo de base / 1 Go de fichiers |
-| Lecture d'étiquette + fiche | Edge Function `identify` → API Anthropic (Claude Opus 5.5 + web search/fetch) | env. 0,10–0,30 $ par analyse |
+| Lecture d'étiquette + fiche | Edge Function `identify` → API Anthropic (Claude Sonnet 5.5 + web search/fetch) | env. 0,05–0,15 $ par analyse |
 | Domaine | Infomaniak (`vinicellar.ch`) | déjà payé |
 
 Le dépôt est public : rien de secret n'y va. La clé `publishable` de `assets/js/config.js` est publique par conception, la sécurité repose sur les règles RLS de `supabase/schema.sql` (chaque utilisateur ne voit que ses lignes et son dossier de photos).

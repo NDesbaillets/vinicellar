@@ -9,7 +9,7 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.121.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 
 const ALLOWED_ORIGINS = ["https://vinicellar.ch", "https://www.vinicellar.ch", "http://localhost:8000"];
-const MODEL = "claude-opus-5-5";
+const MODEL = "claude-sonnet-5-5";
 const DAILY_LIMIT = Number(Deno.env.get("AI_DAILY_LIMIT") ?? "30");
 
 function cors(req: Request) {
