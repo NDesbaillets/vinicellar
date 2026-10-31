@@ -379,3 +379,9 @@ dialog h2 { margin-bottom: 14px; }
 .pick small { display: block; color: var(--ink-3); }
 .member { display: flex; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
 .member:first-child { border-top: 0; }
+.member { flex-wrap: wrap; }
+.member > div { min-width: 0; }
+.member b { overflow-wrap: anywhere; }
+.form-line { display: grid; gap: 10px; align-items: end; }
+@media (min-width: 640px) { .form-line { grid-template-columns: 2fr 1fr auto; } .form-line.two { grid-template-columns: 1fr auto; } }
+.place > div:first-child { min-width: 0; }

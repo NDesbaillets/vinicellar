@@ -37,19 +37,19 @@
         <div class="acts"><button class="icon-btn" data-act="up" aria-label="Monter"${i === 0 ? " disabled" : ""}>↑</button>
           <button class="icon-btn" data-act="edit" aria-label="Modifier">${I.edit}</button>
           <button class="icon-btn" data-act="del" aria-label="Supprimer">${I.trash}</button></div></div>`).join("") || `<p class="muted">Aucune cave.</p>`}</div>
-      <form class="new-place" novalidate style="margin-top:14px"><div class="grid3">
+      <form class="new-place" novalidate style="margin-top:14px"><div class="form-line">
         <label>Nouvelle cave<input name="title" maxlength="80" placeholder="ex. Chalet de Zermatt"></label>
         <label>Type<select name="kind">${kindOptions(ps.length ? "secondary" : "home")}</select></label>
-        <label>&nbsp;<button class="btn" type="submit">${I.plus}Créer</button></label></div></form>
+        <button class="btn" type="submit">${I.plus}Créer</button></div></form>
 
       <h3 style="margin-top:24px">${I.share.replace("<svg", '<svg width="18" height="18" style="vertical-align:-3px;margin-right:6px"')}Partage</h3>
       <p class="muted" style="margin-top:0">Les personnes invitées voient et gèrent les mêmes caves : ajouts, sorties, notes.</p>
       <div>${members.map((m) => `<div class="member"><div style="flex:1"><b>${esc(m.full_name || m.email)}</b><br><small class="muted">${esc(m.email)}${m.role === "owner" ? " · propriétaire" : ""}${m.user_id === ctx.user.id ? " · vous" : ""}</small></div>
         ${m.role !== "owner" && (owner || m.user_id === ctx.user.id) ? `<button class="btn quiet" data-act="${m.user_id === ctx.user.id ? "leave" : "remove"}" data-user="${m.user_id}">${m.user_id === ctx.user.id ? "Quitter" : "Retirer"}</button>` : ""}</div>`).join("")}
         ${pend.map((i) => `<div class="member"><div style="flex:1"><b>${esc(i.email)}</b><br><small class="muted">Invitation en attente</small></div>${owner ? `<button class="btn quiet" data-act="share-link" data-email="${esc(i.email)}">Relancer</button><button class="btn quiet" data-act="cancel-invite" data-inv="${i.id}">Annuler</button>` : ""}</div>`).join("")}</div>
-      ${owner ? `<form class="invite-form" novalidate style="margin-top:14px"><div class="grid3">
-        <label class="wide" style="grid-column:span 2">Inviter par e-mail<input type="email" name="email" placeholder="ex. viviane@exemple.ch" autocomplete="off"></label>
-        <label>&nbsp;<button class="btn" type="submit">${I.plus}Inviter</button></label></div></form>` : ""}
+      ${owner ? `<form class="invite-form" novalidate style="margin-top:14px"><div class="form-line two">
+        <label>Inviter par e-mail<input type="email" name="email" placeholder="ex. viviane@exemple.ch" autocomplete="off"></label>
+        <button class="btn" type="submit">${I.plus}Inviter</button></div></form>` : ""}
     </section>`;
   }
 
