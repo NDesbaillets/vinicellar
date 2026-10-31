@@ -55,8 +55,8 @@
     if (!b) return;
     e.preventDefault();
     const it = (items || []).find((x) => x.id === b.closest("[data-id]").dataset.id);
-    const own = (lists || []).filter((l) => l.collection_id === it.collection_id);
-    if (!own.length) return toast("Créez d'abord une liste d'envies.");
+    const own = await VC.wishlistsFor(it.collection_id);
+    if (!own.length) return toast("Liste d'envies indisponible.");
     const { error: we } = await sb.from("wishlist_items").insert({ wishlist_id: own[0].id, item_id: it.id });
     if (we && !/duplicate|unique/.test(we.message)) return fail(we);
     wished.add(it.id);

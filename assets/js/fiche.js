@@ -242,8 +242,8 @@
   }
 
   async function addToWishlist() {
-    const { data: lists } = await sb.from("wishlists").select("*").eq("collection_id", it.collection_id).order("position").order("created_at");
-    if (!(lists || []).length) return toast("Créez d'abord une liste dans Carnet › Envies.");
+    const lists = await VC.wishlistsFor(it.collection_id);
+    if (!lists.length) return toast("Liste d'envies indisponible.");
     const put = async (wl) => {
       const { error } = await sb.from("wishlist_items").insert({ wishlist_id: wl.id, item_id: id });
       if (error && !/duplicate|unique/.test(error.message)) return fail(error);

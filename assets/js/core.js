@@ -515,6 +515,14 @@
     });
   }
 
+  // Listes d'envies d'une collection ; crée « À acheter » s'il n'y en a aucune.
+  async function wishlistsFor(collectionId) {
+    const { data } = await sb.from("wishlists").select("*").eq("collection_id", collectionId).order("position").order("created_at");
+    if ((data || []).length) return data;
+    const { data: w } = await sb.from("wishlists").insert({ collection_id: collectionId, name: "À acheter" }).select("*").single();
+    return w ? [w] : [];
+  }
+
   const REASON = { drunk: "Bue", gifted: "Offerte", other: "Sortie" };
 
   window.VC = {
@@ -522,6 +530,6 @@
     $, $$, esc, money, date, today, year, range, safeUrl, host, isWine, title,
     windowStatus, bottleSvg, signed, mainImagePath, renderNav, boot, toast, fail, stars,
     renderItemForm, readItemForm, identify, shrink,
-    carnetNav, getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, REASON, REGIONS, countryOf, regionOf, regionList, fold, priceOf, PRICE_BANDS
+    carnetNav, wishlistsFor, getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, REASON, REGIONS, countryOf, regionOf, regionList, fold, priceOf, PRICE_BANDS
   };
 })();
