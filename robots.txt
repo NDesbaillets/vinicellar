@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /$
+Disallow: /app/
+Disallow: /bienvenue.html
+Disallow: /nouveau-mot-de-passe.html
+Sitemap: https://vinicellar.ch/sitemap.xml

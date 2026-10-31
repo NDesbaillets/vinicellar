@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Vinicellar · Votre cave à vin, bouteille par bouteille</title>
+  <meta name="description" content="Gérez votre cave à vins et spiritueux : photo de l'étiquette, fiche complète, garde, accords, prix, plusieurs caves et carnet de dégustation.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://vinicellar.ch/">
+  <meta property="og:title" content="Vinicellar">
+  <meta property="og:description" content="Votre cave à vin, bouteille par bouteille.">
+  <link rel="icon" href="/assets/img/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#FAF7F2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#15110F" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Vinicellar">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="/assets/css/app.css?v=20261031">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+  <script src="/assets/js/config.js?v=20261031"></script>
+  <script src="/assets/js/core.js?v=20261031"></script>
+  <script src="/assets/js/auth.js?v=20261031" defer></script>
+</head>
+<body>
+  <header class="topbar"><div class="wrap"><a class="brand" href="/"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h14l-1 9a6 6 0 0 1-12 0z"/><path d="M16 18v10M11 28h10"/><path d="M10.2 9h11.6" opacity=".55"/></svg><span>Vinicellar</span></a></div></header>
+  <main class="wrap">
+    <section class="hero">
+      <div>
+        <span class="eyebrow">Vins, whiskies, sakés, rhums</span>
+        <h1>Votre cave, bouteille par bouteille.</h1>
+        <p class="lead">Photographiez l'étiquette : Vinicellar reconnaît la bouteille et construit sa fiche. Vous savez ce que vous avez, où, et quand l'ouvrir.</p>
+        <ul class="features">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span><b>Photo de l'étiquette</b>, depuis l'appareil ou l'album : producteur, cépages, terroir, vinification, accords, note moyenne et prix du marché remplis pour vous.</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><span><b>Garde et apogée</b> sur une frise, avec les bouteilles à ouvrir en priorité.</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.1-7-11.5A7 7 0 0 1 19 9.5C19 14.9 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span><b>Plusieurs caves</b> : domicile, chalet, dépôt. Stock par lieu et déplacements.</span></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h10l-.7 6.5a4.3 4.3 0 0 1-8.6 0z"/><path d="M12 14v7M8.5 21h7"/></svg><span><b>« J'ouvre une bouteille »</b> en un geste, avec votre note, le plat et vos impressions.</span></li>
+        </ul>
+      </div>
+      <div class="card auth-card">
+        <div class="tabs" role="tablist"><button type="button" role="tab" data-tab="login" aria-selected="true">Se connecter</button><button type="button" role="tab" data-tab="signup" aria-selected="false">Créer un compte</button></div>
+        <form class="form" id="login-form" novalidate>
+          <div style="display:grid;gap:14px">
+            <label>Adresse e-mail<input type="email" name="email" autocomplete="email" required></label>
+            <label>Mot de passe<input type="password" name="password" autocomplete="current-password" required></label>
+          </div>
+          <button class="btn block big" type="submit" style="margin-top:18px">Se connecter</button>
+          <p style="margin:12px 0 0;text-align:center"><a href="#" id="forgot">Mot de passe oublié ?</a></p>
+          <p class="form-msg" role="status" aria-live="polite"></p>
+        </form>
+        <form class="form" id="signup-form" hidden novalidate>
+          <p class="muted">Indiquez votre adresse : vous recevez un lien pour choisir votre mot de passe et créer vos caves.</p>
+          <label>Adresse e-mail<input type="email" name="email" autocomplete="email" required></label>
+          <label class="sr" aria-hidden="true">Site web<input name="website" tabindex="-1" autocomplete="off"></label>
+          <button class="btn block big" type="submit" style="margin-top:18px">Recevoir le lien</button>
+          <p class="form-msg" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+  </main>
+  <footer class="site-foot"><div class="wrap"><span>© 2026 Vinicellar · Lausanne</span><span>L'abus d'alcool est dangereux pour la santé. À consommer avec modération.</span></div></footer>
+</body>
+</html>
