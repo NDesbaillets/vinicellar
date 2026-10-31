@@ -11,7 +11,7 @@
   let places = [], items = [], stock = [], getUrl = () => null;
   async function load() {
     const [p, a, b] = await Promise.all([VC.loadPlaces(), sb.from("items").select("*"), sb.from("stock").select("*").gt("quantity", 0)]);
-    places = p; items = a.data || []; stock = b.data || [];
+    places = p.filter((x) => VC.canEdit(x.collection_id)); items = (a.data || []).filter((it) => VC.canEdit(it.collection_id)); stock = b.data || [];
     if (loc && !places.some((x) => x.id === loc)) loc = "";
     getUrl = await signed(items.map(mainImagePath));
   }

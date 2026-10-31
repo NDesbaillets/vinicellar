@@ -58,7 +58,7 @@
             <div class="tags"><span class="tag ${STATUS[p.status] || ""}">${esc(p.status === "prête" ? "Prête à boire" : p.status.charAt(0).toUpperCase() + p.status.slice(1))}</span><span class="tag qty">${n} bt.</span></div></div></div>
           <p style="margin:12px 0 4px">${esc(p.why || "")}</p>
           ${p.serve ? `<p class="muted" style="margin:0 0 12px">${I.thermo.replace("<svg", '<svg width="15" height="15" style="vertical-align:-2px;margin-right:4px"')}${esc(p.serve)}</p>` : ""}
-          <div class="row"><button class="btn" data-out="${it.id}">${I.glass}Sortir cette bouteille</button><a class="btn quiet" href="/app/fiche.html?id=${it.id}">Voir la fiche</a></div></div>`;
+          <div class="row">${VC.canEdit(it.collection_id) ? `<button class="btn" data-out="${it.id}">${I.glass}Sortir cette bouteille</button>` : ""}<a class="btn quiet" href="/app/fiche.html?id=${it.id}">Voir la fiche</a></div></div>`;
       }).join("")}</div>
       ${data.missing ? `<p class="notice info" style="margin-top:12px">${esc(data.missing)}</p>` : ""}`;
   }

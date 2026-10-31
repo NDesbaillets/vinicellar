@@ -467,3 +467,4 @@ dialog h2 { margin-bottom: 14px; }
 .rank-grid { grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 760px) { .rank-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .rank { grid-template-columns: minmax(0, 1fr); }
+.member .role-sel { width: auto; min-height: 36px; padding: 6px 10px; font-size: .85rem; }

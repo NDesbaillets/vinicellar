@@ -86,7 +86,18 @@
   const reset = $("#reset-form");
   if (reset) {
     const out = reset.querySelector(".form-msg");
-    if (/error_code=/.test(location.hash)) msg(out, T.linkExpired, "error");
+    (async () => {
+      if (!sb) return;
+      // Lien « mot de passe oublié » : la page valide elle-même le jeton (robuste aux prévisualisations des messageries).
+      const qs = new URLSearchParams(location.search);
+      if (qs.get("token_hash")) await sb.auth.verifyOtp({ token_hash: qs.get("token_hash"), type: qs.get("type") || "recovery" }).catch(() => null);
+      const { data } = await sb.auth.getSession();
+      if (location.search) history.replaceState(null, "", location.pathname);
+      if (!data.session) { if (qs.get("token_hash") || /error_code=/.test(location.hash)) msg(out, T.linkExpired, "error"); return; }
+      // Compte pas encore activé (invitation) : la page de bienvenue fait tout en une étape.
+      const { data: prof } = await sb.from("profiles").select("onboarded_at").eq("id", data.session.user.id).single();
+      if (prof && !prof.onboarded_at) location.replace("/bienvenue.html");
+    })();
     reset.addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!sb) return msg(out, T.notConfigured, "error");

@@ -5,8 +5,9 @@
   const { sb, $, esc, I, CATEGORY, toast, fail } = VC;
   const ctx = await VC.boot("add");
   const main = $("#main");
-  const places = await VC.loadPlaces().catch(() => []);
-  const { data: wishlists } = await sb.from("wishlists").select("*").order("position").order("created_at");
+  // Seules les caves où l'on peut écrire (pas les partages en lecture seule).
+  const places = (await VC.loadPlaces().catch(() => [])).filter((p) => VC.canEdit(p.collection_id));
+  const wishlists = ((await sb.from("wishlists").select("*").order("position").order("created_at")).data || []).filter((w) => VC.canEdit(w.collection_id));
   let here = VC.getLoc();
   if (!places.some((p) => p.id === here)) here = places[0] ? places[0].id : "";
 

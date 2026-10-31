@@ -33,7 +33,7 @@
       <div><h3>${esc(it.name)}${it.vintage ? ` <span class="faint">${it.vintage}</span>` : ""}</h3><p class="sub">${esc([it.producer, it.appellation || it.region].filter(Boolean).join(" · "))}</p>
       <p class="sub" style="margin:0 0 6px">${esc([`dernière sortie ${date(last)}`, drunk && `${drunk} bue${drunk > 1 ? "s" : ""}`, gifted && `${gifted} offerte${gifted > 1 ? "s" : ""}`].filter(Boolean).join(" · "))}</p>
       <span class="stars-slot" data-r="${it.my_rating ?? ""}"></span></div></a>
-      ${wished.has(it.id) ? `<span class="out-btn" title="Déjà dans une liste d'envies" style="color:var(--ok)">${I.check}</span>` : `<button class="out-btn" data-rebuy aria-label="Ajouter à la liste d'envies" title="Racheter">${I.plus}</button>`}</div>`;
+      ${!VC.canEdit(it.collection_id) ? "" : wished.has(it.id) ? `<span class="out-btn" title="Déjà dans une liste d'envies" style="color:var(--ok)">${I.check}</span>` : `<button class="out-btn" data-rebuy aria-label="Ajouter à la liste d'envies" title="Racheter">${I.plus}</button>`}</div>`;
   }
 
   function draw(q = "") {

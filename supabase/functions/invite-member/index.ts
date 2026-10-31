@@ -26,7 +26,7 @@ Deno.serve(async (req) => {
   const { data: { user } } = await admin.auth.getUser(token);
   if (!user) return json(req, 401, { error: "auth" });
 
-  let body: { collection_id?: string; email?: string };
+  let body: { collection_id?: string; email?: string; role?: string };
   try { body = await req.json(); } catch { return json(req, 400, { error: "invalid_json" }); }
   const email = (body.email ?? "").trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return json(req, 400, { error: "email", message: "Adresse e-mail invalide." });
@@ -35,8 +35,11 @@ Deno.serve(async (req) => {
   const { data: m } = await admin.from("collection_members").select("role").eq("collection_id", body.collection_id ?? "").eq("user_id", user.id).single();
   if (m?.role !== "owner") return json(req, 403, { error: "forbidden" });
 
-  const { error: ie } = await admin.from("collection_invites").insert({ collection_id: body.collection_id, email, invited_by: user.id });
-  if (ie && !/duplicate|unique/i.test(ie.message)) { console.error(ie); return json(req, 500, { error: "db" }); }
+  // Niveau d'accès : complet (member) ou lecture seule (viewer). Une nouvelle invitation met à jour le niveau d'une invitation en attente.
+  const role = body.role === "viewer" ? "viewer" : "member";
+  const { error: ie } = await admin.from("collection_invites")
+    .upsert({ collection_id: body.collection_id, email, invited_by: user.id, role, accepted_at: null }, { onConflict: "collection_id,email" });
+  if (ie) { console.error(ie); return json(req, 500, { error: "db" }); }
 
   const { data: prof } = await admin.from("profiles").select("full_name").eq("id", user.id).single();
   const { error } = await admin.auth.admin.inviteUserByEmail(email, {

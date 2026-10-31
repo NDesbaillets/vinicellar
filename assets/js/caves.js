@@ -29,26 +29,30 @@
     const members = people.get(c.id) || [];
     const pend = invites.filter((i) => i.collection_id === c.id);
     const owner = isOwner(c);
+    const me = members.find((m) => m.user_id === ctx.user.id);
+    const editor = owner || (me && me.role === "member");
+    const ROLE = { owner: "propriétaire", member: "accès complet", viewer: "lecture seule" };
     return `<section class="card" data-coll="${c.id}" style="margin-top:16px">
-      <div class="row"><h2 style="margin:0">${esc(c.name)}</h2>${owner ? `<button class="icon-btn" data-act="rename-coll" aria-label="Renommer">${I.edit}</button>` : `<span class="tag">Partagée avec moi</span>`}</div>
+      <div class="row"><h2 style="margin:0">${esc(c.name)}</h2>${owner ? `<button class="icon-btn" data-act="rename-coll" aria-label="Renommer">${I.edit}</button>` : `<span class="tag">Partagée avec moi${editor ? "" : " · lecture seule"}</span>`}</div>
       <h3 style="margin-top:18px">Caves</h3>
       <div class="places">${ps.map((p, i) => `<div class="place" data-id="${p.id}">
         <div><h3>${esc(p.name)}</h3><small class="muted">${esc(KIND[p.kind] || "")} · ${counts.get(p.id) || 0} bouteille${(counts.get(p.id) || 0) > 1 ? "s" : ""}${p.notes ? " · " + esc(p.notes) : ""}</small></div>
-        <div class="acts"><button class="icon-btn" data-act="up" aria-label="Monter"${i === 0 ? " disabled" : ""}>↑</button>
-          <button class="icon-btn" data-act="edit" aria-label="Modifier">${I.edit}</button>
-          <button class="icon-btn" data-act="del" aria-label="Supprimer">${I.trash}</button></div></div>`).join("") || `<p class="muted">Aucune cave.</p>`}</div>
-      <form class="new-place" novalidate style="margin-top:14px"><div class="form-line">
+        ${editor ? `<div class="acts"><button class="icon-btn" data-act="edit" aria-label="Modifier">${I.edit}</button>
+          <button class="icon-btn" data-act="del" aria-label="Supprimer">${I.trash}</button></div>` : ""}</div>`).join("") || `<p class="muted">Aucune cave.</p>`}</div>
+      ${editor ? `<form class="new-place" novalidate style="margin-top:14px"><div class="form-line">
         <label>Nouvelle cave<input name="title" maxlength="80" placeholder="ex. Chalet de Zermatt"></label>
         <label>Type<select name="kind">${kindOptions(ps.length ? "secondary" : "home")}</select></label>
-        <button class="btn" type="submit">${I.plus}Créer</button></div></form>
+        <button class="btn" type="submit">${I.plus}Créer</button></div></form>` : ""}
 
       <h3 style="margin-top:24px">${I.share.replace("<svg", '<svg width="18" height="18" style="vertical-align:-3px;margin-right:6px"')}Partage</h3>
-      <p class="muted" style="margin-top:0">Les personnes invitées voient et gèrent les mêmes caves : ajouts, sorties, notes.</p>
-      <div>${members.map((m) => `<div class="member"><div style="flex:1"><b>${esc(m.full_name || m.email)}</b><br><small class="muted">${esc(m.email)}${m.role === "owner" ? " · propriétaire" : ""}${m.user_id === ctx.user.id ? " · vous" : ""}</small></div>
+      <p class="muted" style="margin-top:0"><b>Accès complet</b> : la personne voit et gère les mêmes caves (ajouts, sorties, notes). <b>Lecture seule</b> : elle consulte tout, sans rien pouvoir modifier.</p>
+      <div>${members.map((m) => `<div class="member"><div style="flex:1"><b>${esc(m.full_name || m.email)}</b><br><small class="muted">${esc(m.email)} · ${ROLE[m.role] || ""}${m.user_id === ctx.user.id ? " · vous" : ""}</small></div>
+        ${owner && m.role !== "owner" ? `<select class="role-sel" data-user="${m.user_id}" aria-label="Niveau d'accès"><option value="member"${m.role === "member" ? " selected" : ""}>Accès complet</option><option value="viewer"${m.role === "viewer" ? " selected" : ""}>Lecture seule</option></select>` : ""}
         ${m.role !== "owner" && (owner || m.user_id === ctx.user.id) ? `<button class="btn quiet" data-act="${m.user_id === ctx.user.id ? "leave" : "remove"}" data-user="${m.user_id}">${m.user_id === ctx.user.id ? "Quitter" : "Retirer"}</button>` : ""}</div>`).join("")}
-        ${pend.map((i) => `<div class="member"><div style="flex:1"><b>${esc(i.email)}</b><br><small class="muted">Invitation en attente</small></div>${owner ? `<button class="btn quiet" data-act="share-link" data-email="${esc(i.email)}">Prévenir</button><button class="btn quiet" data-act="cancel-invite" data-inv="${i.id}">Annuler</button>` : ""}</div>`).join("")}</div>
-      ${owner ? `<form class="invite-form" novalidate style="margin-top:14px"><div class="form-line two">
+        ${pend.map((i) => `<div class="member"><div style="flex:1"><b>${esc(i.email)}</b><br><small class="muted">Invitation en attente · ${ROLE[i.role] || "accès complet"}</small></div>${owner ? `<button class="btn quiet" data-act="share-link" data-email="${esc(i.email)}">Prévenir</button><button class="btn quiet" data-act="cancel-invite" data-inv="${i.id}">Annuler</button>` : ""}</div>`).join("")}</div>
+      ${owner ? `<form class="invite-form" novalidate style="margin-top:14px"><div class="form-line">
         <label>Inviter par e-mail<input type="email" name="email" placeholder="ex. viviane@exemple.ch" autocomplete="off"></label>
+        <label>Accès<select name="role"><option value="member">Accès complet</option><option value="viewer">Lecture seule</option></select></label>
         <button class="btn" type="submit">${I.plus}Inviter</button></div></form>` : ""}
     </section>`;
   }
@@ -83,7 +87,7 @@
       if (email === (ctx.user.email || "").toLowerCase()) return toast("C'est votre propre adresse.");
       const btn = f.querySelector("button[type=submit]");
       btn.disabled = true;
-      const { data, error } = await sb.functions.invoke("invite-member", { body: { collection_id: coll, email } });
+      const { data, error } = await sb.functions.invoke("invite-member", { body: { collection_id: coll, email, role: f.role.value } });
       btn.disabled = false;
       if (error) {
         let m = "Invitation impossible.";
@@ -94,6 +98,15 @@
       await load();
       toast(data && data.existing ? "Invitation enregistrée : elle s'affichera à sa prochaine connexion." : "Invitation envoyée par e-mail.");
     }
+  });
+
+  main.addEventListener("change", async (e) => {
+    const sel = e.target.closest(".role-sel");
+    if (!sel) return;
+    const coll = sel.closest("[data-coll]").dataset.coll;
+    const { error } = await sb.from("collection_members").update({ role: sel.value }).eq("collection_id", coll).eq("user_id", sel.dataset.user);
+    if (error) { fail(error); return load(); }
+    toast(sel.value === "viewer" ? "Accès passé en lecture seule." : "Accès complet accordé.");
   });
 
   main.addEventListener("click", async (e) => {
@@ -131,13 +144,6 @@
     const list = places.filter((p) => p.collection_id === coll.id);
     const i = list.findIndex((p) => p.id === id);
     const p = list[i];
-    if (act === "up" && i > 0) {
-      await Promise.all([
-        sb.from("locations").update({ position: i - 1 }).eq("id", p.id),
-        sb.from("locations").update({ position: i }).eq("id", list[i - 1].id)
-      ]);
-      return load();
-    }
     if (act === "edit") {
       const d = VC.sheet(`<form novalidate><h2>Modifier la cave</h2>
         <label>Nom<input name="title" maxlength="80" value="${esc(p.name)}" required></label>

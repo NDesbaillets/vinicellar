@@ -71,4 +71,4 @@ Compléments possibles, par ordre d'intérêt :
 
 ## Cache des navigateurs
 
-Les pages chargent CSS et JS avec `?v=20261105`. Après modification, changer ce suffixe partout.
+Les pages chargent CSS et JS avec `?v=20261106`. Après modification, changer ce suffixe partout.

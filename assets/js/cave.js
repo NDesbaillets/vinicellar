@@ -63,7 +63,7 @@
       ${total ? `<div class="mix" aria-hidden="true">${counts.filter((c) => c.n).map((c) => `<span style="width:${(c.n / total) * 100}%;background:${c.color}"></span>`).join("")}</div>` : ""}
       <p class="muted" style="margin:0 0 4px">${[ready && `${ready} prête${ready > 1 ? "s" : ""} à boire`, urgent && `<b style="color:var(--warn)">${urgent} à ouvrir vite</b>`, value && `valeur estimée ${money(Math.round(value), cur)}`].filter(Boolean).join(" · ") || "&nbsp;"}</p>
       ${gl.length ? `<div class="grapes"><div class="chips" role="toolbar" aria-label="Cépages">${gl.slice(0, 14).map(([g, n]) => `<button class="chip" data-grape="${esc(g)}" aria-pressed="${state.grape === g}">${esc(g)}<span class="n">${n}</span></button>`).join("")}</div></div>` : ""}
-      <div class="cta-row"><a class="btn big" href="/app/sortir.html?loc=${loc || "all"}">${I.camera}Sortir une bouteille</a><a class="btn big ghost" href="/app/ajouter.html">${I.plus}Ajouter</a></div>`;
+      ${(loc ? VC.canEdit((places.find((x) => x.id === loc) || {}).collection_id) : places.some((x) => VC.canEdit(x.collection_id))) ? `<div class="cta-row"><a class="btn big" href="/app/sortir.html?loc=${loc || "all"}">${I.camera}Sortir une bouteille</a><a class="btn big ghost" href="/app/ajouter.html">${I.plus}Ajouter</a></div>` : `<p class="notice info" style="margin-top:12px">Cave partagée en lecture seule.</p>`}`;
   }
 
   // ---------------------------------------------------------------- filtres et liste
@@ -136,7 +136,7 @@
       <div class="thumb">${url ? `<img src="${esc(url)}" alt="" loading="lazy">` : bottleSvg(it)}</div>
       <div><h3>${esc(it.name)}</h3><p class="sub">${esc([it.producer, sub].filter(Boolean).join(" · "))}</p>
       <div class="tags"><span class="tag ${n ? "qty" : "zero"}">${n} bt.</span><span class="tag">${esc(kind)}</span>${w ? `<span class="tag ${w.key}">${w.label}</span>` : ""}</div></div></a>
-      ${n ? `<button class="out-btn" data-out="${it.id}" aria-label="Sortir une bouteille : ${esc(it.name)}" title="Sortir une bouteille">${I.glass}</button>` : ""}</div>`;
+      ${n && VC.canEdit(it.collection_id) ? `<button class="out-btn" data-out="${it.id}" aria-label="Sortir une bouteille : ${esc(it.name)}" title="Sortir une bouteille">${I.glass}</button>` : ""}</div>`;
   }
 
   function drawList() {

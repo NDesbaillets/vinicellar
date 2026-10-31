@@ -35,7 +35,7 @@
       <p class="sub">${esc([it.producer, it.appellation || it.region, it.country].filter(Boolean).join(" · ")) || (e.pending ? "Fiche en cours…" : "")}</p>
       <div class="tags">${e.qty_wanted ? `<span class="tag">${e.qty_wanted} bt. voulues</span>` : ""}${price ? `<span class="tag">marché ${price}</span>` : ""}${e.target_price ? `<span class="tag ready">cible ${money(e.target_price, it.market_currency || ctx.profile.currency)}</span>` : ""}</div>
       ${e.note ? `<p class="sub" style="margin:6px 0 0;white-space:normal">${esc(e.note)}</p>` : ""}</div></a>
-      <div class="wish-acts"><button class="btn" data-w="bought">${I.check}Acheté</button><button class="icon-btn" data-w="del" aria-label="Retirer de la liste">${I.trash}</button></div></div>`;
+      ${VC.canEdit(it.collection_id) ? `<div class="wish-acts"><button class="btn" data-w="bought">${I.check}Acheté</button><button class="icon-btn" data-w="del" aria-label="Retirer de la liste">${I.trash}</button></div>` : ""}</div>`;
   }
 
   function draw() {
@@ -45,8 +45,8 @@
       <div class="chips" id="lists">${lists.map((x) => `<button class="chip" data-l="${x.id}" aria-pressed="${x.id === current}">${esc(listLabel(x))}<span class="n">${entries.filter((e) => e.wishlist_id === x.id).length}</span></button>`).join("")}
         <button class="chip" data-new>${I.plus.replace("<svg", '<svg width="14" height="14" style="vertical-align:-2px"')} Nouvelle liste</button></div>
       ${l ? `<div class="row" style="margin:6px 0 14px"><h2 style="margin:0">${esc(l.name)}</h2><span class="spacer"></span>
-        <button class="btn quiet" data-ren>${I.edit}Renommer</button><button class="btn quiet" data-delete>${I.trash}Supprimer</button></div>
-      <form class="card" id="add" novalidate><h3>Ajouter un vin</h3><div class="grid2">
+        ${VC.canEdit(l.collection_id) ? `<button class="btn quiet" data-ren>${I.edit}Renommer</button><button class="btn quiet" data-delete>${I.trash}Supprimer</button>` : `<span class="tag">Lecture seule</span>`}</div>
+      <form class="card" id="add" novalidate${VC.canEdit(l.collection_id) ? "" : " hidden"}><h3>Ajouter un vin</h3><div class="grid2">
         <label>Producteur / domaine<input name="producer" maxlength="200" placeholder="ex. Domaine Leflaive"></label>
         <label>Cuvée<input name="cuvee" maxlength="200" placeholder="ex. Puligny-Montrachet Les Pucelles"></label>
         <label>Millésime<input name="vintage" type="number" min="1800" max="2100" inputmode="numeric"></label>

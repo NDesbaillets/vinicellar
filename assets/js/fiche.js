@@ -24,6 +24,7 @@
     return true;
   }
 
+  const ro = () => !VC.canEdit(it.collection_id);
   const placeName = (pid) => (places.find((p) => p.id === pid) || {}).name || "Lieu supprimé";
   const total = () => stock.reduce((a, s) => a + s.quantity, 0);
   const withStock = () => stock.filter((s) => s.quantity > 0);
@@ -48,13 +49,13 @@
       <ul class="stock-list" style="margin-top:12px">${rows.length ? rows.map((s) => {
         const p = places.find((x) => x.id === s.location_id) || {};
         return `<li><div class="where"><b>${esc(p.name || "Lieu supprimé")}</b><small>${esc([KIND[p.kind], s.bin && "Emplacement " + s.bin].filter(Boolean).join(" · "))}</small></div>
-          <div class="stepper"><button class="icon-btn" data-adj="-1" data-loc="${s.location_id}" aria-label="Retirer une bouteille (correction)">−</button>
-          <output>${s.quantity}</output><button class="icon-btn" data-adj="1" data-loc="${s.location_id}" aria-label="Ajouter une bouteille">+</button></div></li>`;
+          ${ro() ? `<output style="font-weight:700">${s.quantity}</output>` : `<div class="stepper"><button class="icon-btn" data-adj="-1" data-loc="${s.location_id}" aria-label="Retirer une bouteille (correction)">−</button>
+          <output>${s.quantity}</output><button class="icon-btn" data-adj="1" data-loc="${s.location_id}" aria-label="Ajouter une bouteille">+</button></div>`}</li>`;
       }).join("") : `<li><span class="muted">Plus aucune bouteille en cave.</span></li>`}</ul>
-      <div style="display:grid;gap:8px;margin-top:14px">
+      ${ro() ? `<p class="muted" style="margin:12px 0 0">Cave partagée en lecture seule.</p>` : `<div style="display:grid;gap:8px;margin-top:14px">
         <button class="btn big block" id="drink"${n ? "" : " disabled"}>${I.glass}Sortir une bouteille</button>
         <div class="row"><button class="btn quiet" id="add-stock">${I.plus}Ajouter des bouteilles</button>${withStock().length && places.length > 1 ? `<button class="btn quiet" id="move">${I.move}Déplacer</button>` : ""}<button class="btn quiet" id="wish">${I.plus}Liste d'envies</button></div>
-      </div></div>`;
+      </div>`}</div>`;
   }
 
   function scoreText() {
@@ -131,7 +132,7 @@
     return `<div class="card"><div class="row"><h3 style="margin:0">Sorties et dégustations</h3><span class="spacer"></span><span class="faint">${tastings.length || ""}</span></div>
       <div style="margin-top:12px">${tastings.length ? tastings.map((t) => `<div class="tasting">
         <div class="tasting-head"><b>${date(t.tasted_on)}</b><span class="stars-slot" data-r="${t.rating ?? ""}"></span><span class="tag ${t.reason === "drunk" ? "ready" : t.reason === "gifted" ? "peak" : ""}">${VC.REASON[t.reason] || "Bue"}${t.recipient ? " à " + esc(t.recipient) : ""}</span><span class="faint">${esc([t.location_id && placeName(t.location_id), t.occasion].filter(Boolean).join(" · "))}</span>
-        <span class="spacer"></span><button class="btn quiet" data-undo="${t.id}" title="Supprimer et remettre la bouteille en cave">${I.trash}</button></div>
+        <span class="spacer"></span>${ro() ? "" : `<button class="btn quiet" data-undo="${t.id}" title="Supprimer et remettre la bouteille en cave">${I.trash}</button>`}</div>
         ${t.pairing ? `<p class="pair">${I.plate.replace("<svg", '<svg width="15" height="15" style="vertical-align:-2px;margin-right:4px"')}${esc(t.pairing)}</p>` : ""}
         ${t.notes ? `<p>${esc(t.notes)}</p>` : ""}</div>`).join("") : `<p class="muted" style="margin:0">Aucune sortie pour l'instant. « Sortir une bouteille » la retire du stock : bue, offerte ou autre.</p>`}</div></div>`;
   }
@@ -159,7 +160,7 @@
           ${it.notes ? `<div class="card"><h3>Mes remarques</h3><p style="margin:0;white-space:pre-line">${esc(it.notes)}</p></div>` : ""}
           ${tastingList()}
           ${sources()}
-          <div class="row"><button class="btn ghost" id="edit">${I.edit}Modifier la fiche</button><button class="btn ghost" id="refresh">${I.sparkle}Actualiser avec l'IA</button><span class="spacer"></span><button class="btn danger" id="delete">${I.trash}Supprimer</button></div>
+          ${ro() ? "" : `<div class="row"><button class="btn ghost" id="edit">${I.edit}Modifier la fiche</button><button class="btn ghost" id="refresh">${I.sparkle}Actualiser avec l'IA</button><span class="spacer"></span><button class="btn danger" id="delete">${I.trash}Supprimer</button></div>`}
         </div>
       </div>`;
     visual();
@@ -168,7 +169,7 @@
       const { error } = await sb.from("items").update({ my_rating: v }).eq("id", id);
       if (error) return fail(error);
       it.my_rating = v; toast(v ? "Note enregistrée." : "Note effacée.");
-    }, { label: "Ma note" }));
+    }, { label: "Ma note", read: ro() }));
     $$(".stars-slot").forEach((s) => s.dataset.r && s.append(stars(+s.dataset.r, null, { read: true })));
     bind();
   }
@@ -189,9 +190,9 @@
     $("#add-stock")?.addEventListener("click", openAddStock);
     $("#move")?.addEventListener("click", openMove);
     $("#wish")?.addEventListener("click", addToWishlist);
-    $("#edit").addEventListener("click", openEdit);
-    $("#refresh").addEventListener("click", aiRefresh);
-    $("#delete").addEventListener("click", remove);
+    $("#edit")?.addEventListener("click", openEdit);
+    $("#refresh")?.addEventListener("click", aiRefresh);
+    $("#delete")?.addEventListener("click", remove);
     main.addEventListener("click", async (e) => {
       const b = e.target.closest("[data-undo]");
       if (!b || !confirm("Supprimer cette dégustation ? La bouteille sera remise dans sa cave.")) return;

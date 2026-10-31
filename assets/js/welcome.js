@@ -2,7 +2,7 @@
 (function () {
   const { sb, $, $$, esc, KIND } = window.VC;
   const T = {
-    expired: "Ce lien est invalide ou a expiré. Retournez à l'accueil et demandez un nouveau lien avec « Mot de passe oublié ? ».",
+    expired: "Ce lien a expiré ou a déjà été utilisé. Indiquez votre adresse pour en recevoir un nouveau.",
     pwShort: "Le mot de passe doit compter au moins 10 caractères.",
     pwMismatch: "Les mots de passe ne correspondent pas.",
     names: "Indiquez votre prénom et votre nom.",
@@ -27,15 +27,35 @@
 
   (async () => {
     const status = $("#welcome-status"), f = $("#welcome-form");
+    // Lien expiré ou déjà utilisé : on propose d'en recevoir un nouveau, sans renvoyer vers l'accueil.
     const expired = () => {
-      msg(status, T.expired + " ", "error");
-      const a = document.createElement("a"); a.href = "/"; a.textContent = "Accueil"; status.append(a);
+      status.innerHTML = `${esc(T.expired)}<form id="resend" class="row" style="margin-top:12px" novalidate>
+        <input type="email" name="email" placeholder="Votre adresse e-mail" autocomplete="email" style="flex:1;min-width:200px">
+        <button class="btn" type="submit">Recevoir un nouveau lien</button></form>`;
+      status.className = "form-msg error";
+      $("#resend").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = e.target.email.value.trim();
+        if (!email) return;
+        await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + "/bienvenue.html" });
+        status.className = "form-msg ok";
+        status.textContent = "Si un compte existe pour cette adresse, un nouveau lien vient d'être envoyé. Il ouvre directement cette page.";
+      });
     };
-    if (!sb || /error_code=/.test(location.hash)) return expired();
-    const { data } = await sb.auth.getSession();   // supabase-js lit le jeton du lien et ouvre la session
+    if (!sb) return expired();
+
+    // Lien d'invitation : la page valide elle-même le jeton (les messageries qui prévisualisent le lien ne le consomment plus).
+    const qs = new URLSearchParams(location.search);
+    const tokenHash = qs.get("token_hash"), type = qs.get("type");
+    if (tokenHash && type) {
+      const { error } = await sb.auth.verifyOtp({ token_hash: tokenHash, type });
+      if (error) console.warn("lien", error.message);
+    }
+    // Un lien déjà utilisé n'empêche pas de continuer si la session est ouverte (premier clic réussi).
+    const { data } = await sb.auth.getSession();
     if (!data.session) return expired();
     const user = data.session.user;
-    if (location.hash) history.replaceState(null, "", location.pathname);
+    if (location.hash || location.search) history.replaceState(null, "", location.pathname);
 
     const { data: prof } = await sb.from("profiles").select("*").eq("id", user.id).single();
     if (prof && prof.onboarded_at) return location.replace("/app/");
@@ -43,7 +63,7 @@
     if ((invites || []).length) {
       $("#invites-set").hidden = false;
       $("#invite-list").innerHTML = invites.map((i) => `<label class="row" style="font-weight:400;color:var(--ink)"><input type="checkbox" name="invite" value="${i.id}" checked>
-        <span><b>${esc(i.invited_by_name || "Quelqu'un")}</b> vous invite à partager « ${esc(i.collection_name)} ».</span></label>`).join("") +
+        <span><b>${esc(i.invited_by_name || "Quelqu'un")}</b> vous invite à partager « ${esc(i.collection_name)} »${i.role === "viewer" ? " (lecture seule)" : ""}.</span></label>`).join("") +
         `<p class="hint" style="margin:0">En acceptant, vous gérez ensemble les mêmes caves. Créer vos propres caves ci-dessous devient facultatif.</p>`;
     }
 
@@ -74,7 +94,8 @@
       btn.disabled = true;
       msg(out, T.saving);
       const { error: pwError } = await sb.auth.updateUser({ password: pw });
-      if (pwError) { btn.disabled = false; return msg(out, pwError.message || T.error, "error"); }
+      // Mot de passe déjà défini via « mot de passe oublié » : on garde celui-ci.
+      if (pwError && !/different from the old|same_password/i.test(pwError.message + (pwError.code || ""))) { btn.disabled = false; return msg(out, pwError.message || T.error, "error"); }
       for (const inv of accepted) await sb.rpc("accept_invite", { p_invite: inv });
       if (places.length && $("#places-set").hidden === false && !(accepted.length && places.length === 1 && places[0].name === "Maison")) {
         const { error: le } = await sb.from("locations").insert(places);

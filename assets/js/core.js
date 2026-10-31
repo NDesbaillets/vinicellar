@@ -205,6 +205,9 @@
   }
 
   // ------------------------------------------------------------------ session
+  // Rôle par collection : owner et member modifient, viewer consulte seulement.
+  let roles = new Map();
+  const canEdit = (collectionId) => ["owner", "member"].includes(roles.get(collectionId));
   async function boot(active) {
     renderNav(active);
     if (!sb) { location.replace("/"); return new Promise(() => {}); }
@@ -213,6 +216,8 @@
     const user = data.session.user;
     const { data: profile } = await sb.from("profiles").select("*").eq("id", user.id).single();
     if (!profile || !profile.onboarded_at) { location.replace("/bienvenue.html"); return new Promise(() => {}); }
+    const { data: mem } = await sb.from("collection_members").select("collection_id, role").eq("user_id", user.id);
+    roles = new Map((mem || []).map((m) => [m.collection_id, m.role]));
     sb.from("drafts").select("id", { count: "exact", head: true }).eq("status", "ready").then(({ count }) => {
       if (!count) return;
       $$('a[href="/app/ajouter.html"]').forEach((a) => { a.classList.add("has-badge"); a.insertAdjacentHTML("beforeend", `<span class="badge">${count}</span>`); });
@@ -437,6 +442,7 @@
   // ------------------------------------------------------------------ sortir une bouteille : bue, offerte, autre
   // item : la fiche ; stock : ses lignes de stock ; places : caves ; loc : cave affichée (facultatif).
   function takeOut({ item, stock, places, loc, onDone }) {
+    if (!canEdit(item.collection_id)) { toast("Cave partagée en lecture seule."); return; }
     const rows = stock.filter((s) => s.quantity > 0);
     const here = rows.filter((s) => s.location_id === loc);
     const list = here.length ? here : rows;
@@ -530,6 +536,6 @@
     $, $$, esc, money, date, today, year, range, safeUrl, host, isWine, title,
     windowStatus, bottleSvg, signed, mainImagePath, renderNav, boot, toast, fail, stars,
     renderItemForm, readItemForm, identify, shrink,
-    carnetNav, wishlistsFor, getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, REASON, REGIONS, countryOf, regionOf, regionList, fold, priceOf, PRICE_BANDS
+    carnetNav, wishlistsFor, canEdit, getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, REASON, REGIONS, countryOf, regionOf, regionList, fold, priceOf, PRICE_BANDS
   };
 })();
