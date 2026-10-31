@@ -92,8 +92,8 @@
     const title = i ? "Contre-étiquette" : "Étiquette";
     if (s) return `<div class="shot"><img src="${s.preview}" alt="${title}"><span class="shot-label">${title}</span><button class="icon-btn shot-x" data-x="${i}" aria-label="Retirer">×</button></div>`;
     return `<div class="shot empty"><span class="shot-label">${title}${i ? " <small>(facultatif)</small>" : ""}</span>
-      <div class="shot-btns"><label class="btn ${i ? "ghost" : ""}">${I.camera}Photo<input type="file" accept="image/*" capture="environment" data-shot="${i}" hidden></label>
-      <label class="btn ghost">${I.image}Album<input type="file" accept="image/*" data-shot="${i}" hidden></label></div>
+      <div class="shot-btns"><label class="btn ${i ? "ghost" : ""}">${I.camera}<span>Photo</span><input type="file" accept="image/*" capture="environment" data-shot="${i}" hidden></label>
+      <label class="btn ghost">${I.image}<span>Album</span><input type="file" accept="image/*" data-shot="${i}" hidden></label></div>
       ${i ? `<small class="muted">Souvent le millésime et l'assemblage</small>` : `<small class="muted">De face, sans reflet</small>`}</div>`;
   }
 

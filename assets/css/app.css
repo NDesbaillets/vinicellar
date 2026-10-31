@@ -416,3 +416,8 @@ dialog h2 { margin-bottom: 14px; }
 .has-badge { position: relative; }
 .badge { position: absolute; top: 4px; right: calc(50% - 30px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--ok); color: #fff; font-size: .7rem; font-weight: 700; display: grid; place-items: center; line-height: 1; }
 .nav .badge { top: -6px; right: -6px; }
+.shot-btns label.btn { display: flex; flex-direction: row; justify-content: center; align-items: center; width: 100%; gap: 8px; color: #fff; }
+.shot-btns label.btn.ghost { color: var(--ink); }
+.shot-btns label.btn svg { width: 18px; height: 18px; flex: none; margin: 0; }
+.shot { min-height: 170px; align-content: center; }
+.shot-btns label.btn > input { position: absolute; width: 0; height: 0; min-height: 0; padding: 0; border: 0; }
