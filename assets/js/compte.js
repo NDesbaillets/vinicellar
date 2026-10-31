@@ -18,8 +18,8 @@
       <label>Confirmer<input type="password" name="confirm" autocomplete="new-password"></label></div>
       <div class="row" style="margin-top:16px"><button class="btn" type="submit">Changer le mot de passe</button></div><p class="form-msg" role="status"></p></form>
     <div class="card"><h3>Mes données</h3>
-      <p class="muted">Export de toute la cave (une ligne par bouteille et par lieu), lisible dans Excel ou Numbers.</p>
-      <div class="row"><button class="btn ghost" id="export">${I.download}Exporter la cave (.csv)</button><button class="btn ghost" id="export-j">${I.download}Exporter le journal (.csv)</button></div>
+      <p class="muted">Export de toute la cave au format du modèle d'import (une ligne par vin et par cave), lisible dans Excel ou Numbers et réimportable tel quel.</p>
+      <div class="row"><button class="btn ghost" id="export">${I.download}Exporter la cave (.xlsx)</button><a class="btn ghost" href="/app/importer.html">Importer un tableau</a><button class="btn ghost" id="export-j">${I.download}Exporter le journal (.csv)</button></div>
       <p class="faint" style="margin:14px 0 0;font-size:.85rem">Analyses d'étiquettes ces dernières 24 h : <span id="quota">…</span></p></div>
     <div class="card"><h3>Caves et partage</h3><p class="muted">Créer, renommer ou supprimer une cave ; inviter votre conjoint ou votre famille.</p><a class="btn ghost" href="/app/caves.html">${I.share}Gérer les caves et le partage</a></div>
     ${p.is_admin ? `<div class="card"><h3>Administration</h3><p class="muted">Valider les demandes d'invitation.</p><a class="btn ghost" href="/app/admin.html">Demandes d'invitation<span id="req-n"></span></a></div>` : ""}
@@ -65,14 +65,17 @@
       sb.from("items").select("*"), sb.from("stock").select("*"), sb.from("locations").select("*")
     ]);
     if (error) return fail(error);
+    // Même format que le modèle d'import : le fichier exporté peut être réimporté tel quel.
     const place = (id) => (places || []).find((x) => x.id === id)?.name || "";
-    const head = ["Cave", "Emplacement", "Quantité", "Type", "Style", "Producteur", "Cuvée", "Millésime", "Pays", "Région", "Appellation", "Cépages", "Degré", "Boire de", "Boire jusqu'à", "Apogée de", "Apogée jusqu'à", "Note moyenne", "Échelle", "Ma note", "Prix marché", "Devise", "Prix d'achat", "Devise achat", "Année d'achat", "Acheté chez"];
-    const rows = [head];
+    const T = VC.table;
+    const rows = [T.COLUMNS.map((c) => c.h)];
     for (const it of items || []) {
       const st = (stock || []).filter((s) => s.item_id === it.id && s.quantity > 0);
-      for (const s of st.length ? st : [{ quantity: 0 }]) rows.push([place(s.location_id), s.bin, s.quantity, CATEGORY[it.category], STYLE[it.style], it.producer, it.name, it.vintage, it.country, it.region, it.appellation, it.grapes, it.abv, it.drink_from, it.drink_to, it.peak_from, it.peak_to, it.avg_score, it.avg_score_scale, it.my_rating, it.market_price, it.market_currency, it.purchase_price, it.purchase_currency, it.purchase_year, it.purchase_place]);
+      for (const s of st.length ? st : [{ quantity: 0 }]) rows.push(T.COLUMNS.map((c) => T.cell(c, it, { cave: place(s.location_id), bin: s.bin, qty: s.quantity })));
     }
-    download(`vinicellar-cave-${VC.today()}.csv`, csv(rows));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), "Vins");
+    XLSX.writeFile(wb, `vinicellar-cave-${VC.today()}.xlsx`);
   });
 
   $("#export-j").addEventListener("click", async () => {

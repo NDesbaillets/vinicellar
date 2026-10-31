@@ -25,6 +25,7 @@ app/sortir.html             sortir une bouteille : photo reconnue parmi le stock
 app/fiche.html?id=…         fiche bouteille, stock par lieu, « J'ouvre une bouteille », garde, accords, dégustations
 app/ajouter.html            photo (appareil ou album) ou nom → analyse → fiche à vérifier → stock
 app/journal.html            carnet de dégustation
+app/importer.html           import d'un tableau Excel/CSV (modèle, consigne pour Claude, aperçu, création des fiches)
 app/caves.html              caves et partage (inviter conjoint ou famille par e-mail)
 app/compte.html             profil, mot de passe, export CSV, déconnexion
 assets/js/core.js           client Supabase, session, navigation, formulaire de fiche, étoiles
@@ -71,4 +72,4 @@ Compléments possibles, par ordre d'intérêt :
 
 ## Cache des navigateurs
 
-Les pages chargent CSS et JS avec `?v=20261107`. Après modification, changer ce suffixe partout.
+Les pages chargent CSS et JS avec `?v=20261108`. Après modification, changer ce suffixe partout.

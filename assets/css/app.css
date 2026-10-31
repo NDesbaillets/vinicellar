@@ -468,3 +468,14 @@ dialog h2 { margin-bottom: 14px; }
 @media (min-width: 760px) { .rank-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .rank { grid-template-columns: minmax(0, 1fr); }
 .member .role-sel { width: auto; min-height: 36px; padding: 6px 10px; font-size: .85rem; }
+
+/* import */
+.steps { margin: 0 0 14px; padding-left: 20px; display: grid; gap: 6px; color: var(--ink-2); }
+.prompt { white-space: pre-wrap; font: .82rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--sunk); border-radius: var(--radius-s); padding: 12px; margin: 8px 0 0; max-height: 320px; overflow: auto; }
+.table-wrap { overflow-x: auto; margin-top: 12px; border: 1px solid var(--line); border-radius: var(--radius-s); }
+.grid-table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+.grid-table th, .grid-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.grid-table th { background: var(--sunk); font-weight: 600; color: var(--ink-2); white-space: nowrap; position: sticky; top: 0; }
+.grid-table tr.bad td { background: var(--bad-soft); }
+.grid-table td small { display: block; }
+.import-link { display: grid; gap: 4px; text-decoration: none; color: var(--ink); } .import-link:hover { border-color: var(--wine); }

@@ -123,7 +123,9 @@
         </div>
         <div class="row" style="margin-top:16px"><button class="btn" type="submit">${I.sparkle}Rechercher et remplir la fiche</button><button class="btn ghost" type="button" id="manual">Saisir à la main</button></div>
         <p class="form-msg" role="status"></p>
-      </form>`;
+      </form>
+      <div class="divider">ou en nombre</div>
+      <a class="card import-link" href="/app/importer.html"><b>Importer un tableau Excel</b><span class="muted">Toute une cave d'un coup, par exemple un tableau préparé par Claude à partir de vos photos.</span></a>`;
     drawCapture();
     drawQueue();
     const f = $("#by-name");
