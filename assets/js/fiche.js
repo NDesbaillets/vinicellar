@@ -19,7 +19,7 @@
     ]);
     if (a.error || !a.data) { main.innerHTML = `<div class="empty"><p>Fiche introuvable.</p><a class="btn" href="/app/">Retour à la cave</a></div>`; return false; }
     it = a.data; places = (b || []).filter((p) => p.collection_id === a.data.collection_id); stock = c.data || []; tastings = d.data || [];
-    getUrl = await signed([it.bottle_path, it.label_path]);
+    getUrl = await signed([it.bottle_path, it.label_path, it.label_back_path]);
     document.title = `${it.name}${it.vintage ? " " + it.vintage : ""} · Vinicellar`;
     return true;
   }
@@ -30,7 +30,7 @@
 
   // ---------------------------------------------------------------- rendu
   function visual() {
-    const imgs = [it.bottle_path && { p: it.bottle_path, l: "Bouteille" }, it.label_path && { p: it.label_path, l: "Mon étiquette" }].filter(Boolean)
+    const imgs = [it.bottle_path && { p: it.bottle_path, l: "Bouteille" }, it.label_path && { p: it.label_path, l: "Mon étiquette" }, it.label_back_path && { p: it.label_back_path, l: "Contre-étiquette" }].filter(Boolean)
       .map((x) => ({ ...x, u: getUrl(x.p) })).filter((x) => x.u);
     const show = (i) => {
       $("#visual").innerHTML = imgs[i] ? `<img src="${esc(imgs[i].u)}" alt="${esc(imgs[i].l)} : ${esc(it.name)}">` : bottleSvg(it);
@@ -309,7 +309,7 @@
   async function remove() {
     const n = total();
     if (!confirm(`Supprimer définitivement cette fiche${n ? ` et ses ${n} bouteille${n > 1 ? "s" : ""} en stock` : ""}, avec l'historique des dégustations ?`)) return;
-    const files = [it.label_path, it.bottle_path].filter(Boolean);
+    const files = [it.label_path, it.label_back_path, it.bottle_path].filter(Boolean);
     const { error } = await sb.from("items").delete().eq("id", id);
     if (error) return fail(error);
     if (files.length) await sb.storage.from("labels").remove(files);

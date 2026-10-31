@@ -9,8 +9,8 @@
   if (loc === "all") loc = "";
 
   let items = [], places = [], stock = [], byItem = new Map(), getUrl = () => null;
-  let state = { win: "", cat: "", grape: "", q: "", sort: "urgent", empty: false };
-  try { Object.assign(state, JSON.parse(localStorage.getItem("vc.cave.filters") || "{}"), { q: "", grape: "" }); } catch { /* stockage indisponible */ }
+  let state = { win: "", cat: "", grape: "", country: "", region: "", q: "", sort: "urgent", empty: false };
+  try { Object.assign(state, JSON.parse(localStorage.getItem("vc.cave.filters") || "{}"), { q: "", grape: "", country: "", region: "" }); } catch { /* stockage indisponible */ }
   const save = () => { try { localStorage.setItem("vc.cave.filters", JSON.stringify({ win: state.win, cat: state.cat, sort: state.sort })); } catch { /* idem */ } };
 
   async function load() {
@@ -38,7 +38,7 @@
     { k: "red", label: "Rouges", color: "#6B1E2E", test: (it) => it.category === "wine" && it.style === "red" },
     { k: "white", label: "Blancs", color: "#D8C27A", test: (it) => it.category === "wine" && it.style === "white" },
     { k: "rose", label: "Rosés", color: "#E6A0A6", test: (it) => it.category === "wine" && it.style === "rose" },
-    { k: "sparkling", label: "Effervescents", color: "#B9A24E", test: (it) => it.category === "wine" && it.style === "sparkling" },
+    { k: "sparkling", label: "Mousseux", color: "#B9A24E", test: (it) => it.category === "wine" && it.style === "sparkling" },
     { k: "otherwine", label: "Autres vins", color: "#C6862A", test: (it) => it.category === "wine" && !["red", "white", "rose", "sparkling"].includes(it.style) },
     { k: "spirits", label: "Spiritueux, sakés", color: "#77401A", test: (it) => it.category !== "wine" }
   ];
@@ -70,9 +70,23 @@
   function filtersBar() {
     const cats = [...new Set(items.map((i) => i.category))];
     const chip = (g, v, l) => `<button class="chip" data-group="${g}" data-val="${esc(v)}" aria-pressed="${state[g] === v}">${esc(l)}</button>`;
-    return `<div class="chips" role="toolbar" aria-label="Filtres">
+    const present = KINDS.filter((k) => items.some((it) => qty(it) > 0 && k.test(it)));
+    // Pays et régions présents dans la cave (bouteilles en stock), avec leur nombre de bouteilles.
+    const countries = new Map(), regions = new Map();
+    for (const it of items) {
+      const n = qty(it); if (!n) continue;
+      const c = VC.countryOf(it); if (!c) continue;
+      countries.set(c, (countries.get(c) || 0) + n);
+      if (c === state.country) { const r = VC.regionOf(it); if (r) regions.set(r, (regions.get(r) || 0) + n); }
+    }
+    const opt = (m, sel) => [...m].sort((x, y) => y[1] - x[1]).map(([k, n]) => `<option value="${esc(k)}"${k === sel ? " selected" : ""}>${esc(k)} (${n})</option>`).join("");
+    return `${present.length > 1 ? `<div class="chips" role="toolbar" aria-label="Type">${chip("cat", "", "Tous les types")}${present.map((k) => chip("cat", "kind:" + k.k, { red: "Rouge", white: "Blanc", rose: "Rosé", sparkling: "Mousseux", otherwine: "Autres vins", spirits: "Spiritueux, sakés" }[k.k])).join("")}</div>` : ""}
+      ${countries.size ? `<div class="geo">
+        <label><span class="sr">Pays</span><select id="f-country"><option value="">Tous les pays</option>${opt(countries, state.country)}</select></label>
+        <label><span class="sr">Région</span><select id="f-region"${state.country ? "" : " disabled"}><option value="">${state.country ? "Toutes les régions" : "Région"}</option>${opt(regions, state.region)}</select></label></div>` : ""}
+      <div class="chips" role="toolbar" aria-label="Garde">
       ${chip("win", "", "Tout")}${chip("win", "drink", "À boire maintenant")}${chip("win", "urgent", "À ouvrir vite")}${chip("win", "young", "À garder")}
-      ${cats.length > 1 ? cats.map((c) => chip("cat", c, CATEGORY_SHORT[c] || c)).join("") : ""}
+      ${cats.length > 1 ? cats.filter((c) => c !== "wine").map((c) => chip("cat", c, CATEGORY_SHORT[c] || c)).join("") : ""}
       <button class="chip" data-group="empty" aria-pressed="${state.empty}">Sorties / à racheter</button></div>`;
   }
 
@@ -87,6 +101,8 @@
       if (kind && !kind.test(it)) return false;
       if (state.cat && !kind && it.category !== state.cat) return false;
       if (state.grape && !(it.grapes || []).some((g) => grapeName(g) === state.grape)) return false;
+      if (state.country && VC.countryOf(it) !== state.country) return false;
+      if (state.region && VC.regionOf(it) !== state.region) return false;
       const w = windowStatus(it);
       if (state.win === "drink" && !(w && w.rank <= 3)) return false;
       if (state.win === "urgent" && !(w && w.rank <= 1)) return false;
@@ -160,7 +176,11 @@
     }
   });
   main.addEventListener("input", (e) => { if (e.target.id === "q") { state.q = e.target.value; drawList(); } });
-  main.addEventListener("change", (e) => { if (e.target.id === "sort") { state.sort = e.target.value; save(); drawList(); } });
+  main.addEventListener("change", (e) => {
+    if (e.target.id === "sort") { state.sort = e.target.value; save(); drawList(); }
+    if (e.target.id === "f-country") { state.country = e.target.value; state.region = ""; $("#filters").innerHTML = filtersBar(); drawList(); }
+    if (e.target.id === "f-region") { state.region = e.target.value; drawList(); }
+  });
 
   try { await load(); draw(); } catch (e) { VC.fail(e, "Impossible de charger la cave."); }
 })();

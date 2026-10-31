@@ -2,7 +2,7 @@
 (function () {
   const { sb, $, $$, esc, KIND } = window.VC;
   const T = {
-    expired: "Ce lien est invalide ou a expiré. Retournez à l'accueil et demandez un nouveau lien (« Mot de passe oublié ? » ou « Créer un compte »).",
+    expired: "Ce lien est invalide ou a expiré. Retournez à l'accueil et demandez un nouveau lien avec « Mot de passe oublié ? ».",
     pwShort: "Le mot de passe doit compter au moins 10 caractères.",
     pwMismatch: "Les mots de passe ne correspondent pas.",
     names: "Indiquez votre prénom et votre nom.",

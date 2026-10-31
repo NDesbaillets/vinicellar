@@ -46,7 +46,7 @@
       <p class="muted" style="margin-top:0">Les personnes invitées voient et gèrent les mêmes caves : ajouts, sorties, notes.</p>
       <div>${members.map((m) => `<div class="member"><div style="flex:1"><b>${esc(m.full_name || m.email)}</b><br><small class="muted">${esc(m.email)}${m.role === "owner" ? " · propriétaire" : ""}${m.user_id === ctx.user.id ? " · vous" : ""}</small></div>
         ${m.role !== "owner" && (owner || m.user_id === ctx.user.id) ? `<button class="btn quiet" data-act="${m.user_id === ctx.user.id ? "leave" : "remove"}" data-user="${m.user_id}">${m.user_id === ctx.user.id ? "Quitter" : "Retirer"}</button>` : ""}</div>`).join("")}
-        ${pend.map((i) => `<div class="member"><div style="flex:1"><b>${esc(i.email)}</b><br><small class="muted">Invitation en attente</small></div>${owner ? `<button class="btn quiet" data-act="share-link" data-email="${esc(i.email)}">Relancer</button><button class="btn quiet" data-act="cancel-invite" data-inv="${i.id}">Annuler</button>` : ""}</div>`).join("")}</div>
+        ${pend.map((i) => `<div class="member"><div style="flex:1"><b>${esc(i.email)}</b><br><small class="muted">Invitation en attente</small></div>${owner ? `<button class="btn quiet" data-act="share-link" data-email="${esc(i.email)}">Prévenir</button><button class="btn quiet" data-act="cancel-invite" data-inv="${i.id}">Annuler</button>` : ""}</div>`).join("")}</div>
       ${owner ? `<form class="invite-form" novalidate style="margin-top:14px"><div class="form-line two">
         <label>Inviter par e-mail<input type="email" name="email" placeholder="ex. viviane@exemple.ch" autocomplete="off"></label>
         <button class="btn" type="submit">${I.plus}Inviter</button></div></form>` : ""}
@@ -60,7 +60,7 @@
   }
 
   async function shareLink(email) {
-    const text = `Je t'invite à gérer notre cave sur Vinicellar. Connecte-toi (ou crée ton compte) avec ${email} sur https://vinicellar.ch : l'invitation s'affichera.`;
+    const text = `Je t'ai invité·e à gérer notre cave sur Vinicellar. Ouvre l'e-mail d'activation reçu sur ${email}, ou connecte-toi sur https://vinicellar.ch : l'invitation s'affichera.`;
     if (navigator.share) { try { await navigator.share({ title: "Vinicellar", text }); return; } catch { /* partage annulé */ } }
     try { await navigator.clipboard.writeText(text); toast("Message copié : envoyez-le par WhatsApp ou e-mail."); }
     catch { prompt("Copiez ce message :", text); }
@@ -81,11 +81,18 @@
       const email = f.email.value.trim().toLowerCase();
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast("Adresse e-mail invalide."); return f.email.focus(); }
       if (email === (ctx.user.email || "").toLowerCase()) return toast("C'est votre propre adresse.");
-      const { error } = await sb.from("collection_invites").insert({ collection_id: coll, email });
-      if (error) return fail(error, /duplicate|unique/.test(error.message) ? "Cette personne est déjà invitée." : "Invitation impossible.");
+      const btn = f.querySelector("button[type=submit]");
+      btn.disabled = true;
+      const { data, error } = await sb.functions.invoke("invite-member", { body: { collection_id: coll, email } });
+      btn.disabled = false;
+      if (error) {
+        let m = "Invitation impossible.";
+        try { const j = await error.context.json(); if (j && j.message) m = j.message; } catch { /* réponse vide */ }
+        await load(); return toast(m);
+      }
+      f.reset();
       await load();
-      toast("Invitation créée.");
-      shareLink(email);
+      toast(data && data.existing ? "Invitation enregistrée : elle s'affichera à sa prochaine connexion." : "Invitation envoyée par e-mail.");
     }
   });
 

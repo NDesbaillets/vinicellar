@@ -385,3 +385,34 @@ dialog h2 { margin-bottom: 14px; }
 .form-line { display: grid; gap: 10px; align-items: end; }
 @media (min-width: 640px) { .form-line { grid-template-columns: 2fr 1fr auto; } .form-line.two { grid-template-columns: 1fr auto; } }
 .place > div:first-child { min-width: 0; }
+
+/* filtres pays / région */
+.geo { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0 8px; }
+.geo select { min-height: 40px; padding: 8px 10px; border-radius: 999px; font-size: .9rem; }
+
+/* ajout à la chaîne */
+.shots { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.shot { position: relative; border: 1.5px dashed var(--line); border-radius: var(--radius); min-height: 190px; display: grid; place-items: center; gap: 8px; padding: 12px; text-align: center; background: var(--card); overflow: hidden; }
+.shot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.shot .shot-label { position: relative; font-weight: 600; font-size: .9rem; }
+.shot:not(.empty) .shot-label { position: absolute; left: 8px; bottom: 8px; background: rgba(0,0,0,.6); color: #fff; padding: 3px 10px; border-radius: 999px; font-size: .78rem; }
+.shot-btns { display: grid; gap: 6px; width: 100%; }
+.shot-btns .btn { min-height: 40px; padding: 8px 10px; font-size: .88rem; }
+.shot-x { position: absolute; top: 8px; right: 8px; }
+.queue { display: grid; gap: 8px; margin-top: 12px; }
+.qitem { display: grid; grid-template-columns: 52px 1fr; gap: 12px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-s); }
+.qthumb { width: 52px; height: 68px; border-radius: 8px; background: var(--sunk); overflow: hidden; display: grid; place-items: center; color: var(--ink-3); }
+.qthumb img { width: 100%; height: 100%; object-fit: cover; }
+.qthumb svg { width: 22px; height: 22px; }
+.qbody { min-width: 0; }
+.qbody b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qbody small { color: var(--ink-2); }
+.qacts { grid-column: 1 / -1; display: flex; gap: 6px; justify-content: flex-end; align-items: center; }
+@media (min-width: 640px) { .qitem { grid-template-columns: 52px 1fr auto; } .qacts { grid-column: auto; } }
+.spin { display: inline-block; width: 11px; height: 11px; border: 2px solid var(--line); border-top-color: var(--wine); border-radius: 50%; margin-right: 6px; vertical-align: -1px; animation: spin .9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.review-imgs { display: flex; gap: 10px; margin-bottom: 18px; overflow-x: auto; }
+.review-imgs img { height: 150px; border-radius: 10px; border: 1px solid var(--line); }
+.has-badge { position: relative; }
+.badge { position: absolute; top: 4px; right: calc(50% - 30px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--ok); color: #fff; font-size: .7rem; font-weight: 700; display: grid; place-items: center; line-height: 1; }
+.nav .badge { top: -6px; right: -6px; }

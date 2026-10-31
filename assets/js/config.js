@@ -4,7 +4,7 @@
 window.VC_CONFIG = {
   supabaseUrl: "https://ysdkbkujgbkrpjishttp.supabase.co",
   supabaseAnonKey: "sb_publishable_zh57QdYbqyr1dYqY-NsH7g_3hYb9rer",
-  // Afficher l'onglet « Créer un compte » sur la page d'accueil.
-  // Doit correspondre au réglage Supabase : Authentication > Sign In / Providers > « Allow new users to sign up ».
-  openSignup: true
+  // Inscription sur invitation : la page d'accueil propose « Demander une invitation », validée dans /app/admin.html.
+  // Réglage Supabase correspondant : Authentication > Sign In / Providers > « Allow new users to sign up » désactivé.
+  openSignup: false
 };

@@ -49,9 +49,60 @@
   // ------------------------------------------------------------------ libellés
   const CATEGORY = { wine: "Vin", whisky: "Whisky", sake: "Saké", rum: "Rhum", brandy: "Cognac, armagnac, brandy", gin: "Gin", liqueur: "Liqueur", other: "Autre spiritueux" };
   const CATEGORY_SHORT = { wine: "Vin", whisky: "Whisky", sake: "Saké", rum: "Rhum", brandy: "Brandy", gin: "Gin", liqueur: "Liqueur", other: "Autre" };
-  const STYLE = { red: "Rouge", white: "Blanc", rose: "Rosé", sparkling: "Effervescent", sweet: "Liquoreux / doux", fortified: "Muté (porto, xérès…)", orange: "Orange (macération)" };
+  const STYLE = { red: "Rouge", white: "Blanc", rose: "Rosé", sparkling: "Mousseux", sweet: "Liquoreux / doux", fortified: "Muté (porto, xérès…)", orange: "Orange (macération)" };
   const KIND = { home: "Domicile", secondary: "Résidence secondaire", storage: "Dépôt / garde-meuble", office: "Bureau", other: "Autre" };
   const CURRENCIES = ["CHF", "EUR", "USD", "GBP"];
+
+  // Grandes régions viticoles (France, Suisse, Italie) et mots-clés pour y ranger les fiches existantes.
+  const REGIONS = {
+    France: { Alsace: "alsace", Beaujolais: "beaujolais|morgon|fleurie|moulin-a-vent|brouilly|julienas|chenas|chiroubles|regnie|saint-amour",
+      Bordeaux: "bordeaux|medoc|pauillac|margaux|saint-julien|saint-estephe|pessac|graves|sauternes|barsac|saint-emilion|pomerol|fronsac|entre-deux-mers|blaye|bourg",
+      Bourgogne: "bourgogne|burgundy|chablis|cote de nuits|cote de beaune|cote chalonnaise|maconnais|macon|pouilly-fuisse|gevrey|chambolle|vosne|nuits|meursault|puligny|chassagne|volnay|pommard|corton|beaune|mercurey|givry|rully|santenay|marsannay|morey",
+      Champagne: "champagne", Corse: "corse|ajaccio|patrimonio", Jura: "jura|arbois|chateau-chalon|etoile",
+      "Languedoc-Roussillon": "languedoc|roussillon|minervois|corbieres|faugeres|pic saint-loup|saint-chinian|terrasses du larzac|banyuls|collioure|maury|limoux|fitou",
+      Loire: "loire|sancerre|pouilly-fume|vouvray|chinon|bourgueil|saumur|anjou|muscadet|savennieres|montlouis|menetou|quincy|reuilly|touraine",
+      Provence: "provence|bandol|cassis|palette|bellet|baux", Rhone: "rhone|hermitage|cote-rotie|condrieu|cornas|saint-joseph|crozes|chateauneuf|gigondas|vacqueyras|rasteau|lirac|tavel|ventoux|luberon",
+      Savoie: "savoie|apremont|chignin|abymes|roussette|crepy", "Sud-Ouest": "sud-ouest|cahors|madiran|jurancon|gaillac|bergerac|irouleguy|fronton|marcillac|buzet|monbazillac" },
+    Suisse: { Vaud: "vaud|lavaux|dezaley|calamin|epesses|saint-saphorin|villette|lutry|chablais|yvorne|aigle|la cote|mont-sur-rolle|feschy|morges|cotes de l'orbe|bonvillars",
+      Valais: "valais|wallis|sion|fully|chamoson|salquenen|salgesch|visperterminen|conthey|vetroz|leytron|sierre|saint-leonard", Geneve: "geneve|satigny|dardagny|lully|peissy|mandement",
+      Neuchatel: "neuchatel|auvernier|cortaillod|cressier|boudry", "Trois-Lacs": "trois-lacs|vully|bielersee|lac de bienne|ligerz|twann|schafis",
+      Tessin: "tessin|ticino|mendrisio|lugano", "Suisse alemanique": "suisse alemanique|deutschschweiz|zurich|schaffhouse|schaffhausen|argovie|aargau|grisons|graubunden|bundner|malans|fläsch|flasch|jenins|thurgovie|thurgau|saint-gall|bale|basel|lucerne" },
+    Italie: { Piemont: "piemont|piemonte|barolo|barbaresco|roero|langhe|asti|alba|gavi|ghemme|gattinara|monferrato|dogliani", "Vallee d'Aoste": "aoste|aosta",
+      Lombardie: "lombardie|lombardia|franciacorta|valtellina|oltrepo|lugana", "Trentin-Haut-Adige": "trentin|trentino|haut-adige|alto adige|sudtirol|südtirol|teroldego",
+      Venetie: "venetie|veneto|valpolicella|amarone|soave|prosecco|bardolino|recioto", "Frioul-Venetie julienne": "frioul|friuli|collio|colli orientali",
+      Ligurie: "ligurie|liguria|cinque terre", "Emilie-Romagne": "emilie|emilia|romagna|lambrusco", Toscane: "toscane|toscana|tuscany|chianti|montalcino|brunello|montepulciano|bolgheri|maremma|morellino|carmignano|vernaccia",
+      Ombrie: "ombrie|umbria|montefalco|orvieto|sagrantino", Marches: "marches|marche|verdicchio|conero", Latium: "latium|lazio|frascati",
+      Abruzzes: "abruzzes|abruzzo|montepulciano d'abruzzo", Molise: "molise", Campanie: "campanie|campania|taurasi|fiano|greco di tufo|falanghina",
+      Pouilles: "pouilles|puglia|primitivo|salice|manduria", Basilicate: "basilicate|basilicata|aglianico del vulture", Calabre: "calabre|calabria|ciro",
+      Sicile: "sicile|sicilia|etna|marsala|nero d'avola|pantelleria", Sardaigne: "sardaigne|sardegna|cannonau|vermentino di gallura" }
+  };
+  // Noms affichés (les clés ci-dessus sont sans accents pour la comparaison).
+  const REGION_LABEL = { Rhone: "Rhône", Geneve: "Genève", Neuchatel: "Neuchâtel", "Suisse alemanique": "Suisse alémanique", Piemont: "Piémont",
+    "Vallee d'Aoste": "Vallée d'Aoste", Venetie: "Vénétie", "Frioul-Venetie julienne": "Frioul-Vénétie julienne", "Emilie-Romagne": "Émilie-Romagne" };
+  const COUNTRY = { france: "France", suisse: "Suisse", switzerland: "Suisse", schweiz: "Suisse", svizzera: "Suisse", italie: "Italie", italy: "Italie", italia: "Italie",
+    espagne: "Espagne", spain: "Espagne", "espana": "Espagne", portugal: "Portugal", allemagne: "Allemagne", germany: "Allemagne", deutschland: "Allemagne",
+    autriche: "Autriche", austria: "Autriche", "etats-unis": "États-Unis", usa: "États-Unis", "united states": "États-Unis", argentine: "Argentine", argentina: "Argentine",
+    chili: "Chili", chile: "Chili", "afrique du sud": "Afrique du Sud", "south africa": "Afrique du Sud", australie: "Australie", australia: "Australie",
+    "nouvelle-zelande": "Nouvelle-Zélande", "new zealand": "Nouvelle-Zélande", japon: "Japon", japan: "Japon", ecosse: "Écosse", scotland: "Écosse", irlande: "Irlande", ireland: "Irlande",
+    "royaume-uni": "Royaume-Uni", "united kingdom": "Royaume-Uni", grece: "Grèce", greece: "Grèce", liban: "Liban", lebanon: "Liban", hongrie: "Hongrie", hungary: "Hongrie" };
+  const fold = (x) => String(x || "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").trim();
+  function countryOf(it) {
+    const c = fold(it.country);
+    if (!c) return null;
+    return COUNTRY[c] || it.country.trim().replace(/^./, (m) => m.toUpperCase());
+  }
+  function regionOf(it) {
+    const c = countryOf(it);
+    const table = REGIONS[c];
+    const raw = (it.region || "").trim();
+    if (!table) return raw || null;
+    const r = fold(raw);
+    for (const k of Object.keys(table)) if (fold(k) === r || fold(REGION_LABEL[k] || k) === r) return REGION_LABEL[k] || k;
+    const hay = fold([it.region, it.appellation, it.name].join(" "));
+    for (const [k, words] of Object.entries(table)) if (new RegExp(`(^|[^a-z])(${words})([^a-z]|$)`).test(hay)) return REGION_LABEL[k] || k;
+    return raw || null;
+  }
+  const regionList = (country) => Object.keys(REGIONS[country] || {}).map((k) => REGION_LABEL[k] || k);
 
   // ------------------------------------------------------------------ utilitaires
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -145,6 +196,10 @@
     const user = data.session.user;
     const { data: profile } = await sb.from("profiles").select("*").eq("id", user.id).single();
     if (!profile || !profile.onboarded_at) { location.replace("/bienvenue.html"); return new Promise(() => {}); }
+    sb.from("drafts").select("id", { count: "exact", head: true }).eq("status", "ready").then(({ count }) => {
+      if (!count) return;
+      $$('a[href="/app/ajouter.html"]').forEach((a) => { a.classList.add("has-badge"); a.insertAdjacentHTML("beforeend", `<span class="badge">${count}</span>`); });
+    });
     return { user, profile };
   }
 
@@ -214,7 +269,7 @@
       F("producer", "Producteur / domaine / distillerie"),
       F("vintage", "Millésime", "number", { min: 1800, max: 2100, placeholder: "ex. 2019" }),
       F("country", "Pays"),
-      F("region", "Région"),
+      F("region", "Région", "text", { list: "vc-regions" }),
       F("appellation", "Appellation"),
       F("grapes", "Cépages (séparés par des virgules)", "csv", { wineOnly: true, wide: true }),
       F("abv", "Degré (% vol.)", "number", { step: .1, min: 0, max: 100 }),
@@ -266,7 +321,7 @@
     const data = { category: "wine", market_currency: currency, purchase_currency: currency, volume_cl: 75, ...it };
     form.innerHTML = SECTIONS.map((s) => `<fieldset><legend>${s.legend}</legend><div class="grid2">${s.fields.map((f) => {
       const val = esc(fieldValue(f, data));
-      const attrs = `name="${f.k}"${f.required ? " required" : ""}${f.min != null ? ` min="${f.min}"` : ""}${f.max != null ? ` max="${f.max}"` : ""}${f.step ? ` step="${f.step}"` : ""}${f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : ""}`;
+      const attrs = `name="${f.k}"${f.required ? " required" : ""}${f.min != null ? ` min="${f.min}"` : ""}${f.max != null ? ` max="${f.max}"` : ""}${f.step ? ` step="${f.step}"` : ""}${f.placeholder ? ` placeholder="${esc(f.placeholder)}"` : ""}${f.list ? ` list="${f.list}"` : ""}`;
       let input;
       if (f.type === "select") {
         input = `<select ${attrs}>${f.empty ? `<option value="">${f.empty}</option>` : ""}${Object.entries(f.opts).map(([k, l]) => `<option value="${k}"${String(data[f.k] ?? "") === k ? " selected" : ""}>${l}</option>`).join("")}</select>`;
@@ -277,6 +332,7 @@
       }
       return `<label${f.wide ? ' class="wide"' : ""}${f.wineOnly ? " data-wine-only" : ""}>${f.label}${input}</label>`;
     }).join("")}</div></fieldset>`).join("");
+    form.insertAdjacentHTML("beforeend", `<datalist id="vc-regions">${Object.keys(REGIONS).flatMap(regionList).map((r) => `<option value="${esc(r)}">`).join("")}</datalist>`);
     const cat = form.querySelector('[name="category"]');
     const sync = () => $$("[data-wine-only]", form).forEach((el) => (el.hidden = cat.value !== "wine"));
     cat.addEventListener("change", sync);
@@ -449,6 +505,6 @@
     $, $$, esc, money, date, today, year, range, safeUrl, host, isWine, title,
     windowStatus, bottleSvg, signed, mainImagePath, renderNav, boot, toast, fail, stars,
     renderItemForm, readItemForm, identify, shrink,
-    getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, REASON
+    getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, REASON, REGIONS, countryOf, regionOf, regionList, fold
   };
 })();

@@ -7,8 +7,8 @@
     badLogin: "Adresse e-mail ou mot de passe incorrect.",
     enterEmail: "Indiquez d'abord votre adresse e-mail ci-dessus.",
     resetSent: "Si un compte existe pour cette adresse, un lien de réinitialisation vient d'être envoyé.",
-    signupSent: "C'est parti. Ouvrez le lien reçu par e-mail pour choisir votre mot de passe et créer vos caves.",
-    signupClosed: "Les inscriptions sont fermées. Demandez une invitation.",
+    requestSent: "Merci, votre demande est envoyée. Vous recevrez un e-mail d'activation dès qu'elle sera validée.",
+    requestInvalid: "Indiquez votre nom et une adresse e-mail valide.",
     pwShort: "Au moins 10 caractères.",
     pwMismatch: "Les mots de passe ne correspondent pas.",
     pwUpdated: "Mot de passe modifié. Redirection…",
@@ -26,7 +26,6 @@
   // Onglets connexion / création de compte
   const tabs = $(".tabs");
   if (tabs) {
-    if (!cfg.openSignup) tabs.hidden = true;
     tabs.addEventListener("click", (e) => {
       const b = e.target.closest("button[data-tab]");
       if (!b) return;
@@ -62,27 +61,24 @@
     });
   }
 
-  // Création de compte : un lien par e-mail (confirme l'adresse), puis mot de passe sur la page de bienvenue.
+  // Demande d'invitation : enregistrée, puis validée par l'admin (qui déclenche l'e-mail d'activation).
   const signup = $("#signup-form");
   if (signup) {
     const out = signup.querySelector(".form-msg");
     signup.addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!sb) return msg(out, T.notConfigured, "error");
-      if (signup.website.value) return; // robot
+      const name = signup.name.value.trim(), email = signup.email.value.trim();
+      if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return msg(out, T.requestInvalid, "error");
       const btn = signup.querySelector("button[type=submit]");
       btn.disabled = true;
-      const { error } = await sb.auth.signInWithOtp({
-        email: signup.email.value.trim(),
-        options: { shouldCreateUser: true, emailRedirectTo: origin + "/bienvenue.html" }
+      const { error } = await sb.functions.invoke("request-access", {
+        body: { name, email, message: signup.message.value.trim(), website: signup.website.value }
       });
       btn.disabled = false;
-      if (error) {
-        console.error(error);
-        return msg(out, error.status === 429 ? T.rate : /signups? not allowed/i.test(error.message) ? T.signupClosed : T.error, "error");
-      }
+      if (error) { console.error(error); return msg(out, T.error, "error"); }
       signup.reset();
-      msg(out, T.signupSent, "ok");
+      msg(out, T.requestSent, "ok");
     });
   }
 
