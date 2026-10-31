@@ -6,6 +6,7 @@
   const ctx = await VC.boot("add");
   const main = $("#main");
   const places = await VC.loadPlaces().catch(() => []);
+  const { data: wishlists } = await sb.from("wishlists").select("*").order("position").order("created_at");
   let here = VC.getLoc();
   if (!places.some((p) => p.id === here)) here = places[0] ? places[0].id : "";
 
@@ -196,7 +197,7 @@
       <form id="item-form" class="card" novalidate style="margin-top:16px">
         ${imgs.length ? `<div class="review-imgs">${imgs.map((u) => `<img src="${esc(u)}" alt="">`).join("")}</div>` : ""}
         <fieldset><legend>En cave</legend><div class="grid3">
-          <label>Cave<select name="loc">${locOptions((d && d.location_id) || defaults.loc)}</select></label>
+          <label>Mettre dans<select name="loc">${locOptions((d && d.location_id) || defaults.loc)}${(wishlists || []).length ? `<optgroup label="Liste d'envies (sans bouteille)">${wishlists.map((w) => `<option value="wl:${w.id}">${esc(w.name)}</option>`).join("")}</optgroup>` : ""}</select></label>
           <label>Bouteilles<input type="number" name="qty" value="${d ? d.qty : 1}" min="0" max="999" inputmode="numeric"></label>
           <label>Emplacement<input name="bin" maxlength="60" placeholder="ex. Casier B3" value="${esc((d && d.bin) || "")}"></label>
         </div></fieldset>
@@ -217,13 +218,14 @@
     const out = f.querySelector(".form-msg");
     const data = VC.readItemForm(f);
     if (!data.name) { out.textContent = "Le nom de la cuvée est obligatoire."; out.className = "form-msg error"; f.elements.name.focus(); return; }
-    const qty = parseInt(f.qty.value, 10) || 0;
-    const loc = f.loc.value;
+    const wish = f.loc.value.startsWith("wl:") ? (wishlists || []).find((w) => "wl:" + w.id === f.loc.value) : null;
+    const qty = wish ? 0 : parseInt(f.qty.value, 10) || 0;
+    const loc = wish ? "" : f.loc.value;
     if (qty > 0 && !loc) { out.textContent = "Choisissez une cave."; out.className = "form-msg error"; return; }
     const btn = f.querySelector("button[type=submit]");
     btn.disabled = true;
     try {
-      const coll = collOf(loc);
+      const coll = wish ? wish.collection_id : collOf(loc);
       // Doublon : même cuvée, même producteur, même millésime → on ajoute les bouteilles à la fiche existante.
       let q = sb.from("items").select("id, name").ilike("name", data.name);
       if (coll) q = q.eq("collection_id", coll);
@@ -246,9 +248,13 @@
         const { error: se } = await sb.rpc("adjust_stock", { p_item: id, p_location: loc, p_delta: qty, p_bin: f.bin.value.trim() || null });
         if (se) throw se;
       }
+      if (wish) {
+        const { error: we } = await sb.from("wishlist_items").insert({ wishlist_id: wish.id, item_id: id, qty_wanted: parseInt(f.qty.value, 10) || null });
+        if (we && !/duplicate|unique/.test(we.message)) throw we;
+      }
       if (d) await removeDraft(d, false);
-      defaults.loc = loc;
-      toast("Ajouté à votre cave.", { label: "Voir la fiche", run: () => (location.href = `/app/fiche.html?id=${id}`) });
+      if (!wish) defaults.loc = loc;
+      toast(wish ? `Ajouté à « ${wish.name} ».` : "Ajouté à votre cave.", { label: "Voir la fiche", run: () => (location.href = `/app/fiche.html?id=${id}`) });
       back();
     } catch (e) {
       btn.disabled = false;

@@ -2,7 +2,7 @@
 (async function () {
   const VC = window.VC;
   const { sb, $, esc, I, date, stars } = VC;
-  await VC.boot("journal");
+  await VC.boot("carnet");
   const main = $("#main");
 
   const [{ data: rows, error }, { data: places }] = await Promise.all([
@@ -11,10 +11,8 @@
   ]);
   if (error) return VC.fail(error, "Impossible de charger le journal.");
   const place = (id) => (places || []).find((p) => p.id === id)?.name || "";
-  const thisYear = (rows || []).filter((r) => r.tasted_on.startsWith(String(VC.year))).length;
 
-  main.innerHTML = `<div class="page-head"><div><span class="eyebrow">Sorties et dégustations</span><h1>Journal</h1></div></div>
-    <div class="stats"><div class="stat"><b>${(rows || []).length}</b><span>sorties</span></div><div class="stat"><b>${thisYear}</b><span>en ${VC.year}</span></div><div class="stat"><b>${(rows || []).filter((r) => r.reason === "drunk").length}</b><span>bues</span></div><div class="stat"><b>${(rows || []).filter((r) => r.reason === "gifted").length}</b><span>offertes</span></div></div>
+  main.innerHTML = `<div class="page-head"><div><span class="eyebrow">Sorties et dégustations</span><h1>Carnet</h1></div></div>${VC.carnetNav("journal")}
     <div class="chips" id="reasons"><button class="chip" data-r="" aria-pressed="true">Toutes</button><button class="chip" data-r="drunk" aria-pressed="false">Bues</button><button class="chip" data-r="gifted" aria-pressed="false">Offertes</button><button class="chip" data-r="other" aria-pressed="false">Autres</button></div>
     <div class="toolbar" style="grid-template-columns:1fr"><label class="search"><span class="sr">Rechercher</span>${I.search}<input type="search" id="q" placeholder="Vin, plat, occasion, commentaire…"></label></div>
     <div class="card" id="list"></div>`;

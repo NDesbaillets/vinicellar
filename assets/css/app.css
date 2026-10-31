@@ -421,3 +421,39 @@ dialog h2 { margin-bottom: 14px; }
 .shot-btns label.btn svg { width: 18px; height: 18px; flex: none; margin: 0; }
 .shot { min-height: 170px; align-content: center; }
 .shot-btns label.btn > input { position: absolute; width: 0; height: 0; min-height: 0; padding: 0; border: 0; }
+
+/* compte (mobile), sous-navigation du carnet */
+.topbar .me { margin-left: auto; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2); }
+.topbar .me svg { width: 22px; height: 22px; }
+@media (min-width: 860px) { .topbar .me { display: none; } }
+.subnav { margin: 16px 0 4px; }
+.subnav .chip { text-decoration: none; }
+
+/* bilan */
+.stats .stat span { line-height: 1.3; display: block; }
+.months { position: relative; display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; height: 180px; align-items: end; border-bottom: 1px solid var(--line); padding-top: 18px; }
+.mcol { position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; outline: none; cursor: default; }
+.mbar { width: 70%; max-width: 26px; background: var(--wine); border-radius: 4px 4px 0 0; min-height: 0; }
+.mcol:hover .mbar, .mcol:focus .mbar { background: var(--wine-2); }
+.mval { font-size: .74rem; font-weight: 600; color: var(--ink-2); margin-bottom: 3px; }
+.mlab { position: absolute; bottom: -20px; font-size: .68rem; color: var(--ink-3); }
+.card .tip { position: absolute; width: 150px; pointer-events: none; text-align: center; background: var(--ink); color: var(--bg); font-size: .8rem; padding: 6px 8px; border-radius: 8px; }
+.card:has(.months) { position: relative; padding-bottom: 34px; }
+.rank-grid { display: grid; gap: 12px; margin-top: 16px; }
+@media (min-width: 760px) { .rank-grid { grid-template-columns: repeat(2, 1fr); } }
+.rank-grid .card + .card { margin-top: 0; }
+.rank { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.rank li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.rank li:last-child { border-bottom: 0; }
+.rank li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wish .bottle { padding-right: 12px; }
+.wish { display: grid; gap: 6px; }
+.wish-acts { display: flex; gap: 8px; justify-content: flex-end; }
+.geo { grid-template-columns: 1fr 1fr 1fr; }
+@media (max-width: 520px) { .geo { grid-template-columns: 1fr 1fr; } .geo label:last-child { grid-column: 1 / -1; } }
+.lead-s { font-size: 1.05rem; color: var(--ink-2); margin: 18px 0 12px; }
+.picks { display: grid; gap: 12px; }
+@media (min-width: 900px) { .picks { grid-template-columns: repeat(3, 1fr); } }
+.pick-card + .pick-card { margin-top: 0; }
+.pick-card .match { grid-template-columns: 72px 1fr; }
+.pick-card .match .thumb { width: 72px; height: 100px; }

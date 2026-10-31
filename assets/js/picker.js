@@ -32,7 +32,9 @@
     ${places.length ? `<div class="cellars">${places.map(card).join("")}
       ${places.length > 1 ? `<a class="cellar-card all" href="/app/cave.html?loc=all" data-loc="all"><span class="ico">${I.search}</span><span><h3>Toutes les caves</h3><small>Vue d'ensemble</small></span><span><b class="n">${total}</b> <small>bt.</small></span></a>` : ""}
       </div>` : `<div class="empty">${I.places}<h2>Aucune cave</h2><p class="muted">Créez votre première cave pour commencer.</p></div>`}
-    <p style="margin-top:20px"><a class="btn ghost" href="/app/caves.html">${I.share}Gérer les caves et le partage</a></p>`;
+    <div class="cta-row" style="margin-top:20px"><a class="btn big" href="/app/sommelier.html">${I.plate}Que boire ce soir ?</a><a class="btn big ghost" href="/app/envies.html" id="wish-link">Listes d'envies</a></div>
+    <p style="margin-top:12px"><a class="btn quiet" href="/app/caves.html">${I.share}Gérer les caves et le partage</a></p>`;
+  sb.from("wishlist_items").select("id", { count: "exact", head: true }).then(({ count }) => { if (count && $("#wish-link")) $("#wish-link").textContent = `Listes d'envies (${count})`; });
 
   main.addEventListener("click", (e) => { const a = e.target.closest("[data-loc]"); if (a) VC.setLoc(a.dataset.loc); });
 

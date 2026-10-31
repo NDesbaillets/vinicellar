@@ -53,7 +53,7 @@
       }).join("") : `<li><span class="muted">Plus aucune bouteille en cave.</span></li>`}</ul>
       <div style="display:grid;gap:8px;margin-top:14px">
         <button class="btn big block" id="drink"${n ? "" : " disabled"}>${I.glass}Sortir une bouteille</button>
-        <div class="row"><button class="btn quiet" id="add-stock">${I.plus}Ajouter des bouteilles</button>${withStock().length && places.length > 1 ? `<button class="btn quiet" id="move">${I.move}Déplacer</button>` : ""}</div>
+        <div class="row"><button class="btn quiet" id="add-stock">${I.plus}Ajouter des bouteilles</button>${withStock().length && places.length > 1 ? `<button class="btn quiet" id="move">${I.move}Déplacer</button>` : ""}<button class="btn quiet" id="wish">${I.plus}Liste d'envies</button></div>
       </div></div>`;
   }
 
@@ -188,6 +188,7 @@
     $("#drink")?.addEventListener("click", openDrink);
     $("#add-stock")?.addEventListener("click", openAddStock);
     $("#move")?.addEventListener("click", openMove);
+    $("#wish")?.addEventListener("click", addToWishlist);
     $("#edit").addEventListener("click", openEdit);
     $("#refresh").addEventListener("click", aiRefresh);
     $("#delete").addEventListener("click", remove);
@@ -238,6 +239,20 @@
       if (error) throw error;
       toast(`${q} bouteille${q > 1 ? "s" : ""} ajoutée${q > 1 ? "s" : ""}.`); refresh();
     });
+  }
+
+  async function addToWishlist() {
+    const { data: lists } = await sb.from("wishlists").select("*").eq("collection_id", it.collection_id).order("position").order("created_at");
+    if (!(lists || []).length) return toast("Créez d'abord une liste dans Carnet › Envies.");
+    const put = async (wl) => {
+      const { error } = await sb.from("wishlist_items").insert({ wishlist_id: wl.id, item_id: id });
+      if (error && !/duplicate|unique/.test(error.message)) return fail(error);
+      toast(error ? `Déjà dans « ${wl.name} ».` : `Ajouté à « ${wl.name} ».`, { label: "Voir", run: () => (location.href = "/app/envies.html") });
+    };
+    if (lists.length === 1) return put(lists[0]);
+    const d = VC.sheet(`<h2>Ajouter à une liste</h2><div class="pick-list">${lists.map((l) => `<button class="pick" data-wl="${l.id}"><b>${esc(l.name)}</b></button>`).join("")}</div>
+      <div class="row end" style="margin-top:12px"><button class="btn quiet" data-close>Annuler</button></div>`);
+    d.addEventListener("click", (e) => { const b = e.target.closest("[data-wl]"); if (b) { d.close(); put(lists.find((l) => l.id === b.dataset.wl)); } });
   }
 
   function openMove() {

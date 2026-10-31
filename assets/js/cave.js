@@ -9,7 +9,7 @@
   if (loc === "all") loc = "";
 
   let items = [], places = [], stock = [], byItem = new Map(), getUrl = () => null;
-  let state = { win: "", cat: "", grape: "", country: "", region: "", q: "", sort: "urgent", empty: false };
+  let state = { win: "", cat: "", grape: "", country: "", region: "", price: "", q: "", sort: "urgent", empty: false };
   try { Object.assign(state, JSON.parse(localStorage.getItem("vc.cave.filters") || "{}"), { q: "", grape: "", country: "", region: "" }); } catch { /* stockage indisponible */ }
   const save = () => { try { localStorage.setItem("vc.cave.filters", JSON.stringify({ win: state.win, cat: state.cat, sort: state.sort })); } catch { /* idem */ } };
 
@@ -81,9 +81,10 @@
     }
     const opt = (m, sel) => [...m].sort((x, y) => y[1] - x[1]).map(([k, n]) => `<option value="${esc(k)}"${k === sel ? " selected" : ""}>${esc(k)} (${n})</option>`).join("");
     return `${present.length > 1 ? `<div class="chips" role="toolbar" aria-label="Type">${chip("cat", "", "Tous les types")}${present.map((k) => chip("cat", "kind:" + k.k, { red: "Rouge", white: "Blanc", rose: "Rosé", sparkling: "Mousseux", otherwine: "Autres vins", spirits: "Spiritueux, sakés" }[k.k])).join("")}</div>` : ""}
-      ${countries.size ? `<div class="geo">
+      ${countries.size || items.some((it) => VC.priceOf(it) != null) ? `<div class="geo">
         <label><span class="sr">Pays</span><select id="f-country"><option value="">Tous les pays</option>${opt(countries, state.country)}</select></label>
-        <label><span class="sr">Région</span><select id="f-region"${state.country ? "" : " disabled"}><option value="">${state.country ? "Toutes les régions" : "Région"}</option>${opt(regions, state.region)}</select></label></div>` : ""}
+        <label><span class="sr">Région</span><select id="f-region"${state.country ? "" : " disabled"}><option value="">${state.country ? "Toutes les régions" : "Région"}</option>${opt(regions, state.region)}</select></label>
+        <label><span class="sr">Prix</span><select id="f-price"><option value="">Tous les prix</option>${VC.PRICE_BANDS.map(([k, l]) => { const n = items.filter((it) => { const p = VC.priceOf(it); return qty(it) > 0 && p != null && p >= VC.PRICE_BANDS.find((b) => b[0] === k)[2] && p < VC.PRICE_BANDS.find((b) => b[0] === k)[3]; }).reduce((a, it) => a + qty(it), 0); return `<option value="${k}"${k === state.price ? " selected" : ""}>${l} ${esc(ctx.profile.currency || "CHF")}${n ? ` (${n})` : ""}</option>`; }).join("")}</select></label></div>` : ""}
       <div class="chips" role="toolbar" aria-label="Garde">
       ${chip("win", "", "Tout")}${chip("win", "drink", "À boire maintenant")}${chip("win", "urgent", "À ouvrir vite")}${chip("win", "young", "À garder")}
       ${cats.length > 1 ? cats.filter((c) => c !== "wine").map((c) => chip("cat", c, CATEGORY_SHORT[c] || c)).join("") : ""}
@@ -96,13 +97,17 @@
     const kind = state.cat.startsWith("kind:") ? KINDS.find((k) => "kind:" + k.k === state.cat) : null;
     return items.filter((it) => {
       const n = qty(it);
-      const here = !loc || (byItem.get(it.id) || []).some((s) => s.location_id === loc);
+      const here = (byItem.get(it.id) || []).some((s) => !loc || s.location_id === loc);
       if (state.empty ? n > 0 || !here : n === 0) return false;
       if (kind && !kind.test(it)) return false;
       if (state.cat && !kind && it.category !== state.cat) return false;
       if (state.grape && !(it.grapes || []).some((g) => grapeName(g) === state.grape)) return false;
       if (state.country && VC.countryOf(it) !== state.country) return false;
       if (state.region && VC.regionOf(it) !== state.region) return false;
+      if (state.price) {
+        const band = VC.PRICE_BANDS.find((b) => b[0] === state.price), p = VC.priceOf(it);
+        if (!band || p == null || p < band[2] || p >= band[3]) return false;
+      }
       const w = windowStatus(it);
       if (state.win === "drink" && !(w && w.rank <= 3)) return false;
       if (state.win === "urgent" && !(w && w.rank <= 1)) return false;
@@ -180,6 +185,7 @@
     if (e.target.id === "sort") { state.sort = e.target.value; save(); drawList(); }
     if (e.target.id === "f-country") { state.country = e.target.value; state.region = ""; $("#filters").innerHTML = filtersBar(); drawList(); }
     if (e.target.id === "f-region") { state.region = e.target.value; drawList(); }
+    if (e.target.id === "f-price") { state.price = e.target.value; drawList(); }
   });
 
   try { await load(); draw(); } catch (e) { VC.fail(e, "Impossible de charger la cave."); }

@@ -111,6 +111,9 @@
     for (const [k, words] of Object.entries(table)) if (new RegExp(`(^|[^a-z])(${words})([^a-z]|$)`).test(hay)) return REGION_LABEL[k] || k;
     return raw || null;
   }
+  // Prix de référence d'une fiche : marché, à défaut prix d'achat.
+  const priceOf = (it) => (it.market_price != null ? Number(it.market_price) : it.purchase_price != null ? Number(it.purchase_price) : null);
+  const PRICE_BANDS = [["0-20", "Moins de 20", 0, 20], ["20-40", "20 à 40", 20, 40], ["40-80", "40 à 80", 40, 80], ["80-150", "80 à 150", 80, 150], ["150-", "Plus de 150", 150, Infinity]];
   const regionList = (country) => Object.keys(REGIONS[country] || {}).map((k) => REGION_LABEL[k] || k);
 
   // ------------------------------------------------------------------ utilitaires
@@ -171,20 +174,25 @@
   // ------------------------------------------------------------------ navigation
   const NAV = [
     { id: "cellar", href: "/app/", label: "Caves", icon: "cellar" },
-    { id: "journal", href: "/app/journal.html", label: "Journal", icon: "journal" },
+    { id: "sommelier", href: "/app/sommelier.html", label: "Sommelier", icon: "plate" },
     { id: "add", href: "/app/ajouter.html", label: "Ajouter", icon: "plus" },
     { id: "out", href: "/app/sortir.html", label: "Sortir", icon: "glass" },
-    { id: "account", href: "/app/compte.html", label: "Compte", icon: "user" }
+    { id: "carnet", href: "/app/journal.html", label: "Carnet", icon: "journal" }
   ];
+  const DESKTOP = ["cellar", "sommelier", "carnet", "out"];
+  // Sous-navigation du carnet : journal, bilan, historique, envies.
+  const CARNET = [["journal", "/app/journal.html", "Journal"], ["bilan", "/app/bilan.html", "Bilan"], ["historique", "/app/historique.html", "Historique"], ["envies", "/app/envies.html", "Envies"]];
+  const carnetNav = (active) => `<nav class="chips subnav" aria-label="Carnet">${CARNET.map(([id, href, l]) => `<a class="chip" href="${href}" aria-pressed="${id === active}"${id === active ? ' aria-current="page"' : ""}>${l}</a>`).join("")}</nav>`;
   function renderNav(active) {
     const top = $("#topbar");
     if (top) {
       top.className = "topbar";
       top.innerHTML = `<div class="wrap"><a class="brand" href="/app/">${I.logo}<span>Vinicellar</span></a>
         <nav class="nav" aria-label="Navigation principale">
-          ${NAV.filter((n) => n.id !== "add").map((n) => `<a href="${n.href}"${n.id === active ? ' aria-current="page"' : ""}>${n.id === "out" ? "Sortir une bouteille" : n.label}</a>`).join("")}
+          ${DESKTOP.map((id) => NAV.find((n) => n.id === id)).map((n) => `<a href="${n.href}"${n.id === active ? ' aria-current="page"' : ""}>${n.id === "out" ? "Sortir une bouteille" : n.label}</a>`).join("")}
+          <a href="/app/compte.html"${active === "account" ? ' aria-current="page"' : ""}>Compte</a>
           <a class="btn" href="/app/ajouter.html">${I.plus}Ajouter</a>
-        </nav></div>`;
+        </nav><a class="me" href="/app/compte.html" aria-label="Mon compte">${I.user}</a></div>`;
     }
     const tab = $("#tabbar");
     if (tab) {
@@ -514,6 +522,6 @@
     $, $$, esc, money, date, today, year, range, safeUrl, host, isWine, title,
     windowStatus, bottleSvg, signed, mainImagePath, renderNav, boot, toast, fail, stars,
     renderItemForm, readItemForm, identify, shrink,
-    getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, REASON, REGIONS, countryOf, regionOf, regionList, fold
+    carnetNav, getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, REASON, REGIONS, countryOf, regionOf, regionList, fold, priceOf, PRICE_BANDS
   };
 })();
