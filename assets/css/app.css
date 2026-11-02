@@ -449,8 +449,8 @@ dialog h2 { margin-bottom: 14px; }
 .wish .bottle { padding-right: 12px; }
 .wish { display: grid; gap: 6px; }
 .wish-acts { display: flex; gap: 8px; justify-content: flex-end; }
-.geo { grid-template-columns: 1fr 1fr 1fr; }
-@media (max-width: 520px) { .geo { grid-template-columns: 1fr 1fr; } .geo label:last-child { grid-column: 1 / -1; } }
+.geo { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 720px) { .geo { grid-template-columns: 1fr 1fr; } }
 .lead-s { font-size: 1.05rem; color: var(--ink-2); margin: 18px 0 12px; }
 .picks { display: grid; gap: 12px; }
 @media (min-width: 900px) { .picks { grid-template-columns: repeat(3, 1fr); } }
@@ -479,3 +479,11 @@ dialog h2 { margin-bottom: 14px; }
 .grid-table tr.bad td { background: var(--bad-soft); }
 .grid-table td small { display: block; }
 .import-link { display: grid; gap: 4px; text-decoration: none; color: var(--ink); } .import-link:hover { border-color: var(--wine); }
+.stars button svg { pointer-events: none; }
+.stars button { touch-action: manipulation; }
+.field-label { display: grid; gap: 6px; font-size: .88rem; font-weight: 500; color: var(--ink-2); margin-top: 6px; }
+.visual-switch button.is-cover { box-shadow: 0 0 0 2px var(--gold); } .visual-switch { flex-wrap: wrap; } #vtools .btn { min-height: 38px; padding: 6px 10px; font-size: .88rem; }
+.dup-card { border-color: color-mix(in srgb, var(--gold) 50%, var(--line)); background: color-mix(in srgb, var(--warn-soft) 45%, var(--card)); }
+.dup-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--line); }
+.dup-row small { display: block; }
+.dup-row > div { min-width: 0; }

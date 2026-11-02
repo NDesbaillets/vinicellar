@@ -19,7 +19,7 @@
     ]);
     if (a.error || !a.data) { main.innerHTML = `<div class="empty"><p>Fiche introuvable.</p><a class="btn" href="/app/">Retour à la cave</a></div>`; return false; }
     it = a.data; places = (b || []).filter((p) => p.collection_id === a.data.collection_id); stock = c.data || []; tastings = d.data || [];
-    getUrl = await signed([it.bottle_path, it.label_path, it.label_back_path]);
+    getUrl = await signed([it.bottle_path, it.label_path, it.label_back_path, ...(it.photo_paths || [])]);
     document.title = `${it.name}${it.vintage ? " " + it.vintage : ""} · Vinicellar`;
     return true;
   }
@@ -30,16 +30,62 @@
   const withStock = () => stock.filter((s) => s.quantity > 0);
 
   // ---------------------------------------------------------------- rendu
+  // Toutes les photos de la fiche ; la vignette (cover) est celle des listes. Ajout et choix réservés aux éditeurs.
   function visual() {
-    const imgs = [it.bottle_path && { p: it.bottle_path, l: "Bouteille" }, it.label_path && { p: it.label_path, l: "Mon étiquette" }, it.label_back_path && { p: it.label_back_path, l: "Contre-étiquette" }].filter(Boolean)
-      .map((x) => ({ ...x, u: getUrl(x.p) })).filter((x) => x.u);
+    const imgs = [it.bottle_path && { p: it.bottle_path, l: "Bouteille" }, it.label_path && { p: it.label_path, l: "Étiquette" },
+      it.label_back_path && { p: it.label_back_path, l: "Contre-étiquette" }, ...(it.photo_paths || []).map((p) => ({ p, l: "Photo", extra: true }))]
+      .filter(Boolean).map((x) => ({ ...x, u: getUrl(x.p) })).filter((x) => x.u);
+    const cover = VC.mainImagePath(it);
+    let cur = Math.max(0, imgs.findIndex((x) => x.p === cover));
     const show = (i) => {
+      cur = i;
       $("#visual").innerHTML = imgs[i] ? `<img src="${esc(imgs[i].u)}" alt="${esc(imgs[i].l)} : ${esc(it.name)}">` : bottleSvg(it);
-      $$("#vswitch button").forEach((b, j) => b.setAttribute("aria-pressed", String(i === j)));
+      $$("#vswitch button[data-i]").forEach((b, j) => b.setAttribute("aria-pressed", String(i === j)));
+      const tools = $("#vtools");
+      if (!tools) return;
+      const x = imgs[i];
+      tools.innerHTML = `${x && x.p !== cover ? `<button class="btn quiet" data-v="cover">${I.check}Utiliser comme vignette</button>` : x ? `<span class="faint" style="font-size:.85rem">Vignette actuelle</span>` : ""}
+        ${x && x.extra ? `<button class="btn quiet" data-v="del">${I.trash}Supprimer</button>` : ""}
+        <label class="btn quiet">${I.camera}Ajouter une photo<input type="file" accept="image/*" data-v="add" hidden></label>`;
     };
-    $("#vswitch").innerHTML = imgs.length > 1 ? imgs.map((x) => `<button type="button" aria-label="${x.l}"><img src="${esc(x.u)}" alt=""></button>`).join("") : "";
-    $$("#vswitch button").forEach((b, j) => b.addEventListener("click", () => show(j)));
-    show(0);
+    $("#vswitch").innerHTML = imgs.length > 1 ? imgs.map((x, j) => `<button type="button" data-i="${j}" aria-label="${x.l}"${x.p === cover ? ' class="is-cover"' : ""}><img src="${esc(x.u)}" alt=""></button>`).join("") : "";
+    $$("#vswitch button[data-i]").forEach((b) => b.addEventListener("click", () => show(+b.dataset.i)));
+    show(cur);
+    if (ro() || !$("#vtools")) return;
+    $("#vtools").onclick = async (e) => {
+      const b = e.target.closest("[data-v]");
+      if (!b || b.tagName === "INPUT") return;
+      const x = imgs[cur];
+      if (b.dataset.v === "cover") {
+        const { error } = await sb.from("items").update({ cover_path: x.p }).eq("id", id);
+        if (error) return fail(error);
+        toast("Vignette mise à jour."); return refresh();
+      }
+      if (b.dataset.v === "del") {
+        if (!confirm("Supprimer cette photo ?")) return;
+        const { error } = await sb.from("items").update({ photo_paths: (it.photo_paths || []).filter((p) => p !== x.p), ...(it.cover_path === x.p ? { cover_path: null } : {}) }).eq("id", id);
+        if (error) return fail(error);
+        await sb.storage.from("labels").remove([x.p]);
+        toast("Photo supprimée."); return refresh();
+      }
+    };
+    $("#vtools").onchange = async (e) => {
+      const inp = e.target.closest('input[data-v="add"]');
+      if (!inp || !inp.files[0]) return;
+      try {
+        const img = await VC.shrink(inp.files[0]);
+        const path = `${ctx.user.id}/photo-${crypto.randomUUID()}.jpg`;
+        const up = await sb.storage.from("labels").upload(path, img.blob, { contentType: "image/jpeg" });
+        if (up.error) throw up.error;
+        const patch = { photo_paths: [...(it.photo_paths || []), path] };
+        if (!VC.mainImagePath(it)) patch.cover_path = path;
+        const { error } = await sb.from("items").update(patch).eq("id", id);
+        if (error) throw error;
+        toast("Photo ajoutée. Touchez « Utiliser comme vignette » pour l'afficher dans la liste.");
+        await refresh();
+        const k = $$("#vswitch button[data-i]").length - 1; if (k > 0) $$("#vswitch button[data-i]")[k].click();
+      } catch (err) { fail(err, "Photo non enregistrée."); }
+    };
   }
 
   function stockCard() {
@@ -148,7 +194,7 @@
     const prodUrl = safeUrl(it.producer_url);
     main.innerHTML = `<p style="margin:16px 0 0"><a class="btn quiet" href="/app/cave.html?loc=${encodeURIComponent(VC.getLoc() || "all")}">${I.back}Retour à la cave</a></p>
       <div class="sheet">
-        <aside class="sheet-aside"><div class="visual" id="visual"></div><div class="visual-switch" id="vswitch"></div><div id="stock" style="margin-top:16px">${stockCard()}</div></aside>
+        <aside class="sheet-aside"><div class="visual" id="visual"></div><div class="visual-switch" id="vswitch"></div>${ro() ? "" : `<div class="row" id="vtools" style="margin-top:8px"></div>`}<div id="stock" style="margin-top:16px">${stockCard()}</div></aside>
         <div style="display:grid;gap:16px;min-width:0">
           <div class="sheet-title"><span class="eyebrow">${esc(kind)}</span>
             <h1>${esc(it.name)}${it.vintage ? ` <span class="faint">${it.vintage}</span>` : ""}</h1>
@@ -325,7 +371,7 @@
   async function remove() {
     const n = total();
     if (!confirm(`Supprimer définitivement cette fiche${n ? ` et ses ${n} bouteille${n > 1 ? "s" : ""} en stock` : ""}, avec l'historique des dégustations ?`)) return;
-    const files = [it.label_path, it.label_back_path, it.bottle_path].filter(Boolean);
+    const files = [it.label_path, it.label_back_path, it.bottle_path, ...(it.photo_paths || [])].filter(Boolean);
     const { error } = await sb.from("items").delete().eq("id", id);
     if (error) return fail(error);
     if (files.length) await sb.storage.from("labels").remove(files);

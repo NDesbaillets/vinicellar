@@ -28,7 +28,7 @@
   function drawList(q = "") {
     const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");
     const terms = norm(q).split(/\s+/).filter(Boolean);
-    const list = available().filter((it) => !terms.length || terms.every((t) => norm([it.name, it.producer, it.vintage, it.region, it.appellation].join(" ")).includes(t)));
+    const list = available().filter((it) => !terms.length || terms.every((t) => norm([it.name, it.producer, it.vintage, it.region, it.appellation, it.country, ...(it.grapes || [])].join(" ")).includes(t)));
     $("#picks").innerHTML = list.length ? list.map(pickRow).join("") : `<p class="muted">Aucune bouteille${q ? " ne correspond" : " en stock ici"}.</p>`;
   }
 
@@ -41,7 +41,7 @@
       </div>
       <div id="result"></div>
       <div class="divider">ou dans la liste</div>
-      <label class="search"><span class="sr">Rechercher</span>${I.search}<input type="search" id="q" placeholder="Domaine, cuvée, millésime…" autocomplete="off"></label>
+      <label class="search"><span class="sr">Rechercher</span>${I.search}<input type="search" id="q" placeholder="Domaine, cuvée, cépage, région, millésime…" autocomplete="off"></label>
       <div class="pick-list" id="picks"></div>`;
     drawList();
     $("#loc").addEventListener("change", (e) => { loc = e.target.value; VC.setLoc(loc || "all"); drawList($("#q").value); });

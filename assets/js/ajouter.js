@@ -197,6 +197,7 @@
     main.innerHTML = `<p style="margin:16px 0 0"><button class="btn quiet" id="back">${I.back}Retour</button></p>
       <div class="page-head" style="padding-top:8px"><div><span class="eyebrow">Vérification</span><h1>${esc(it.name || "Nouvelle fiche")}</h1></div></div>
       ${notice}
+      <div id="dups"></div>
       <form id="item-form" class="card" novalidate style="margin-top:16px">
         ${imgs.length ? `<div class="review-imgs">${imgs.map((u) => `<img src="${esc(u)}" alt="">`).join("")}</div>` : ""}
         <fieldset><legend>En cave</legend><div class="grid3">
@@ -215,9 +216,63 @@
     $("#back2").addEventListener("click", back);
     $("#item-form").addEventListener("submit", (e) => { e.preventDefault(); saveItem(e.target, d, back); });
     window.scrollTo(0, 0);
+    showLookalikes(it, d, back);
   }
 
-  async function saveItem(f, d, back) {
+  // ---------------------------------------------------------------- même vin déjà en cave ?
+  // On compare producteur, cuvée et millésime aux fiches existantes ; en cas de doute on demande.
+  let dup = { cands: [], dismissed: false };
+  async function showLookalikes(it, d, back) {
+    dup = { cands: [], dismissed: false };
+    const colls = [...new Set(places.map((p) => p.collection_id))];
+    if (!colls.length || (!it.name && !it.producer)) return;
+    const [{ data: items }, { data: st }] = await Promise.all([
+      sb.from("items").select("id, name, producer, vintage, appellation, collection_id, label_path, bottle_path, cover_path, photo_paths").in("collection_id", colls),
+      sb.from("stock").select("item_id, quantity, location_id")
+    ]);
+    dup.cands = VC.lookalikes(it, items || []);
+    if (!dup.cands.length || !$("#dups")) return;
+    const n = (id) => (st || []).filter((x) => x.item_id === id).reduce((a, x) => a + x.quantity, 0);
+    const vint = () => { const v = $("#item-form").elements.vintage.value; return v ? +v : null; };
+    const unknownVintage = !it.vintage;
+    $("#dups").innerHTML = `<div class="card dup-card"><h3 style="margin:0 0 4px">Déjà en cave ?</h3>
+      <p class="muted" style="margin:0 0 10px">Cette bouteille ressemble à ${dup.cands.length > 1 ? "ces vins" : "ce vin"} :</p>
+      ${dup.cands.map((m) => `<div class="dup-row"><div><b>${esc([m.item.producer, m.item.name].filter(Boolean).join(" · "))}</b> ${m.item.vintage || "<span class='faint'>sans millésime</span>"}
+        <small class="muted">${n(m.item.id)} bt. en cave${m.sameVintage ? " · même millésime" : ""}</small></div>
+        <button type="button" class="btn" data-same="${m.item.id}">C'est ce vin</button></div>`).join("")}
+      ${unknownVintage ? `<label style="margin-top:10px">Millésime de votre bouteille (illisible sur la photo)<input type="number" id="dup-vintage" min="1800" max="2100" inputmode="numeric" placeholder="ex. 2020"></label>` : ""}
+      <button type="button" class="btn quiet" id="dup-no" style="margin-top:8px">Non, c'est un autre vin</button></div>`;
+    $("#dup-vintage")?.addEventListener("input", (e) => { $("#item-form").elements.vintage.value = e.target.value; });
+    $("#dup-no").addEventListener("click", () => { dup.dismissed = true; $("#dups").innerHTML = ""; });
+    $("#dups").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-same]");
+      if (!b) return;
+      const m = dup.cands.find((x) => x.item.id === b.dataset.same);
+      const v = vint();
+      // Millésimes différents ou inconnus : on fait préciser avant de mélanger deux millésimes.
+      if (m.item.vintage && v !== m.item.vintage) {
+        const s = VC.sheet(`<h2>Quel millésime ?</h2>
+          <p class="muted" style="margin-top:0">${v ? `Votre bouteille indique ${v}, la fiche en cave est ${m.item.vintage}.` : `La fiche en cave est un ${m.item.vintage} ; le millésime de votre bouteille n'a pas été lu.`}</p>
+          <div style="display:grid;gap:8px"><button class="btn" data-k="same">C'est un ${m.item.vintage} : ajouter à la fiche existante</button>
+          <label>Autre millésime : créer une nouvelle fiche<input type="number" id="other-v" min="1800" max="2100" inputmode="numeric" value="${v && v !== m.item.vintage ? v : ""}" placeholder="ex. 2019"></label>
+          <button class="btn ghost" data-k="new">Créer la fiche de ce millésime</button></div>
+          <div class="row end" style="margin-top:12px"><button class="btn quiet" data-close>Annuler</button></div>`);
+        s.addEventListener("click", (ev) => {
+          const k = ev.target.closest("[data-k]");
+          if (!k) return;
+          if (k.dataset.k === "same") { s.close(); return saveItem($("#item-form"), d, back, m.item); }
+          const ov = s.querySelector("#other-v").value;
+          if (!ov) return s.querySelector("#other-v").focus();
+          $("#item-form").elements.vintage.value = ov; dup.dismissed = true; s.close();
+          saveItem($("#item-form"), d, back);
+        });
+        return;
+      }
+      saveItem($("#item-form"), d, back, m.item);
+    });
+  }
+
+  async function saveItem(f, d, back, target = null) {
     const out = f.querySelector(".form-msg");
     const data = VC.readItemForm(f);
     if (!data.name) { out.textContent = "Le nom de la cuvée est obligatoire."; out.className = "form-msg error"; f.elements.name.focus(); return; }
@@ -229,16 +284,22 @@
     btn.disabled = true;
     try {
       const coll = wish ? wish.collection_id : collOf(loc);
-      // Doublon : même cuvée, même producteur, même millésime → on ajoute les bouteilles à la fiche existante.
-      let q = sb.from("items").select("id, name").ilike("name", data.name);
-      if (coll) q = q.eq("collection_id", coll);
-      q = data.vintage ? q.eq("vintage", data.vintage) : q.is("vintage", null);
-      if (data.producer) q = q.ilike("producer", data.producer);
-      const { data: dup } = await q.limit(1);
-      let id;
-      if (dup && dup.length && confirm(`« ${dup[0].name} » est déjà dans votre cave. Ajouter ces ${qty} bouteille(s) à la fiche existante ?`)) {
-        id = dup[0].id;
+      let id, locUse = loc;
+      if (target) {
+        // Même vin : les bouteilles rejoignent la fiche existante ; la photo y est ajoutée.
+        id = target.id;
+        if (!wish && collOf(loc) !== target.collection_id) locUse = (places.find((p) => p.collection_id === target.collection_id) || {}).id || loc;
+        const photos = d ? d.photo_paths.filter(Boolean) : [];
+        if (photos.length) {
+          const patch = target.label_path ? { photo_paths: [...(target.photo_paths || []), ...photos] } : { label_path: photos[0], photo_paths: [...(target.photo_paths || []), ...photos.slice(1)] };
+          await sb.from("items").update(patch).eq("id", id);
+        }
       } else {
+        // Une fiche très proche existe (même millésime) et l'utilisateur n'a pas tranché : on demande.
+        const strong = !dup.dismissed && dup.cands.find((m) => (m.item.vintage || null) === (data.vintage || null));
+        if (strong && !confirm(`« ${[strong.item.producer, strong.item.name].filter(Boolean).join(" · ")} ${strong.item.vintage || ""} » est déjà en cave. Créer quand même une nouvelle fiche ?\n(Annuler, puis « C'est ce vin » pour ajouter les bouteilles à la fiche existante.)`)) {
+          btn.disabled = false; $("#dups").scrollIntoView({ behavior: "smooth" }); return;
+        }
         const row = { ...data, ...(coll ? { collection_id: coll } : {}),
           label_path: d ? d.photo_paths[0] || null : null, label_back_path: d ? d.photo_paths[1] || null : null,
           bottle_path: d && d.result ? d.bottle_path : null, bottle_image_url: d && d.result ? d.result.image_url || null : null,
@@ -248,7 +309,7 @@
         id = ins.id;
       }
       if (qty > 0) {
-        const { error: se } = await sb.rpc("adjust_stock", { p_item: id, p_location: loc, p_delta: qty, p_bin: f.bin.value.trim() || null });
+        const { error: se } = await sb.rpc("adjust_stock", { p_item: id, p_location: locUse, p_delta: qty, p_bin: f.bin.value.trim() || null });
         if (se) throw se;
       }
       if (wish) {
@@ -257,7 +318,7 @@
       }
       if (d) await removeDraft(d, false);
       if (!wish) defaults.loc = loc;
-      toast(wish ? `Ajouté à « ${wish.name} ».` : "Ajouté à votre cave.", { label: "Voir la fiche", run: () => (location.href = `/app/fiche.html?id=${id}`) });
+      toast(wish ? `Ajouté à « ${wish.name} ».` : target ? `${qty} bouteille${qty > 1 ? "s" : ""} ajoutée${qty > 1 ? "s" : ""} à la fiche existante.` : "Ajouté à votre cave.", { label: "Voir la fiche", run: () => (location.href = `/app/fiche.html?id=${id}`) });
       back();
     } catch (e) {
       btn.disabled = false;

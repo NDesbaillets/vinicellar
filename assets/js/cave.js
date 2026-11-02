@@ -79,11 +79,14 @@
       countries.set(c, (countries.get(c) || 0) + n);
       if (c === state.country) { const r = VC.regionOf(it); if (r) regions.set(r, (regions.get(r) || 0) + n); }
     }
+    const grapes = new Map();
+    for (const it of items) { const n = qty(it); if (n) for (const g of it.grapes || []) { const k = grapeName(g); if (k) grapes.set(k, (grapes.get(k) || 0) + n); } }
     const opt = (m, sel) => [...m].sort((x, y) => y[1] - x[1]).map(([k, n]) => `<option value="${esc(k)}"${k === sel ? " selected" : ""}>${esc(k)} (${n})</option>`).join("");
     return `${present.length > 1 ? `<div class="chips" role="toolbar" aria-label="Type">${chip("cat", "", "Tous les types")}${present.map((k) => chip("cat", "kind:" + k.k, { red: "Rouge", white: "Blanc", rose: "Rosé", sparkling: "Mousseux", otherwine: "Autres vins", spirits: "Spiritueux, sakés" }[k.k])).join("")}</div>` : ""}
       ${countries.size || items.some((it) => VC.priceOf(it) != null) ? `<div class="geo">
         <label><span class="sr">Pays</span><select id="f-country"><option value="">Tous les pays</option>${opt(countries, state.country)}</select></label>
         <label><span class="sr">Région</span><select id="f-region"${state.country ? "" : " disabled"}><option value="">${state.country ? "Toutes les régions" : "Région"}</option>${opt(regions, state.region)}</select></label>
+        <label><span class="sr">Cépage</span><select id="f-grape"><option value="">Tous les cépages</option>${[...grapes].sort((a, b) => a[0].localeCompare(b[0], "fr")).map(([k, n]) => `<option value="${esc(k)}"${k === state.grape ? " selected" : ""}>${esc(k)} (${n})</option>`).join("")}</select></label>
         <label><span class="sr">Prix</span><select id="f-price"><option value="">Tous les prix</option>${VC.PRICE_BANDS.map(([k, l]) => { const n = items.filter((it) => { const p = VC.priceOf(it); return qty(it) > 0 && p != null && p >= VC.PRICE_BANDS.find((b) => b[0] === k)[2] && p < VC.PRICE_BANDS.find((b) => b[0] === k)[3]; }).reduce((a, it) => a + qty(it), 0); return `<option value="${k}"${k === state.price ? " selected" : ""}>${l} ${esc(ctx.profile.currency || "CHF")}${n ? ` (${n})` : ""}</option>`; }).join("")}</select></label></div>` : ""}
       <div class="chips" role="toolbar" aria-label="Garde">
       ${chip("win", "", "Tout")}${chip("win", "drink", "À boire maintenant")}${chip("win", "urgent", "À ouvrir vite")}${chip("win", "young", "À garder")}
@@ -152,7 +155,7 @@
     }
     main.innerHTML = `${head()}<div id="dash">${dashboard()}</div><div id="filters">${filtersBar()}</div>
       <div class="toolbar">
-        <label class="search"><span class="sr">Rechercher</span>${I.search}<input type="search" id="q" placeholder="Domaine, cuvée, cépage, millésime…" autocomplete="off" value="${esc(state.q)}"></label>
+        <label class="search"><span class="sr">Rechercher</span>${I.search}<input type="search" id="q" placeholder="Domaine, cuvée, cépage, région, millésime…" autocomplete="off" value="${esc(state.q)}"></label>
         <select id="sort" aria-label="Trier"><option value="urgent">À boire en priorité</option><option value="name">Nom</option><option value="vintage">Millésime</option><option value="qty">Quantité</option><option value="recent">Ajout récent</option></select>
       </div><div class="list" id="list"></div>`;
     $("#sort").value = state.sort;
@@ -186,6 +189,7 @@
     if (e.target.id === "f-country") { state.country = e.target.value; state.region = ""; $("#filters").innerHTML = filtersBar(); drawList(); }
     if (e.target.id === "f-region") { state.region = e.target.value; drawList(); }
     if (e.target.id === "f-price") { state.price = e.target.value; drawList(); }
+    if (e.target.id === "f-grape") { state.grape = e.target.value; $("#dash").innerHTML = dashboard(); drawList(); }
   });
 
   try { await load(); draw(); } catch (e) { VC.fail(e, "Impossible de charger la cave."); }

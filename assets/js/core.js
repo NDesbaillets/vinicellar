@@ -169,7 +169,8 @@
     }
     return (p) => signedCache.get(p) || null;
   }
-  const mainImagePath = (it) => it.bottle_path || it.label_path || null;
+  // Vignette : la photo choisie par l'utilisateur, sinon l'image de la bouteille, sinon l'étiquette.
+  const mainImagePath = (it) => it.cover_path || it.bottle_path || it.label_path || (it.photo_paths || [])[0] || null;
 
   // ------------------------------------------------------------------ navigation
   const NAV = [
@@ -265,12 +266,12 @@
         b.innerHTML = v >= i ? I.star : v >= i - .5 ? I.starHalf : I.star;
         if (!read) {
           b.setAttribute("aria-label", `${i} étoile${i > 1 ? "s" : ""}`);
+          // Toucher une étoile : note entière ; la retoucher : demi-étoile ; une troisième fois : efface.
+          // preventDefault : Safari iOS renvoie sinon le toucher vers la première étoile quand le widget est dans un <label>.
           b.addEventListener("click", (e) => {
-            const r = b.getBoundingClientRect();
-            const half = e.clientX && e.clientX - r.left < r.width / 2;
-            let nv = half ? i - .5 : i;
-            if (nv === v) nv = 0;          // toucher la même étoile efface la note
-            v = nv; draw(); onChange && onChange(v || null);
+            e.preventDefault(); e.stopPropagation();
+            v = v === i ? i - .5 : v === i - .5 ? 0 : i;
+            draw(); onChange && onChange(v || null);
           });
         }
         box.append(b);
@@ -495,7 +496,7 @@
       if (!tid) return d.close();
       let rating = null;
       d.querySelector(".dlg").innerHTML = `<h2>Santé !</h2><p class="muted">Bouteille retirée du stock. Une note pour vous en souvenir ?</p>
-        <label>Ma note<span id="to-stars"></span></label>
+        <div class="field-label">Ma note <small class="faint">(retoucher une étoile : demi-point)</small><div id="to-stars"></div></div>
         <label style="margin-top:12px">Avec quel plat ?<input name="pairing" maxlength="300" placeholder="ex. Filets de perche"></label>
         <label style="margin-top:12px">Commentaire<textarea name="notes" rows="3" placeholder="Nez, bouche, évolution…"></textarea></label>
         <div class="row" style="margin-top:16px"><button type="button" class="btn quiet" id="to-undo">Annuler la sortie</button><span class="spacer"></span>
@@ -529,6 +530,25 @@
     return w ? [w] : [];
   }
 
+  // Ressemblance entre deux fiches (même vin ?), insensible aux accents, à l'ordre des mots
+  // et aux mots génériques (domaine, château, grand cru…). Retourne un score de 0 à 1.
+  const STOP = new Set("domaine chateau cave caves maison tenuta weingut bodega bodegas cantina azienda agricola clos mas famille fils freres et de du des la le les l d di del della the of grand premier cru crus aoc aop doc docg igt vin vins wine sa".split(" "));
+  const tokens = (...xs) => new Set(xs.join(" ").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").split(/[^a-z0-9]+/).filter((t) => t.length > 1 && !STOP.has(t) && !/^(19|20)\d\d$/.test(t)));
+  const overlap = (a, b) => { if (!a.size || !b.size) return 0; let n = 0; for (const t of a) if (b.has(t)) n++; return n / Math.min(a.size, b.size); };
+  function likeness(a, b) {
+    const prodA = tokens(a.producer || ""), prodB = tokens(b.producer || "");
+    const all = overlap(tokens(a.producer || "", a.name || ""), tokens(b.producer || "", b.name || ""));
+    const nameScore = overlap(tokens(a.name || ""), tokens(b.name || ""));
+    const prodScore = prodA.size && prodB.size ? overlap(prodA, prodB) : null;
+    if (prodScore === 0) return 0;                       // producteurs connus et différents : pas le même vin
+    return Math.max(all, prodScore == null ? nameScore : (nameScore + prodScore) / 2);
+  }
+  // Fiches existantes qui ressemblent à `it` : { item, score, sameVintage }, les plus probables d'abord.
+  function lookalikes(it, list) {
+    return list.map((x) => ({ item: x, score: likeness(it, x), sameVintage: (x.vintage || null) === (it.vintage || null) }))
+      .filter((m) => m.score >= 0.6).sort((a, b) => (b.sameVintage - a.sameVintage) || (b.score - a.score)).slice(0, 3);
+  }
+
   const REASON = { drunk: "Bue", gifted: "Offerte", other: "Sortie" };
 
   window.VC = {
@@ -536,6 +556,6 @@
     $, $$, esc, money, date, today, year, range, safeUrl, host, isWine, title,
     windowStatus, bottleSvg, signed, mainImagePath, renderNav, boot, toast, fail, stars,
     renderItemForm, readItemForm, identify, shrink,
-    carnetNav, wishlistsFor, canEdit, getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, REASON, REGIONS, countryOf, regionOf, regionList, fold, priceOf, PRICE_BANDS
+    carnetNav, wishlistsFor, canEdit, lookalikes, likeness, getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, REASON, REGIONS, countryOf, regionOf, regionList, fold, priceOf, PRICE_BANDS
   };
 })();

@@ -6,7 +6,7 @@
   const main = $("#main");
 
   const [{ data: rows, error }, { data: places }] = await Promise.all([
-    sb.from("tastings").select("*, items(id, name, producer, vintage, category, style)").order("tasted_on", { ascending: false }).order("created_at", { ascending: false }).limit(1000),
+    sb.from("tastings").select("*, items(id, name, producer, vintage, category, style, grapes, region)").order("tasted_on", { ascending: false }).order("created_at", { ascending: false }).limit(1000),
     sb.from("locations").select("id, name")
   ]);
   if (error) return VC.fail(error, "Impossible de charger le journal.");
@@ -24,7 +24,7 @@
     const list = (rows || []).filter((r) => {
       if (reason && r.reason !== reason) return false;
       if (!terms.length) return true;
-      const hay = norm([r.items?.name, r.items?.producer, r.items?.vintage, r.pairing, r.occasion, r.notes].join(" "));
+      const hay = norm([r.items?.name, r.items?.producer, r.items?.vintage, r.items?.region, ...(r.items?.grapes || []), r.pairing, r.occasion, r.notes].join(" "));
       return terms.every((t) => hay.includes(t));
     });
     $("#list").innerHTML = list.length ? list.map((r) => `<div class="tasting">

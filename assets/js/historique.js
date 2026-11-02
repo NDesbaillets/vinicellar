@@ -38,14 +38,14 @@
 
   function draw(q = "") {
     const terms = VC.fold(q).split(/\s+/).filter(Boolean);
-    const list = past.filter(({ it }) => !terms.length || terms.every((t) => VC.fold([it.name, it.producer, it.vintage, it.region, it.appellation].join(" ")).includes(t)));
+    const list = past.filter(({ it }) => !terms.length || terms.every((t) => VC.fold([it.name, it.producer, it.vintage, it.region, it.appellation, it.country, ...(it.grapes || [])].join(" ")).includes(t)));
     $("#list").innerHTML = list.length ? list.map(card).join("") : `<div class="empty" style="grid-column:1/-1"><p class="muted">${past.length ? "Aucun résultat." : "Les vins dont la dernière bouteille est sortie apparaîtront ici."}</p></div>`;
     document.querySelectorAll(".stars-slot").forEach((s) => s.dataset.r && s.append(stars(+s.dataset.r, null, { read: true })));
   }
 
   main.innerHTML = `<div class="page-head"><div><span class="eyebrow">Vins passés par la cave</span><h1>Carnet</h1></div></div>${VC.carnetNav("historique")}
     <p class="muted">${past.length} vin${past.length > 1 ? "s" : ""} sans bouteille en stock. Le bouton + les ajoute à votre liste d'envies.</p>
-    <div class="toolbar" style="grid-template-columns:1fr"><label class="search"><span class="sr">Rechercher</span>${I.search}<input type="search" id="q" placeholder="Domaine, cuvée, millésime…"></label></div>
+    <div class="toolbar" style="grid-template-columns:1fr"><label class="search"><span class="sr">Rechercher</span>${I.search}<input type="search" id="q" placeholder="Domaine, cuvée, cépage, région, millésime…"></label></div>
     <div class="list" id="list"></div>`;
   draw();
   $("#q").addEventListener("input", (e) => draw(e.target.value));
