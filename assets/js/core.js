@@ -217,7 +217,15 @@
     const { data } = await sb.auth.getSession();
     if (!data.session) { location.replace("/?next=" + encodeURIComponent(location.pathname + location.search)); return new Promise(() => {}); }
     const user = data.session.user;
-    const { data: profile } = await sb.from("profiles").select("*").eq("id", user.id).single();
+    const { data: profile, error: pe } = await sb.from("profiles").select("*").eq("id", user.id).single();
+    // Pas de réseau (app ouverte depuis l'écran d'accueil hors connexion) : on le dit, sans renvoyer vers l'accueil.
+    if (pe && !profile && pe.code !== "PGRST116") {
+      const m = $("#main");
+      if (m) m.innerHTML = `<div class="empty">${I.glass}<h2>Hors ligne</h2><p class="muted">Vos caves sont en ligne. Reconnectez-vous au réseau, puis réessayez.</p><button class="btn" id="vc-retry">Réessayer</button></div>`;
+      $("#vc-retry")?.addEventListener("click", () => location.reload());
+      window.addEventListener("online", () => location.reload(), { once: true });
+      return new Promise(() => {});
+    }
     if (!profile || !profile.onboarded_at) { location.replace("/bienvenue.html"); return new Promise(() => {}); }
     const { data: mem } = await sb.from("collection_members").select("collection_id, role").eq("user_id", user.id);
     roles = new Map((mem || []).map((m) => [m.collection_id, m.role]));
@@ -553,11 +561,44 @@
 
   const REASON = { drunk: "Bue", gifted: "Offerte", other: "Sortie" };
 
+  // ------------------------------------------------------------------ app installée (PWA)
+  const standalone = navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+  if (standalone) document.documentElement.classList.add("standalone");
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+    window.addEventListener("load", () => { navigator.serviceWorker.register("/sw.js").catch(() => {}); });
+  }
+  // Android et Chrome proposent une invite ; on la garde pour le bouton « Installer ».
+  let installEvt = null;
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; document.dispatchEvent(new Event("vc:installable")); });
+  // Astuce d'installation (page « Quelle cave ? ») : Safari sur iPhone n'a pas d'invite, il faut passer par Partager.
+  function installHint(host) {
+    if (!host || standalone) return;
+    try { if (localStorage.getItem("vc.pwa-hint") === "1") return; } catch { /* stockage indisponible : on affiche */ }
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const show = (text, withInstall) => {
+      if (host.querySelector(".pwa-hint")) return;
+      const box = document.createElement("aside");
+      box.className = "invite pwa-hint"; box.setAttribute("role", "note");
+      box.innerHTML = `<div><b>Vinicellar comme une app</b><br><small class="muted">${text}</small></div>
+        <div class="row">${withInstall ? `<button class="btn" data-install>${I.plus}Installer</button>` : ""}<button class="btn ghost" data-ok>${withInstall ? "Plus tard" : "Compris"}</button></div>`;
+      box.addEventListener("click", async (e) => {
+        if (e.target.closest("[data-install]") && installEvt) { installEvt.prompt(); await installEvt.userChoice.catch(() => {}); installEvt = null; }
+        else if (!e.target.closest("[data-ok]")) return;
+        try { localStorage.setItem("vc.pwa-hint", "1"); } catch { /* tant pis */ }
+        box.remove();
+      });
+      host.prepend(box);
+    };
+    if (ios) show("Dans Safari, touchez Partager (le carré avec une flèche), puis « Sur l'écran d'accueil ». Elle s'ouvrira en plein écran, comme une app.", false);
+    else if (installEvt) show("Ajoutez-la à votre écran d'accueil : elle s'ouvrira en plein écran.", true);
+    else document.addEventListener("vc:installable", () => show("Ajoutez-la à votre écran d'accueil : elle s'ouvrira en plein écran.", true), { once: true });
+  }
+
   window.VC = {
     sb, cfg, I, CATEGORY, CATEGORY_SHORT, STYLE, KIND, CURRENCIES, AI_FIELDS,
     $, $$, esc, money, date, today, year, range, safeUrl, host, isWine, title,
     windowStatus, bottleSvg, signed, mainImagePath, renderNav, boot, toast, fail, stars,
     renderItemForm, readItemForm, identify, shrink,
-    carnetNav, wishlistsFor, canEdit, lookalikes, likeness, getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, REASON, REGIONS, countryOf, regionOf, regionList, fold, priceOf, PRICE_BANDS
+    carnetNav, wishlistsFor, canEdit, lookalikes, likeness, getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, installHint, standalone, REASON, REGIONS, countryOf, regionOf, regionList, fold, priceOf, PRICE_BANDS
   };
 })();

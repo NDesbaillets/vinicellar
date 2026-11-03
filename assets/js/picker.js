@@ -44,6 +44,7 @@
       <div class="row"><button class="btn" data-acc>${I.check}Accepter</button><button class="btn ghost" data-dec>Refuser</button></div></div>`).join("");
   }
   drawInvites(invites);
+  VC.installHint($("#invites"));
   $("#invites").addEventListener("click", async (e) => {
     const box = e.target.closest(".invite");
     if (!box) return;

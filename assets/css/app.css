@@ -533,3 +533,12 @@ dialog h2 { margin-bottom: 14px; }
 .bottle-wrap .bottle { padding-right: 78px; }
 .tags { align-items: center; }
 .tags .kind { font-size: var(--fs-xs); color: var(--ink-2); }
+
+/* app installée (PWA) : gestes natifs, pas de zoom sur les champs, barre du haut sous l'encoche */
+html { -webkit-tap-highlight-color: transparent; }
+body.app { overscroll-behavior-y: none; }
+.tabbar, .btn, .chip, .kstat, .out-btn, .tab-add { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+@media (pointer: coarse) { input, select, textarea, .geo select { font-size: 16px; } }
+.topbar { padding-top: env(safe-area-inset-top); }
+@media (max-width: 759px) { .topbar .wrap { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); } }
+.pwa-hint .row { flex-wrap: wrap; }

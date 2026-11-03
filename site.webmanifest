@@ -1,4 +1,5 @@
 {
+  "id": "/app/",
   "name": "Vinicellar",
   "short_name": "Vinicellar",
   "description": "Votre cave à vin, bouteille par bouteille.",
@@ -6,11 +7,19 @@
   "start_url": "/app/",
   "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#FAF7F2",
   "theme_color": "#FAF7F2",
+  "categories": ["food", "lifestyle"],
   "icons": [
-    { "src": "/assets/img/icon.svg", "sizes": "any", "type": "image/svg+xml" },
-    { "src": "/assets/img/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/assets/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    { "src": "/assets/img/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/assets/img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/img/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Ajouter une bouteille", "short_name": "Ajouter", "url": "/app/ajouter.html", "icons": [{ "src": "/assets/img/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Sortir une bouteille", "short_name": "Sortir", "url": "/app/sortir.html", "icons": [{ "src": "/assets/img/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Que boire ce soir ?", "short_name": "Sommelier", "url": "/app/sommelier.html", "icons": [{ "src": "/assets/img/icon-192.png", "sizes": "192x192" }] }
   ]
 }
