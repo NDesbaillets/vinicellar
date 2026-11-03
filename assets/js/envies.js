@@ -53,7 +53,7 @@
         <label>Type<select name="category">${Object.entries(CATEGORY).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></label>
         <label>Bouteilles voulues<input name="qty" type="number" min="1" max="999" inputmode="numeric" placeholder="ex. 6"></label>
         <label>Prix cible<input name="price" type="number" min="0" step="0.5" inputmode="decimal" placeholder="${esc(ctx.profile.currency || "CHF")}"></label>
-        <label class="wide">Note<input name="note" maxlength="300" placeholder="ex. Goûté chez Paul, demander chez Gerstl"></label></div>
+        <label class="wide">Note<input name="note" maxlength="300" placeholder="ex. Goûté chez Paul"></label></div>
         <label class="row" style="margin-top:12px;font-weight:400;color:var(--ink)"><input type="checkbox" name="ai" checked> Compléter la fiche avec l'IA (garde, accords, prix)</label>
         <div class="row" style="margin-top:14px"><button class="btn" type="submit">${I.plus}Ajouter à la liste</button></div></form>
       <div class="list" id="entries" style="margin-top:16px">${mine.map(row).join("") || `<div class="empty" style="grid-column:1/-1"><p class="muted">Liste vide. Ajoutez un vin ci-dessus, ou depuis l'historique et les fiches.</p></div>`}</div>`

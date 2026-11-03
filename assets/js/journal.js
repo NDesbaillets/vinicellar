@@ -14,7 +14,7 @@
 
   main.innerHTML = `<div class="page-head"><div><span class="eyebrow">Sorties et dégustations</span><h1>Carnet</h1></div></div>${VC.carnetNav("journal")}
     <div class="chips" id="reasons"><button class="chip" data-r="" aria-pressed="true">Toutes</button><button class="chip" data-r="drunk" aria-pressed="false">Bues</button><button class="chip" data-r="gifted" aria-pressed="false">Offertes</button><button class="chip" data-r="other" aria-pressed="false">Autres</button></div>
-    <div class="toolbar" style="grid-template-columns:1fr"><label class="search"><span class="sr">Rechercher</span>${I.search}<input type="search" id="q" placeholder="Vin, plat, occasion, commentaire…"></label></div>
+    <div class="toolbar" style="grid-template-columns:1fr"><label class="search"><span class="sr">Rechercher</span>${I.search}<input type="search" id="q" placeholder="Vin, plat, occasion…"></label></div>
     <div class="card" id="list"></div>`;
 
   const norm = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "");

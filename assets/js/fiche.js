@@ -44,7 +44,7 @@
       const tools = $("#vtools");
       if (!tools) return;
       const x = imgs[i];
-      tools.innerHTML = `${x && x.p !== cover ? `<button class="btn quiet" data-v="cover">${I.check}Utiliser comme vignette</button>` : x ? `<span class="faint" style="font-size:.85rem">Vignette actuelle</span>` : ""}
+      tools.innerHTML = `${x && x.p !== cover ? `<button class="btn quiet" data-v="cover">${I.check}Utiliser comme vignette</button>` : x ? `<span class="faint" style="font-size:var(--fs-s)">Vignette actuelle</span>` : ""}
         ${x && x.extra ? `<button class="btn quiet" data-v="del">${I.trash}Supprimer</button>` : ""}
         <label class="btn quiet">${I.camera}Ajouter une photo<input type="file" accept="image/*" data-v="add" hidden></label>`;
     };

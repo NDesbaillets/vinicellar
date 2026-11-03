@@ -41,7 +41,7 @@
       </div>
       <div id="result"></div>
       <div class="divider">ou dans la liste</div>
-      <label class="search"><span class="sr">Rechercher</span>${I.search}<input type="search" id="q" placeholder="Domaine, cuvée, cépage, région, millésime…" autocomplete="off"></label>
+      <label class="search"><span class="sr">Rechercher</span>${I.search}<input type="search" id="q" placeholder="Domaine, cuvée, cépage…" autocomplete="off"></label>
       <div class="pick-list" id="picks"></div>`;
     drawList();
     $("#loc").addEventListener("change", (e) => { loc = e.target.value; VC.setLoc(loc || "all"); drawList($("#q").value); });

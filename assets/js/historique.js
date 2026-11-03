@@ -45,7 +45,7 @@
 
   main.innerHTML = `<div class="page-head"><div><span class="eyebrow">Vins passés par la cave</span><h1>Carnet</h1></div></div>${VC.carnetNav("historique")}
     <p class="muted">${past.length} vin${past.length > 1 ? "s" : ""} sans bouteille en stock. Le bouton + les ajoute à votre liste d'envies.</p>
-    <div class="toolbar" style="grid-template-columns:1fr"><label class="search"><span class="sr">Rechercher</span>${I.search}<input type="search" id="q" placeholder="Domaine, cuvée, cépage, région, millésime…"></label></div>
+    <div class="toolbar" style="grid-template-columns:1fr"><label class="search"><span class="sr">Rechercher</span>${I.search}<input type="search" id="q" placeholder="Domaine, cuvée, cépage…"></label></div>
     <div class="list" id="list"></div>`;
   draw();
   $("#q").addEventListener("input", (e) => draw(e.target.value));

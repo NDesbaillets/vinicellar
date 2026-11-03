@@ -20,7 +20,7 @@
     <div class="card"><h3>Mes données</h3>
       <p class="muted">Export de toute la cave au format du modèle d'import (une ligne par vin et par cave), lisible dans Excel ou Numbers et réimportable tel quel.</p>
       <div class="row"><button class="btn ghost" id="export">${I.download}Exporter la cave (.xlsx)</button><a class="btn ghost" href="/app/importer.html">Importer un tableau</a><button class="btn ghost" id="export-j">${I.download}Exporter le journal (.csv)</button></div>
-      <p class="faint" style="margin:14px 0 0;font-size:.85rem">Analyses d'étiquettes ces dernières 24 h : <span id="quota">…</span></p></div>
+      <p class="faint" style="margin:14px 0 0;font-size:var(--fs-s)">Analyses d'étiquettes ces dernières 24 h : <span id="quota">…</span></p></div>
     <div class="card"><h3>Caves et partage</h3><p class="muted">Créer, renommer ou supprimer une cave ; inviter votre conjoint ou votre famille.</p><a class="btn ghost" href="/app/caves.html">${I.share}Gérer les caves et le partage</a></div>
     ${p.is_admin ? `<div class="card"><h3>Administration</h3><p class="muted">Valider les demandes d'invitation.</p><a class="btn ghost" href="/app/admin.html">Demandes d'invitation<span id="req-n"></span></a></div>` : ""}
     <div class="card"><h3>Session</h3><div class="row"><button class="btn ghost" id="logout">${I.out}Se déconnecter</button><button class="btn ghost" id="logout-all">Se déconnecter de tous les appareils</button></div></div>`;
