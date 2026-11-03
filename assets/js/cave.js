@@ -35,15 +35,18 @@
 
   // ---------------------------------------------------------------- tableau de bord
   const KINDS = [
-    { k: "red", label: "Rouges", color: "#6B1E2E", test: (it) => it.category === "wine" && it.style === "red" },
-    { k: "white", label: "Blancs", color: "#D8C27A", test: (it) => it.category === "wine" && it.style === "white" },
-    { k: "rose", label: "Rosés", color: "#E6A0A6", test: (it) => it.category === "wine" && it.style === "rose" },
-    { k: "sparkling", label: "Mousseux", color: "#B9A24E", test: (it) => it.category === "wine" && it.style === "sparkling" },
-    { k: "otherwine", label: "Autres vins", color: "#C6862A", test: (it) => it.category === "wine" && !["red", "white", "rose", "sparkling"].includes(it.style) },
-    { k: "spirits", label: "Spiritueux, sakés", color: "#77401A", test: (it) => it.category !== "wine" }
+    { k: "red", label: "Rouges", one: "Rouge", test: (it) => it.category === "wine" && it.style === "red" },
+    { k: "white", label: "Blancs", one: "Blanc", test: (it) => it.category === "wine" && it.style === "white" },
+    { k: "rose", label: "Rosés", one: "Rosé", test: (it) => it.category === "wine" && it.style === "rose" },
+    { k: "sparkling", label: "Mousseux", one: "Mousseux", test: (it) => it.category === "wine" && it.style === "sparkling" },
+    { k: "otherwine", label: "Autres vins", one: "Autres vins", test: (it) => it.category === "wine" && !["red", "white", "rose", "sparkling"].includes(it.style) },
+    { k: "spirits", label: "Spiritueux", one: "Spiritueux, sakés", test: (it) => it.category !== "wine" }
   ];
+  const color = (k) => `var(--k-${k})`;
   const grapeName = (g) => g.replace(/\(.*?\)/g, "").replace(/\d+\s*%/g, "").replace(/\s+/g, " ").trim();
+  const canEditHere = () => (loc ? VC.canEdit((places.find((x) => x.id === loc) || {}).collection_id) : places.some((x) => VC.canEdit(x.collection_id)));
 
+  // Bandeau de chiffres sur une ligne (défilante) ; toucher un type filtre la liste.
   function dashboard() {
     const inStock = items.filter((it) => qty(it) > 0);
     const total = inStock.reduce((a, it) => a + qty(it), 0);
@@ -52,46 +55,92 @@
     const value = inStock.reduce((a, it) => a + (it.market_currency === cur && it.market_price ? it.market_price * qty(it) : 0), 0);
     const ready = inStock.filter((it) => { const w = windowStatus(it); return w && w.rank <= 3; }).reduce((a, it) => a + qty(it), 0);
     const urgent = inStock.filter((it) => { const w = windowStatus(it); return w && w.rank <= 1; }).reduce((a, it) => a + qty(it), 0);
-    const grapes = new Map();
-    for (const it of inStock) for (const g of it.grapes || []) { const n = grapeName(g); if (n) grapes.set(n, (grapes.get(n) || 0) + qty(it)); }
-    const gl = [...grapes].sort((a, b) => b[1] - a[1]);
-    const shown = counts.filter((c) => c.n > 0 || c.k === "red" || c.k === "white");
-    return `<div class="dash">
-        <div class="stat total"><b>${total}</b><span>bouteille${total > 1 ? "s" : ""}</span></div>
-        ${shown.map((c) => `<button class="stat chip-stat" data-kind="${c.k}" style="text-align:left;cursor:pointer;font:inherit;color:inherit" aria-pressed="${state.cat === "kind:" + c.k}"><b>${c.n}</b><span><i style="background:${c.color}"></i>${c.label}</span></button>`).join("")}
+    const shown = counts.filter((c) => c.n > 0);
+    const sum = [ready && `${ready} prête${ready > 1 ? "s" : ""} à boire`, urgent && `<b style="color:var(--warn)">${urgent} à ouvrir vite</b>`, value && `valeur ${money(Math.round(value), cur)}`].filter(Boolean).join(" · ");
+    return `<div class="kstrip" role="toolbar" aria-label="Types">
+        <div class="kstat total"><b>${total}</b><span>bouteille${total > 1 ? "s" : ""}</span></div>
+        ${shown.map((c) => `<button class="kstat" data-kind="${c.k}" aria-pressed="${state.cat === "kind:" + c.k}"><b>${c.n}</b><span><i style="background:${color(c.k)}"></i>${c.label}</span></button>`).join("")}
       </div>
-      ${total ? `<div class="mix" aria-hidden="true">${counts.filter((c) => c.n).map((c) => `<span style="width:${(c.n / total) * 100}%;background:${c.color}"></span>`).join("")}</div>` : ""}
-      <p class="muted" style="margin:0 0 4px">${[ready && `${ready} prête${ready > 1 ? "s" : ""} à boire`, urgent && `<b style="color:var(--warn)">${urgent} à ouvrir vite</b>`, value && `valeur estimée ${money(Math.round(value), cur)}`].filter(Boolean).join(" · ") || "&nbsp;"}</p>
-      ${gl.length ? `<div class="grapes"><div class="chips" role="toolbar" aria-label="Cépages">${gl.slice(0, 14).map(([g, n]) => `<button class="chip" data-grape="${esc(g)}" aria-pressed="${state.grape === g}">${esc(g)}<span class="n">${n}</span></button>`).join("")}</div></div>` : ""}
-      ${(loc ? VC.canEdit((places.find((x) => x.id === loc) || {}).collection_id) : places.some((x) => VC.canEdit(x.collection_id))) ? `<div class="cta-row"><a class="btn big" href="/app/sortir.html?loc=${loc || "all"}">${I.camera}Sortir une bouteille</a><a class="btn big ghost" href="/app/ajouter.html">${I.plus}Ajouter</a></div>` : `<p class="notice info" style="margin-top:12px">Cave partagée en lecture seule.</p>`}`;
+      ${total ? `<div class="mix" aria-hidden="true">${counts.filter((c) => c.n).map((c) => `<span style="width:${(c.n / total) * 100}%;background:${color(c.k)}"></span>`).join("")}</div>` : ""}
+      ${sum ? `<p class="dash-sum">${sum}</p>` : ""}
+      ${canEditHere() ? `<div class="cta-row slim"><a class="btn" href="/app/sortir.html?loc=${loc || "all"}">${I.camera}Sortir</a><a class="btn ghost" href="/app/ajouter.html">${I.plus}Ajouter</a></div>` : `<p class="notice info" style="margin-top:12px">Cave partagée en lecture seule.</p>`}`;
   }
 
-  // ---------------------------------------------------------------- filtres et liste
-  function filtersBar() {
-    const cats = [...new Set(items.map((i) => i.category))];
-    const chip = (g, v, l) => `<button class="chip" data-group="${g}" data-val="${esc(v)}" aria-pressed="${state[g] === v}">${esc(l)}</button>`;
+  // ---------------------------------------------------------------- filtres (feuille) et liste
+  const WIN = { drink: "À boire maintenant", urgent: "À ouvrir vite", young: "À garder" };
+  const priceLabel = (k) => { const b = VC.PRICE_BANDS.find((x) => x[0] === k); return b ? `${b[1]} ${ctx.profile.currency || "CHF"}` : k; };
+  // Filtres actifs, chacun avec de quoi le retirer.
+  function active() {
+    const kind = KINDS.find((k) => "kind:" + k.k === state.cat);
+    return [
+      state.cat && ["cat", kind ? kind.one : (CATEGORY_SHORT[state.cat] || state.cat)],
+      state.win && ["win", WIN[state.win]],
+      state.grape && ["grape", state.grape],
+      state.country && ["country", state.country],
+      state.region && ["region", state.region],
+      state.price && ["price", priceLabel(state.price)],
+      state.empty && ["empty", "Sorties / à racheter"]
+    ].filter(Boolean);
+  }
+  function findBar() {
+    const n = active().length;
+    return `<div class="find">
+        <label class="search"><span class="sr">Rechercher</span>${I.search}<input type="search" id="q" placeholder="Rechercher" autocomplete="off" value="${esc(state.q)}"></label>
+        <button class="btn ghost filter-btn" id="open-filters" aria-haspopup="dialog">${I.filter}Filtres${n ? ` <span class="count">${n}</span>` : ""}</button>
+      </div>
+      ${n ? `<div class="active-filters">${active().map(([g, l]) => `<button class="chip" data-clear="${g}" aria-label="Retirer le filtre ${esc(l)}">${esc(l)}${I.x}</button>`).join("")}</div>` : ""}`;
+  }
+
+  function filterSheetHtml() {
+    const chip = (g, v, l) => `<button type="button" class="chip" data-group="${g}" data-val="${esc(v)}" aria-pressed="${state[g] === v}">${esc(l)}</button>`;
     const present = KINDS.filter((k) => items.some((it) => qty(it) > 0 && k.test(it)));
-    // Pays et régions présents dans la cave (bouteilles en stock), avec leur nombre de bouteilles.
-    const countries = new Map(), regions = new Map();
+    const countries = new Map(), regions = new Map(), grapes = new Map();
     for (const it of items) {
       const n = qty(it); if (!n) continue;
+      for (const g of it.grapes || []) { const k = grapeName(g); if (k) grapes.set(k, (grapes.get(k) || 0) + n); }
       const c = VC.countryOf(it); if (!c) continue;
       countries.set(c, (countries.get(c) || 0) + n);
       if (c === state.country) { const r = VC.regionOf(it); if (r) regions.set(r, (regions.get(r) || 0) + n); }
     }
-    const grapes = new Map();
-    for (const it of items) { const n = qty(it); if (n) for (const g of it.grapes || []) { const k = grapeName(g); if (k) grapes.set(k, (grapes.get(k) || 0) + n); } }
     const opt = (m, sel) => [...m].sort((x, y) => y[1] - x[1]).map(([k, n]) => `<option value="${esc(k)}"${k === sel ? " selected" : ""}>${esc(k)} (${n})</option>`).join("");
-    return `${present.length > 1 ? `<div class="chips" role="toolbar" aria-label="Type">${chip("cat", "", "Tous les types")}${present.map((k) => chip("cat", "kind:" + k.k, { red: "Rouge", white: "Blanc", rose: "Rosé", sparkling: "Mousseux", otherwine: "Autres vins", spirits: "Spiritueux, sakés" }[k.k])).join("")}</div>` : ""}
-      ${countries.size || items.some((it) => VC.priceOf(it) != null) ? `<div class="geo">
-        <label><span class="sr">Pays</span><select id="f-country"><option value="">Tous les pays</option>${opt(countries, state.country)}</select></label>
-        <label><span class="sr">Région</span><select id="f-region"${state.country ? "" : " disabled"}><option value="">${state.country ? "Toutes les régions" : "Région"}</option>${opt(regions, state.region)}</select></label>
-        <label><span class="sr">Cépage</span><select id="f-grape"><option value="">Tous les cépages</option>${[...grapes].sort((a, b) => a[0].localeCompare(b[0], "fr")).map(([k, n]) => `<option value="${esc(k)}"${k === state.grape ? " selected" : ""}>${esc(k)} (${n})</option>`).join("")}</select></label>
-        <label><span class="sr">Prix</span><select id="f-price"><option value="">Tous les prix</option>${VC.PRICE_BANDS.map(([k, l]) => { const n = items.filter((it) => { const p = VC.priceOf(it); return qty(it) > 0 && p != null && p >= VC.PRICE_BANDS.find((b) => b[0] === k)[2] && p < VC.PRICE_BANDS.find((b) => b[0] === k)[3]; }).reduce((a, it) => a + qty(it), 0); return `<option value="${k}"${k === state.price ? " selected" : ""}>${l} ${esc(ctx.profile.currency || "CHF")}${n ? ` (${n})` : ""}</option>`; }).join("")}</select></label></div>` : ""}
-      <div class="chips" role="toolbar" aria-label="Garde">
-      ${chip("win", "", "Tout")}${chip("win", "drink", "À boire maintenant")}${chip("win", "urgent", "À ouvrir vite")}${chip("win", "young", "À garder")}
-      ${cats.length > 1 ? cats.filter((c) => c !== "wine").map((c) => chip("cat", c, CATEGORY_SHORT[c] || c)).join("") : ""}
-      <button class="chip" data-group="empty" aria-pressed="${state.empty}">Sorties / à racheter</button></div>`;
+    const bandN = (k) => { const b = VC.PRICE_BANDS.find((x) => x[0] === k); return items.filter((it) => { const p = VC.priceOf(it); return qty(it) > 0 && p != null && p >= b[2] && p < b[3]; }).reduce((a, it) => a + qty(it), 0); };
+    return `<div class="fsheet"><h2>Filtres</h2>
+      ${present.length > 1 ? `<div class="fgroup"><div class="field-label">Type</div><div class="chips">${chip("cat", "", "Tous")}${present.map((k) => chip("cat", "kind:" + k.k, k.one)).join("")}</div></div>` : ""}
+      <div class="fgroup"><div class="field-label">Garde</div><div class="chips">${chip("win", "", "Tout")}${Object.entries(WIN).map(([k, l]) => chip("win", k, l)).join("")}</div></div>
+      <div class="fgroup"><div class="geo">
+        <label>Pays<select id="f-country"><option value="">Tous</option>${opt(countries, state.country)}</select></label>
+        <label>Région<select id="f-region"${state.country ? "" : " disabled"}><option value="">${state.country ? "Toutes" : "Choisir un pays"}</option>${opt(regions, state.region)}</select></label>
+        <label>Cépage<select id="f-grape"><option value="">Tous</option>${[...grapes].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "fr")).map(([k, n]) => `<option value="${esc(k)}"${k === state.grape ? " selected" : ""}>${esc(k)} (${n})</option>`).join("")}</select></label>
+        <label>Prix<select id="f-price"><option value="">Tous</option>${VC.PRICE_BANDS.map(([k, l]) => { const n = bandN(k); return `<option value="${k}"${k === state.price ? " selected" : ""}>${l} ${esc(ctx.profile.currency || "CHF")}${n ? ` (${n})` : ""}</option>`; }).join("")}</select></label>
+      </div></div>
+      <div class="fgroup"><label>Trier par<select id="sort"><option value="urgent">À boire en priorité</option><option value="name">Nom</option><option value="vintage">Millésime</option><option value="qty">Quantité</option><option value="recent">Ajout récent</option></select></label></div>
+      <div class="fgroup"><div class="chips"><button type="button" class="chip" data-group="empty" aria-pressed="${state.empty}">Sorties / à racheter</button></div></div>
+      <div class="row end" style="margin-top:18px"><button type="button" class="btn quiet" id="f-reset">Tout effacer</button><button type="button" class="btn" data-close id="f-done">Voir ${filtered().length} vin${filtered().length > 1 ? "s" : ""}</button></div></div>`;
+  }
+
+  function openFilters() {
+    const d = VC.sheet(filterSheetHtml());
+    const redraw = () => { d.querySelector(".dlg").innerHTML = filterSheetHtml(); d.querySelector("#sort").value = state.sort; refresh(); };
+    d.querySelector("#sort").value = state.sort;
+    d.addEventListener("click", (e) => {
+      const c = e.target.closest("[data-group]");
+      if (c) {
+        const grp = c.dataset.group;
+        if (grp === "empty") state.empty = !state.empty;
+        else state[grp] = state[grp] === c.dataset.val ? "" : c.dataset.val;
+        save(); return redraw();
+      }
+      if (e.target.closest("#f-reset")) { Object.assign(state, { win: "", cat: "", grape: "", country: "", region: "", price: "", empty: false }); save(); redraw(); }
+    });
+    d.addEventListener("change", (e) => {
+      const id = e.target.id, v = e.target.value;
+      if (id === "sort") { state.sort = v; save(); }
+      if (id === "f-country") { state.country = v; state.region = ""; }
+      if (id === "f-region") state.region = v;
+      if (id === "f-price") state.price = v;
+      if (id === "f-grape") state.grape = v;
+      redraw();
+    });
   }
 
   function filtered() {
@@ -144,7 +193,16 @@
 
   function drawList() {
     const list = filtered();
+    $("#count").textContent = `${list.length} vin${list.length > 1 ? "s" : ""}`;
     $("#list").innerHTML = list.length ? list.map(card).join("") : `<div class="empty" style="grid-column:1/-1"><p class="muted">Aucune bouteille ne correspond.</p></div>`;
+  }
+  // Après un changement de filtre : bandeau (type sélectionné), barre de recherche (pastilles actives) et liste.
+  function refresh() {
+    $("#dash").innerHTML = dashboard();
+    const q = $("#q"), focused = document.activeElement === q;
+    $("#findbar").innerHTML = findBar();
+    if (focused) { const n = $("#q"); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }
+    drawList();
   }
 
   function draw() {
@@ -153,15 +211,11 @@
         <a class="btn big" href="/app/ajouter.html">${I.camera}Ajouter une bouteille</a></div>`;
       return;
     }
-    main.innerHTML = `${head()}<div id="dash">${dashboard()}</div><div id="filters">${filtersBar()}</div>
-      <div class="toolbar">
-        <label class="search"><span class="sr">Rechercher</span>${I.search}<input type="search" id="q" placeholder="Domaine, cuvée, cépage, région, millésime…" autocomplete="off" value="${esc(state.q)}"></label>
-        <select id="sort" aria-label="Trier"><option value="urgent">À boire en priorité</option><option value="name">Nom</option><option value="vintage">Millésime</option><option value="qty">Quantité</option><option value="recent">Ajout récent</option></select>
-      </div><div class="list" id="list"></div>`;
-    $("#sort").value = state.sort;
+    main.innerHTML = `${head()}<div id="dash">${dashboard()}</div><div id="findbar">${findBar()}</div>
+      <div class="list-head"><span id="count"></span></div><div class="list" id="list"></div>`;
     drawList();
   }
-  const head = () => `<div class="page-head"><div><span class="eyebrow"><a href="/app/" style="color:inherit;text-decoration:none">${I.back.replace("<svg", '<svg width="13" height="13" style="vertical-align:-2px"')} Changer de cave</a></span><h1>${esc(placeName())}</h1></div></div>`;
+  const head = () => `<div class="page-head tight"><div><a class="back-link" href="/app/">${I.back}Caves</a><h1>${esc(placeName())}</h1></div></div>`;
 
   main.addEventListener("click", (e) => {
     const out = e.target.closest("[data-out]");
@@ -172,25 +226,12 @@
       return;
     }
     const k = e.target.closest("[data-kind]");
-    if (k) { state.cat = state.cat === "kind:" + k.dataset.kind ? "" : "kind:" + k.dataset.kind; $("#dash").innerHTML = dashboard(); $("#filters").innerHTML = filtersBar(); return drawList(); }
-    const g = e.target.closest("[data-grape]");
-    if (g) { state.grape = state.grape === g.dataset.grape ? "" : g.dataset.grape; $("#dash").innerHTML = dashboard(); return drawList(); }
-    const c = e.target.closest("[data-group]");
-    if (c) {
-      const grp = c.dataset.group;
-      if (grp === "empty") state.empty = !state.empty;
-      else state[grp] = state[grp] === c.dataset.val ? "" : c.dataset.val;
-      save(); $("#filters").innerHTML = filtersBar(); drawList();
-    }
+    if (k) { state.cat = state.cat === "kind:" + k.dataset.kind ? "" : "kind:" + k.dataset.kind; save(); return refresh(); }
+    const x = e.target.closest("[data-clear]");
+    if (x) { const g = x.dataset.clear; state[g] = g === "empty" ? false : ""; if (g === "country") state.region = ""; save(); return refresh(); }
+    if (e.target.closest("#open-filters")) openFilters();
   });
   main.addEventListener("input", (e) => { if (e.target.id === "q") { state.q = e.target.value; drawList(); } });
-  main.addEventListener("change", (e) => {
-    if (e.target.id === "sort") { state.sort = e.target.value; save(); drawList(); }
-    if (e.target.id === "f-country") { state.country = e.target.value; state.region = ""; $("#filters").innerHTML = filtersBar(); drawList(); }
-    if (e.target.id === "f-region") { state.region = e.target.value; drawList(); }
-    if (e.target.id === "f-price") { state.price = e.target.value; drawList(); }
-    if (e.target.id === "f-grape") { state.grape = e.target.value; $("#dash").innerHTML = dashboard(); drawList(); }
-  });
 
   try { await load(); draw(); } catch (e) { VC.fail(e, "Impossible de charger la cave."); }
 })();

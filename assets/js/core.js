@@ -34,6 +34,8 @@
     trash: P('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'),
     sparkle: P('<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>'),
     back: P('<path d="M15 5 8 12l7 7"/>'),
+    filter: P('<path d="M4 6h16M7 12h10M10 18h4"/>'),
+    x: P('<path d="M6 6l12 12M18 6 6 18"/>'),
     move: P('<path d="M4 12h16M14 6l6 6-6 6"/>'),
     out: P('<path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/>'),
     check: P('<path d="m5 12 4.5 4.5L19 7"/>'),

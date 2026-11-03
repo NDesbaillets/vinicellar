@@ -7,7 +7,9 @@
   --sunk: #F3EEE6;
   --ink: #231A17;
   --ink-2: #5F534C;
-  --ink-3: #8E827A;
+  --ink-3: #73675F;
+  --gold-ink: #83632F;
+  --k-red: #6B1E2E; --k-white: #D8C27A; --k-rose: #E6A0A6; --k-sparkling: #B9A24E; --k-otherwine: #C6862A; --k-spirits: #77401A;
   --line: #E8E0D5;
   --wine: #6B1E2E;
   --wine-2: #8A2A3E;
@@ -31,7 +33,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #15110F; --card: #1E1916; --sunk: #241E1A; --ink: #F2EBE3; --ink-2: #C3B6AC; --ink-3: #8F837A;
+    --bg: #15110F; --card: #1E1916; --sunk: #241E1A; --ink: #F2EBE3; --ink-2: #C3B6AC; --ink-3: #9C9087; --gold-ink: #CFAA72; --k-red: #C9606F; --k-spirits: #B07A4C;
     --line: #342C27; --wine: #D7798A; --wine-2: #E896A4; --wine-soft: #3A2228; --gold: #CFAA72;
     --ok: #79C29B; --ok-soft: #1F3328; --warn: #E2B45E; --warn-soft: #3A2F1A; --bad: #EC8A82; --bad-soft: #3D2220;
     --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
@@ -39,7 +41,7 @@
   }
 }
 :root[data-theme="dark"] {
-  --bg: #15110F; --card: #1E1916; --sunk: #241E1A; --ink: #F2EBE3; --ink-2: #C3B6AC; --ink-3: #8F837A;
+  --bg: #15110F; --card: #1E1916; --sunk: #241E1A; --ink: #F2EBE3; --ink-2: #C3B6AC; --ink-3: #9C9087; --gold-ink: #CFAA72; --k-red: #C9606F; --k-spirits: #B07A4C;
   --line: #342C27; --wine: #D7798A; --wine-2: #E896A4; --wine-soft: #3A2228; --gold: #CFAA72;
   --ok: #79C29B; --ok-soft: #1F3328; --warn: #E2B45E; --warn-soft: #3A2F1A; --bad: #EC8A82; --bad-soft: #3D2220;
   --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
@@ -89,6 +91,7 @@ small, .muted { color: var(--ink-2); }
 .tabbar a[aria-current="page"] { color: var(--wine); }
 .tabbar .tab-add span.plus { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--wine); color: #fff; box-shadow: var(--shadow); margin-top: -18px; }
 :root[data-theme="dark"] .tabbar .tab-add span.plus { color: #1E1916; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tabbar .tab-add span.plus { color: #1E1916; } }
 .tabbar .tab-add span.plus svg { width: 24px; height: 24px; }
 @media (min-width: 860px) { .tabbar { display: none; } }
 body.app { padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom) + 24px); }
@@ -149,7 +152,7 @@ legend { font-family: var(--font-display); font-size: 1.15rem; font-weight: 500;
 .page-head { display: flex; align-items: end; gap: 16px; flex-wrap: wrap; padding: 28px 0 8px; }
 .page-head h1 { margin: 0; }
 .page-head .spacer { flex: 1; }
-.eyebrow { display: block; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); font-weight: 600; margin-bottom: 6px; }
+.eyebrow { display: block; font-size: .75rem; letter-spacing: .14em; text-transform: uppercase; color: var(--gold-ink); font-weight: 600; margin-bottom: 6px; }
 
 .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 16px 0; }
 @media (min-width: 760px) { .stats { grid-template-columns: repeat(4, 1fr); } }
@@ -487,3 +490,39 @@ dialog h2 { margin-bottom: 14px; }
 .dup-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--line); }
 .dup-row small { display: block; }
 .dup-row > div { min-width: 0; }
+
+/* page de cave compacte : retour, chiffres en bandeau, filtres dans une feuille */
+.back-link { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; margin: -10px 0 0 -6px; padding: 0 8px 0 2px; color: var(--ink-2); font: 500 .95rem/1 var(--font-ui); text-decoration: none; border-radius: 8px; }
+.back-link svg { width: 20px; height: 20px; }
+.back-link:hover { color: var(--ink); background: var(--sunk); }
+.page-head.tight { padding-top: 14px; }
+.page-head.tight .eyebrow-row { display: block; }
+.kstrip { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 12px -16px 6px; padding: 2px 16px; }
+.kstrip::-webkit-scrollbar { display: none; }
+.kstat { flex: none; appearance: none; display: grid; gap: 2px; min-width: 76px; min-height: 56px; padding: 8px 12px; text-align: left; border: 1px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); font: inherit; cursor: pointer; }
+.kstat b { font: 500 1.25rem/1.1 var(--font-display); }
+.kstat span { font-size: .78rem; color: var(--ink-2); white-space: nowrap; }
+.kstat i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
+.kstat.total { cursor: default; background: var(--sunk); border-color: transparent; }
+.kstat[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.kstrip + .mix { height: 4px; margin: 2px 0 8px; }
+.dash-sum { margin: 0; font-size: .88rem; color: var(--ink-2); }
+.cta-row.slim { margin: 12px 0 4px; }
+.cta-row.slim .btn { min-height: 48px; }
+.cta-row.slim .btn svg { width: 22px; height: 22px; }
+.find { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin: 12px 0 6px; }
+.find .search { margin: 0; }
+.filter-btn { position: relative; min-height: 44px; }
+.filter-btn .count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--wine); color: var(--card); font-size: .74rem; font-weight: 700; display: inline-grid; place-items: center; }
+.active-filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 6px; }
+.active-filters .chip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; background: var(--wine-soft); color: var(--wine); border-color: transparent; }
+.active-filters .chip svg { width: 14px; height: 14px; }
+.fsheet h2 { margin: 0 0 4px; }
+.fsheet .fgroup { margin-top: 14px; }
+.fsheet .fgroup > .field-label { margin: 0 0 6px; }
+.fsheet .chips { flex-wrap: wrap; overflow: visible; padding: 0; }
+.fsheet .chip { min-height: 40px; }
+.fsheet .geo { grid-template-columns: 1fr 1fr; }
+.list-head { display: flex; justify-content: space-between; align-items: baseline; margin: 6px 0 8px; font-size: .88rem; color: var(--ink-2); }
+@media (min-width: 760px) { .kstrip { margin-inline: 0; padding-inline: 0; } }
+.fsheet > .row.end:last-child { position: sticky; bottom: -1px; margin: 18px -22px -22px; padding: 12px 22px calc(12px + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line); }
