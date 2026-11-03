@@ -61,7 +61,6 @@
         <div class="kstat total"><b>${total}</b><span>bouteille${total > 1 ? "s" : ""}</span></div>
         ${shown.map((c) => `<button class="kstat" data-kind="${c.k}" aria-pressed="${state.cat === "kind:" + c.k}"><b>${c.n}</b><span><i style="background:${color(c.k)}"></i>${c.label}</span></button>`).join("")}
       </div>
-      ${total ? `<div class="mix" aria-hidden="true">${counts.filter((c) => c.n).map((c) => `<span style="width:${(c.n / total) * 100}%;background:${color(c.k)}"></span>`).join("")}</div>` : ""}
       ${sum ? `<p class="dash-sum">${sum}</p>` : ""}
       ${canEditHere() ? `<div class="cta-row slim"><a class="btn" href="/app/sortir.html?loc=${loc || "all"}">${I.camera}Sortir</a><a class="btn ghost" href="/app/ajouter.html">${I.plus}Ajouter</a></div>` : `<p class="notice info" style="margin-top:12px">Cave partagée en lecture seule.</p>`}`;
   }
@@ -187,8 +186,8 @@
     return `<div class="bottle-wrap"><a class="bottle" href="/app/fiche.html?id=${it.id}">
       <div class="thumb">${url ? `<img src="${esc(url)}" alt="" loading="lazy">` : bottleSvg(it)}</div>
       <div><h3>${esc(it.name)}</h3><p class="sub">${esc([it.producer, sub].filter(Boolean).join(" · "))}</p>
-      <div class="tags"><span class="tag ${n ? "qty" : "zero"}">${n} bt.</span><span class="tag">${esc(kind)}</span>${w ? `<span class="tag ${w.key}">${w.label}</span>` : ""}</div></div></a>
-      ${n && VC.canEdit(it.collection_id) ? `<button class="out-btn" data-out="${it.id}" aria-label="Sortir une bouteille : ${esc(it.name)}" title="Sortir une bouteille">${I.glass}</button>` : ""}</div>`;
+      <div class="tags"><span class="tag ${n ? "qty" : "zero"}">${n} bt.</span>${w ? `<span class="tag ${w.key}">${w.label}</span>` : ""}<span class="kind">${esc(kind)}</span></div></div></a>
+      ${n && VC.canEdit(it.collection_id) ? `<button class="out-btn" data-out="${it.id}" aria-label="Sortir une bouteille : ${esc(it.name)}" title="Sortir une bouteille">${I.glass}<small aria-hidden="true">Sortir</small></button>` : ""}</div>`;
   }
 
   function drawList() {

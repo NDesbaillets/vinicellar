@@ -33,7 +33,7 @@
       <div><h3>${esc(it.name)}${it.vintage ? ` <span class="faint">${it.vintage}</span>` : ""}</h3><p class="sub">${esc([it.producer, it.appellation || it.region].filter(Boolean).join(" · "))}</p>
       <p class="sub" style="margin:0 0 6px">${esc([`dernière sortie ${date(last)}`, drunk && `${drunk} bue${drunk > 1 ? "s" : ""}`, gifted && `${gifted} offerte${gifted > 1 ? "s" : ""}`].filter(Boolean).join(" · "))}</p>
       <span class="stars-slot" data-r="${it.my_rating ?? ""}"></span></div></a>
-      ${!VC.canEdit(it.collection_id) ? "" : wished.has(it.id) ? `<span class="out-btn" title="Déjà dans une liste d'envies" style="color:var(--ok)">${I.check}</span>` : `<button class="out-btn" data-rebuy aria-label="Ajouter à la liste d'envies" title="Racheter">${I.plus}</button>`}</div>`;
+      ${!VC.canEdit(it.collection_id) ? "" : wished.has(it.id) ? `<span class="out-btn" title="Déjà dans une liste d'envies" style="color:var(--ok)">${I.check}<small>En liste</small></span>` : `<button class="out-btn" data-rebuy aria-label="Ajouter à la liste d'envies" title="Racheter">${I.plus}<small aria-hidden="true">Racheter</small></button>`}</div>`;
   }
 
   function draw(q = "") {
@@ -44,7 +44,7 @@
   }
 
   main.innerHTML = `<div class="page-head"><div><span class="eyebrow">Vins passés par la cave</span><h1>Carnet</h1></div></div>${VC.carnetNav("historique")}
-    <p class="muted">${past.length} vin${past.length > 1 ? "s" : ""} sans bouteille en stock. Le bouton + les ajoute à votre liste d'envies.</p>
+    <p class="muted">${past.length} vin${past.length > 1 ? "s" : ""} sans bouteille en stock. « Racheter » les ajoute à votre liste d'envies.</p>
     <div class="toolbar" style="grid-template-columns:1fr"><label class="search"><span class="sr">Rechercher</span>${I.search}<input type="search" id="q" placeholder="Domaine, cuvée, cépage…"></label></div>
     <div class="list" id="list"></div>`;
   draw();

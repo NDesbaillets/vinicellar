@@ -527,3 +527,9 @@ dialog h2 { margin-bottom: 14px; }
 .list-head { display: flex; justify-content: space-between; align-items: baseline; margin: 6px 0 8px; font-size: var(--fs-s); color: var(--ink-2); }
 @media (min-width: 760px) { .kstrip { margin-inline: 0; padding-inline: 0; } }
 .fsheet > .row.end:last-child { position: sticky; bottom: -1px; margin: 18px -22px -22px; padding: 12px 22px calc(12px + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line); }
+/* cartes : bouton d'action libellé, type en texte discret */
+.out-btn { width: 58px; height: 58px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.out-btn small { font-size: var(--fs-xs); font-weight: 600; line-height: 1; }
+.bottle-wrap .bottle { padding-right: 78px; }
+.tags { align-items: center; }
+.tags .kind { font-size: var(--fs-xs); color: var(--ink-2); }
