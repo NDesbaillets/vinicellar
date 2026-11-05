@@ -189,27 +189,35 @@
   // ------------------------------------------------------------------ images privées (URL signées)
   const signedCache = new Map();
   async function signed(paths, bucket = "labels") {
-    const key = (p) => `${bucket}/${p}`;
+    const parts = (p) => /^(studio-approved|studio-candidates):/.test(p || "") ? [p.slice(0,p.indexOf(":")),p.slice(p.indexOf(":")+1)] : [bucket,p];
+    const key = (p) => parts(p).join("/");
     const fresh = (p) => (signedCache.get(key(p))?.expires || 0) > Date.now();
     const need = [...new Set(paths.filter((p) => p && !fresh(p)))];
     if (need.length && sb) {
-      const { data } = await sb.storage.from(bucket).createSignedUrls(need, 3600);
-      (data || []).forEach((r) => r.signedUrl && signedCache.set(key(r.path), { url: r.signedUrl, expires: Date.now() + 55 * 60 * 1000 }));
+      const buckets = [...new Set(need.map(p=>parts(p)[0]))];
+      await Promise.all(buckets.map(async b => {
+        const refs = need.filter(p=>parts(p)[0]===b), ttl = b.startsWith("studio-") ? 300 : 3600;
+        const { data } = await sb.storage.from(b).createSignedUrls(refs.map(p=>parts(p)[1]), ttl);
+        (data || []).forEach(r => r.signedUrl && signedCache.set(`${b}/${r.path}`, {url:r.signedUrl,expires:Date.now()+(b.startsWith("studio-") ? ttl-30 : 3300)*1000}));
+      }));
     }
     return (p) => fresh(p) ? signedCache.get(key(p)).url : null;
   }
-  // Vignette : la photo choisie par l'utilisateur, sinon l'image de la bouteille, sinon l'étiquette.
-  const mainImagePath = (it) => it.cover_path || it.bottle_path || it.label_path || (it.photo_paths || [])[0] || null;
+  // Vignette : bouteille Studio approuvée, couverture choisie, bouteille historique, puis étiquettes/photos.
+  const mainImagePath = (it) => window.VC?.Studio?.ref(window.VC.Studio.asset(it,"bottle")) || it.cover_path || it.bottle_path || window.VC?.Studio?.ref(window.VC.Studio.asset(it,"label")) || it.label_path || (it.photo_paths || [])[0] || null;
 
   // Ne pas présenter une étiquette ou une photo ordinaire comme un détourage Studio.
   function imageInfo(it) {
     const path = mainImagePath(it);
+    const studio = window.VC?.Studio, bottle = studio?.asset(it,"bottle"), label = studio?.asset(it,"label");
+    if (path && path === studio?.ref(bottle)) return {path,kind:"bottle",label:"Bouteille Studio",reconstructed:bottle.provenance==="bottle_reconstructed"};
+    if (path && path === studio?.ref(label)) return {path,kind:"label",label:"Étiquette restaurée"};
     const kind = path && path === it.bottle_path ? "bottle" : path && [it.label_path, it.label_back_path].includes(path) ? "label" : "photo";
     return { path, kind, label: { bottle: "Bouteille", label: "Étiquette originale", photo: "Photo originale" }[kind] };
   }
   function itemVisual(it, getUrl) {
     const image = imageInfo(it), url = getUrl(image.path);
-    return `<div class="thumb image-${image.kind}">${url ? `<img src="${esc(url)}" alt="" loading="lazy" decoding="async"><span class="image-fallback" hidden>${bottleSvg(it)}<span>Image indisponible</span></span>` : bottleSvg(it)}</div>`;
+    return `<div class="thumb image-${image.kind}">${url ? `<img src="${esc(url)}" alt="" loading="lazy" decoding="async"><span class="image-fallback" hidden>${bottleSvg(it)}<span>Image indisponible</span></span>` : bottleSvg(it)}${image.reconstructed ? '<span class="studio-badge">Reconstituée</span>' : ""}</div>`;
   }
   document.addEventListener("error", (e) => {
     const img = e.target;

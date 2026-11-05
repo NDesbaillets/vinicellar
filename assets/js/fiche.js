@@ -19,7 +19,8 @@
     ]);
     if (a.error || !a.data) { main.innerHTML = `<div class="empty"><p>Fiche introuvable.</p><a class="btn" href="/app/">Retour à la cave</a></div>`; return false; }
     it = a.data; places = (b || []).filter((p) => p.collection_id === a.data.collection_id); stock = c.data || []; tastings = d.data || [];
-    getUrl = await signed([it.bottle_path, it.label_path, it.label_back_path, ...(it.photo_paths || [])]);
+    await VC.Studio?.loadActive([it]);
+    getUrl = await signed([VC.Studio?.ref(VC.Studio.asset(it,"bottle")),VC.Studio?.ref(VC.Studio.asset(it,"label")),it.bottle_path, it.label_path, it.label_back_path, ...(it.photo_paths || [])]);
     document.title = `${it.name}${it.vintage ? " " + it.vintage : ""} · Vinicellar`;
     return true;
   }
@@ -32,20 +33,21 @@
   // ---------------------------------------------------------------- rendu
   // Toutes les photos de la fiche ; la vignette (cover) est celle des listes. Ajout et choix réservés aux éditeurs.
   function visual() {
-    const imgs = [it.bottle_path && { p: it.bottle_path, l: "Bouteille" }, it.label_path && { p: it.label_path, l: "Étiquette" },
+    const studio = VC.Studio, bottle = studio?.asset(it,"bottle"), label = studio?.asset(it,"label");
+    const imgs = [studio?.ref(bottle) && {p:studio.ref(bottle),l:bottle.provenance === "bottle_reconstructed" ? "Bouteille Studio · reconstitution indicative" : "Bouteille Studio",studio:true},studio?.ref(label) && {p:studio.ref(label),l:"Étiquette restaurée",studio:true},it.bottle_path && { p: it.bottle_path, l: "Bouteille" }, it.label_path && { p: it.label_path, l: "Étiquette" },
       it.label_back_path && { p: it.label_back_path, l: "Contre-étiquette" }, ...(it.photo_paths || []).map((p) => ({ p, l: "Photo", extra: true }))]
       .filter(Boolean).map((x) => ({ ...x, u: getUrl(x.p) })).filter((x) => x.u);
     const cover = VC.mainImagePath(it);
     let cur = Math.max(0, imgs.findIndex((x) => x.p === cover));
     const show = (i) => {
       cur = i;
-      $("#visual").innerHTML = imgs[i] ? `<img src="${esc(imgs[i].u)}" alt="${esc(imgs[i].l)} : ${esc(it.name)}" decoding="async">` : bottleSvg(it);
-      $("#visual").dataset.kind = imgs[i]?.l === "Bouteille" ? "bottle" : "photo";
+      $("#visual").innerHTML = imgs[i] ? `<img src="${esc(imgs[i].u)}" alt="${esc(imgs[i].l)} : ${esc(it.name)}" decoding="async">${imgs[i].studio ? `<span class="studio-badge">${esc(imgs[i].l)}</span>` : ""}` : bottleSvg(it);
+      $("#visual").dataset.kind = imgs[i]?.l.startsWith("Bouteille") ? "bottle" : "photo";
       $$("#vswitch button[data-i]").forEach((b, j) => b.setAttribute("aria-pressed", String(i === j)));
       const tools = $("#vtools");
       if (!tools) return;
       const x = imgs[i];
-      tools.innerHTML = `${x && x.p !== cover ? `<button class="btn quiet" data-v="cover">${I.check}Utiliser comme vignette</button>` : x ? `<span class="faint" style="font-size:var(--fs-s)">Vignette actuelle</span>` : ""}
+      tools.innerHTML = `${x && x.p !== cover && !studio?.ref(bottle) && !x.studio ? `<button class="btn quiet" data-v="cover">${I.check}Utiliser comme vignette</button>` : x ? `<span class="faint" style="font-size:var(--fs-s)">${studio?.ref(bottle) ? "Bouteille Studio prioritaire dans le catalogue" : "Vignette actuelle"}</span>` : ""}
         ${x && x.extra ? `<button class="btn quiet" data-v="del">${I.trash}Retirer de la galerie</button>` : ""}
         <label class="btn quiet">${I.camera}Ajouter une photo<input type="file" accept="image/*" data-v="add" hidden></label>`;
     };
@@ -73,9 +75,9 @@
       const inp = e.target.closest('input[data-v="add"]');
       if (!inp || !inp.files[0]) return;
       try {
-        const img = await VC.shrink(inp.files[0]);
-        const path = `${ctx.user.id}/photo-${crypto.randomUUID()}.jpg`;
-        const up = await sb.storage.from("labels").upload(path, img.blob, { contentType: "image/jpeg" });
+        const img = VC.Studio?.enabled() ? await VC.Studio.original(inp.files[0]) : await VC.shrink(inp.files[0]);
+        const type = img.blob.type || "image/jpeg", path = `${ctx.user.id}/photo-${crypto.randomUUID()}.${type.split("/")[1]}`;
+        const up = await sb.storage.from("labels").upload(path, img.blob, { contentType: type });
         if (up.error) throw up.error;
         const patch = { photo_paths: [...(it.photo_paths || []), path] };
         if (!VC.mainImagePath(it)) patch.cover_path = path;
@@ -202,6 +204,7 @@
             <div class="origin">${[it.appellation, it.region, it.country].filter(Boolean).map((x) => `<span>${esc(x)}</span>`).join("")}</div>
             <div class="row"><span class="muted">Ma note</span><span id="my-rating"></span>${it.avg_score != null ? `<span class="faint">· moyenne ${esc(scoreText())}</span>` : ""}</div>
           </div>
+          ${VC.Studio?.enabled() && !ro() ? `<section class="card"><div class="row"><div><h3>Studio Vinicellar</h3><p class="muted">Restaurer l'étiquette et préparer une bouteille entière sur fond transparent.</p></div><a class="btn ghost" href="/app/studio.html?id=${encodeURIComponent(id)}">${I.sparkle}Ouvrir Studio</a></div></section>` : ""}
           ${facts()}${ageing()}${prose()}${pairings()}${details()}
           ${it.notes ? `<div class="card"><h3>Mes remarques</h3><p style="margin:0;white-space:pre-line">${esc(it.notes)}</p></div>` : ""}
           ${tastingList()}
@@ -325,9 +328,9 @@
       if (!patch.name) { f.querySelector(".form-msg").textContent = "Le nom est obligatoire."; return false; }
       const file = f.photo.files[0];
       if (file) {
-        const img = await VC.shrink(file);
-        const path = `${ctx.user.id}/label-${crypto.randomUUID()}.jpg`;
-        const up = await sb.storage.from("labels").upload(path, img.blob, { contentType: "image/jpeg" });
+        const img = VC.Studio?.enabled() ? await VC.Studio.original(file) : await VC.shrink(file);
+        const type = img.blob.type || "image/jpeg", path = `${ctx.user.id}/label-${crypto.randomUUID()}.${type.split("/")[1]}`;
+        const up = await sb.storage.from("labels").upload(path, img.blob, { contentType: type });
         if (up.error) throw up.error;
         if (it.label_path) patch.photo_paths = [...new Set([...(it.photo_paths || []), it.label_path])];
         patch.label_path = path;

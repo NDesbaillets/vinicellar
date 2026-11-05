@@ -6,5 +6,7 @@ window.VC_CONFIG = {
   supabaseAnonKey: "sb_publishable_zh57QdYbqyr1dYqY-NsH7g_3hYb9rer",
   // Inscription sur invitation : la page d'accueil propose « Demander une invitation », validée dans /app/admin.html.
   // Réglage Supabase correspondant : Authentication > Sign In / Providers > « Allow new users to sign up » désactivé.
-  openSignup: false
+  openSignup: false,
+  // Activer uniquement après validation du schéma, du worker et des Edge Functions.
+  studioEnabled: false
 };
