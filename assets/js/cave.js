@@ -12,6 +12,8 @@
   let state = { win: "", cat: "", grape: "", country: "", region: "", price: "", q: "", sort: "urgent", empty: false };
   try { Object.assign(state, JSON.parse(localStorage.getItem("vc.cave.filters") || "{}"), { q: "", grape: "", country: "", region: "" }); } catch { /* stockage indisponible */ }
   const save = () => { try { localStorage.setItem("vc.cave.filters", JSON.stringify({ win: state.win, cat: state.cat, sort: state.sort })); } catch { /* idem */ } };
+  let view = "grid";
+  try { if (localStorage.getItem("vc.cave.view") === "list") view = "list"; } catch { /* grille par défaut */ }
 
   async function load() {
     const [p, a, b] = await Promise.all([
@@ -56,13 +58,13 @@
     const ready = inStock.filter((it) => { const w = windowStatus(it); return w && w.rank <= 3; }).reduce((a, it) => a + qty(it), 0);
     const urgent = inStock.filter((it) => { const w = windowStatus(it); return w && w.rank <= 1; }).reduce((a, it) => a + qty(it), 0);
     const shown = counts.filter((c) => c.n > 0);
-    const sum = [ready && `${ready} prête${ready > 1 ? "s" : ""} à boire`, urgent && `<b style="color:var(--warn)">${urgent} à ouvrir vite</b>`, value && `valeur ${money(Math.round(value), cur)}`].filter(Boolean).join(" · ");
-    return `<div class="kstrip" role="toolbar" aria-label="Types">
+    return `<section class="cellar-overview" aria-label="Vue d'ensemble"><div class="overview-heading"><div><span class="eyebrow">Votre collection</span><h2>Chaque bouteille, au bon moment.</h2></div>
+        ${canEditHere() ? `<div class="row overview-actions"><a class="btn ghost" href="/app/sortir.html?loc=${loc || "all"}">${I.glass}Sortir</a><a class="btn" href="/app/ajouter.html">${I.plus}Ajouter</a></div>` : `<span class="tag">Lecture seule</span>`}</div>
+      <div class="overview-metrics"><div><b>${total}</b><span>bouteille${total > 1 ? "s" : ""} en cave</span></div><div><b>${ready}</b><span>prête${ready > 1 ? "s" : ""} à boire</span></div><div><b>${urgent}</b><span>à ouvrir en priorité</span></div><div><b>${value ? money(Math.round(value), cur) : "—"}</b><span>valeur estimée${value ? ` en ${esc(cur)}` : " non renseignée"}</span></div></div></section>
+      <div class="kstrip" role="group" aria-label="Filtrer par type">
         <div class="kstat total"><b>${total}</b><span>bouteille${total > 1 ? "s" : ""}</span></div>
         ${shown.map((c) => `<button class="kstat" data-kind="${c.k}" aria-pressed="${state.cat === "kind:" + c.k}"><b>${c.n}</b><span><i style="background:${color(c.k)}"></i>${c.label}</span></button>`).join("")}
-      </div>
-      ${sum ? `<p class="dash-sum">${sum}</p>` : ""}
-      ${canEditHere() ? `<div class="cta-row slim"><a class="btn" href="/app/sortir.html?loc=${loc || "all"}">${I.camera}Sortir</a><a class="btn ghost" href="/app/ajouter.html">${I.plus}Ajouter</a></div>` : `<p class="notice info" style="margin-top:12px">Cave partagée en lecture seule.</p>`}`;
+      </div>`;
   }
 
   // ---------------------------------------------------------------- filtres (feuille) et liste
@@ -103,7 +105,7 @@
     }
     const opt = (m, sel) => [...m].sort((x, y) => y[1] - x[1]).map(([k, n]) => `<option value="${esc(k)}"${k === sel ? " selected" : ""}>${esc(k)} (${n})</option>`).join("");
     const bandN = (k) => { const b = VC.PRICE_BANDS.find((x) => x[0] === k); return items.filter((it) => { const p = VC.priceOf(it); return qty(it) > 0 && p != null && p >= b[2] && p < b[3]; }).reduce((a, it) => a + qty(it), 0); };
-    return `<div class="fsheet"><h2>Filtres</h2>
+    return `<div class="fsheet"><h2 id="vc-filter-title">Filtres</h2>
       ${present.length > 1 ? `<div class="fgroup"><div class="field-label">Type</div><div class="chips">${chip("cat", "", "Tous")}${present.map((k) => chip("cat", "kind:" + k.k, k.one)).join("")}</div></div>` : ""}
       <div class="fgroup"><div class="field-label">Garde</div><div class="chips">${chip("win", "", "Tout")}${Object.entries(WIN).map(([k, l]) => chip("win", k, l)).join("")}</div></div>
       <div class="fgroup"><div class="geo">
@@ -119,7 +121,14 @@
 
   function openFilters() {
     const d = VC.sheet(filterSheetHtml());
-    const redraw = () => { d.querySelector(".dlg").innerHTML = filterSheetHtml(); d.querySelector("#sort").value = state.sort; refresh(); };
+    const redraw = () => {
+      const focus = document.activeElement, id = focus?.id, group = focus?.dataset.group, value = focus?.dataset.val;
+      d.querySelector(".dlg").innerHTML = filterSheetHtml();
+      d.querySelector("#sort").value = state.sort;
+      refresh();
+      const next = id ? d.querySelector(`#${CSS.escape(id)}`) : [...d.querySelectorAll("[data-group]")].find((b) => b.dataset.group === group && b.dataset.val === value);
+      next?.focus();
+    };
     d.querySelector("#sort").value = state.sort;
     d.addEventListener("click", (e) => {
       const c = e.target.closest("[data-group]");
@@ -180,18 +189,20 @@
   function card(it) {
     const n = qty(it);
     const w = windowStatus(it);
-    const url = getUrl(mainImagePath(it));
+    const image = VC.imageInfo(it);
     const sub = [it.vintage, it.appellation || it.region, it.country].filter(Boolean).join(" · ");
     const kind = it.category === "wine" ? (STYLE[it.style] || "Vin").split(" ")[0] : CATEGORY_SHORT[it.category];
     return `<div class="bottle-wrap"><a class="bottle" href="/app/fiche.html?id=${it.id}">
-      <div class="thumb">${url ? `<img src="${esc(url)}" alt="" loading="lazy">` : bottleSvg(it)}</div>
-      <div><h3>${esc(it.name)}</h3><p class="sub">${esc([it.producer, sub].filter(Boolean).join(" · "))}</p>
+      <div class="catalog-photo">${VC.itemVisual(it, getUrl)}${image.path && image.kind !== "bottle" ? `<span class="photo-kind">${image.label}</span>` : ""}</div>
+      <div class="catalog-info"><p class="catalog-producer">${esc(it.producer || kind)}</p><h3>${esc(it.name)}</h3><p class="sub">${esc(sub)}</p>
       <div class="tags"><span class="tag ${n ? "qty" : "zero"}">${n} bt.</span>${w ? `<span class="tag ${w.key}">${w.label}</span>` : ""}<span class="kind">${esc(kind)}</span></div></div></a>
       ${n && VC.canEdit(it.collection_id) ? `<button class="out-btn" data-out="${it.id}" aria-label="Sortir une bouteille : ${esc(it.name)}" title="Sortir une bouteille">${I.glass}<small aria-hidden="true">Sortir</small></button>` : ""}</div>`;
   }
 
   function drawList() {
     const list = filtered();
+    $("#list").dataset.view = view;
+    document.querySelectorAll("button[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === view)));
     $("#count").textContent = `${list.length} vin${list.length > 1 ? "s" : ""}`;
     $("#list").innerHTML = list.length ? list.map(card).join("") : `<div class="empty" style="grid-column:1/-1"><p class="muted">Aucune bouteille ne correspond.</p></div>`;
   }
@@ -206,17 +217,23 @@
 
   function draw() {
     if (!items.length) {
-      main.innerHTML = `${head()}<div class="empty">${I.glass}<h2>Cette cave est vide</h2><p class="muted">Photographiez une étiquette : la fiche se remplit toute seule.</p>
-        <a class="btn big" href="/app/ajouter.html">${I.camera}Ajouter une bouteille</a></div>`;
+      main.innerHTML = `${head()}<div class="empty">${I.glass}<h2>Cette cave est vide</h2><p class="muted">${canEditHere() ? "Photographiez une étiquette : la fiche se remplit toute seule." : "Les bouteilles ajoutées par les membres apparaîtront ici."}</p>
+        ${canEditHere() ? `<a class="btn big" href="/app/ajouter.html">${I.camera}Ajouter une bouteille</a>` : ""}</div>`;
       return;
     }
     main.innerHTML = `${head()}<div id="dash">${dashboard()}</div><div id="findbar">${findBar()}</div>
-      <div class="list-head"><span id="count"></span></div><div class="list" id="list"></div>`;
+      <div class="list-head"><span id="count" role="status" aria-live="polite"></span><div class="view-switch" role="group" aria-label="Présentation du catalogue"><button type="button" data-view="grid" aria-pressed="${view === "grid"}" aria-label="Grille photographique">${I.grid}<span>Grille</span></button><button type="button" data-view="list" aria-pressed="${view === "list"}" aria-label="Liste compacte">${I.list}<span>Liste</span></button></div></div><div class="catalog" id="list"></div>`;
     drawList();
   }
-  const head = () => `<div class="page-head tight"><div><a class="back-link" href="/app/">${I.back}Caves</a><h1>${esc(placeName())}</h1></div></div>`;
+  const head = () => `<div class="page-head tight"><div><a class="back-link" href="/app/">${I.back}Caves</a><span class="eyebrow">Votre cave, vivante</span><h1>${esc(placeName())}</h1></div></div>`;
 
   main.addEventListener("click", (e) => {
+    const toggle = e.target.closest("button[data-view]");
+    if (toggle) {
+      view = toggle.dataset.view;
+      try { localStorage.setItem("vc.cave.view", view); } catch { /* préférence de session */ }
+      return drawList();
+    }
     const out = e.target.closest("[data-out]");
     if (out) {
       e.preventDefault();

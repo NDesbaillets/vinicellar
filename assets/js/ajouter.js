@@ -169,15 +169,14 @@
     }
     if (q.dataset.q === "del") {
       if (!confirm("Supprimer cette analyse ?")) return;
-      await removeDraft(d, true);
+      await removeDraft(d);
       loadDrafts();
     }
   });
 
-  async function removeDraft(d, withPhotos) {
+  async function removeDraft(d) {
     await sb.from("drafts").delete().eq("id", d.id);
-    const files = [...(withPhotos ? d.photo_paths : []), ...(withPhotos && d.bottle_path ? [d.bottle_path] : [])];
-    if (files.length) await sb.storage.from("labels").remove(files);
+    // Ne jamais supprimer les photographies originales avec un brouillon.
   }
 
   // ---------------------------------------------------------------- vérification d'une fiche
@@ -316,7 +315,7 @@
         const { error: we } = await sb.from("wishlist_items").insert({ wishlist_id: wish.id, item_id: id, qty_wanted: parseInt(f.qty.value, 10) || null });
         if (we && !/duplicate|unique/.test(we.message)) throw we;
       }
-      if (d) await removeDraft(d, false);
+      if (d) await removeDraft(d);
       if (!wish) defaults.loc = loc;
       toast(wish ? `Ajouté à « ${wish.name} ».` : target ? `${qty} bouteille${qty > 1 ? "s" : ""} ajoutée${qty > 1 ? "s" : ""} à la fiche existante.` : "Ajouté à votre cave.", { label: "Voir la fiche", run: () => (location.href = `/app/fiche.html?id=${id}`) });
       back();

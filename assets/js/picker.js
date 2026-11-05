@@ -27,7 +27,7 @@
       <span><h3>${esc(p.name)}</h3><small>${esc([KIND[p.kind], shared && p.collections ? p.collections.name : null].filter(Boolean).join(" · "))}</small></span>
       <span><b class="n">${count.get(p.id) || 0}</b> <small>bt.</small></span></a>`;
 
-  main.innerHTML = `<div class="page-head"><div><span class="eyebrow">Bonjour ${esc(ctx.profile.first_name || "")}</span><h1>Quelle cave ?</h1></div></div>
+  main.innerHTML = `${VC.editorial("Vos caves, vos découvertes.", "Des bouteilles à partager, des moments à savourer.")}<div class="page-head"><div><span class="eyebrow">Bonjour ${esc(ctx.profile.first_name || "")}</span><h1>Quelle cave ?</h1></div></div>
     <div id="invites"></div>
     ${places.length ? `<div class="cellars">${places.map(card).join("")}
       ${places.length > 1 ? `<a class="cellar-card all" href="/app/cave.html?loc=all" data-loc="all"><span class="ico">${I.search}</span><span><h3>Toutes les caves</h3><small>Vue d'ensemble</small></span><span><b class="n">${total}</b> <small>bt.</small></span></a>` : ""}
