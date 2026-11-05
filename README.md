@@ -72,13 +72,13 @@ Compléments possibles, par ordre d'intérêt :
 
 ## Cache des navigateurs
 
-Les pages chargent CSS et JS avec `?v=20261105-ui2`. Après modification, changer ce suffixe partout et versionner le cache de `sw.js` si nécessaire.
+Les pages chargent CSS et JS avec `?v=20261105-lavaux`. Après modification, changer ce suffixe partout et versionner le cache de `sw.js` si nécessaire.
 
 ## Vinicellar 2 · Phase A (branche de revue)
 
 La modernisation conserve HTML/CSS/JavaScript natifs, les tables existantes et les permissions par collection. Aucune migration ou modification de fonction Supabase n'est incluse.
 
-- Palette Terroir contemporain ; Fraunces et Inter conservées. Thème système/clair/sombre mémorisé sur l'appareil.
+- Direction photographique et éditoriale : panorama authentique de Lavaux dans la cave connectée, indicateurs discrets, onglets de catégories et bouteilles sans cartes fermées. Palette Terroir contemporain ; Fraunces et Inter conservées. Thème système/clair/sombre mémorisé sur l'appareil.
 - Catalogue photographique : deux colonnes sur mobile, trois à cinq sur écran large ; vue liste compacte mémorisée. Les filtres, tris, liens de fiche et sorties rapides restent disponibles.
 - Les étiquettes et photos restent identifiées comme telles. Le CSS ne transforme pas un fond opaque en transparence et ne crée aucune bouteille Studio.
 - Photographie authentique du Lavaux : attribution visible et détails dans [credits.html](credits.html) et [CREDITS.md](assets/img/lavaux/CREDITS.md).

@@ -6,7 +6,9 @@ Branche : `feat/vinicellar-2-ui`. Référence de comparaison : `1bcfb4d`.
 
 Le catalogue utilise une grille photographique à deux colonnes sur mobile et trois à cinq colonnes sur desktop, avec une vue liste alternative. Les bouteilles ne sont pas recadrées ; une étiquette reste présentée comme une étiquette. Le dashboard, les composants communs, les fiches et les surfaces d'accueil adoptent la palette Terroir contemporain. Les thèmes système, clair et sombre sont disponibles.
 
-La photographie de Lavaux est une vraie photo de Krzysztof Golik sous CC BY-SA 4.0. Les crédits sont visibles et documentés. Aucun paysage ou visuel Studio n'a été généré.
+Le paysage structure la cave connectée : panorama d'Épesses de Foto-Falk, indicateurs regroupés sur une surface flottante discrète, catégories en onglets et bouteilles sans cartes fermées. La seconde photographie, de Krzysztof Golik, montre le Léman et les Alpes sur les autres surfaces éditoriales. Les deux photos sont authentiques, sous CC BY-SA 4.0, avec crédits visibles. Aucun paysage ou visuel Studio n'a été généré.
+
+![Direction photographique Lavaux](review/phase-a-lavaux-direction.jpg)
 
 ![Avant et après avec données fictives](review/phase-a-before-after.jpg)
 
@@ -52,6 +54,7 @@ Les 20 fichiers JavaScript de l'application et du service worker passent `node -
 | Recherche `dezaley` | Trouve Dézaley Grand Cru |
 | Filtres Suisse puis Lavaux | Catalogue réduit à trois fiches |
 | Bascule grille/liste | Vue et état du bouton mis à jour |
+| Onglets de catégories et retour « Toute la cave » | Trois rouges puis retour aux neuf vins fictifs |
 | Sortie « Bue » | Stock fictif diminué de 34 à 33 ; dialogue de dégustation proposé |
 | Fiche : ajustement +1 | Stock fictif augmenté de 5 à 6 |
 | Déplacement | Dialogue et caves source/destination disponibles |

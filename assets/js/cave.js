@@ -4,6 +4,7 @@
   const { sb, $, esc, I, CATEGORY_SHORT, STYLE, money, windowStatus, bottleSvg, signed, mainImagePath } = VC;
   const ctx = await VC.boot("cellar");
   const main = $("#main");
+  main.classList.add("cellar-page");
   const params = new URLSearchParams(location.search);
   let loc = params.get("loc") || VC.getLoc() || "all";
   if (loc === "all") loc = "";
@@ -58,12 +59,10 @@
     const ready = inStock.filter((it) => { const w = windowStatus(it); return w && w.rank <= 3; }).reduce((a, it) => a + qty(it), 0);
     const urgent = inStock.filter((it) => { const w = windowStatus(it); return w && w.rank <= 1; }).reduce((a, it) => a + qty(it), 0);
     const shown = counts.filter((c) => c.n > 0);
-    return `<section class="cellar-overview" aria-label="Vue d'ensemble"><div class="overview-heading"><div><span class="eyebrow">Votre collection</span><h2>Chaque bouteille, au bon moment.</h2></div>
-        ${canEditHere() ? `<div class="row overview-actions"><a class="btn ghost" href="/app/sortir.html?loc=${loc || "all"}">${I.glass}Sortir</a><a class="btn" href="/app/ajouter.html">${I.plus}Ajouter</a></div>` : `<span class="tag">Lecture seule</span>`}</div>
-      <div class="overview-metrics"><div><b>${total}</b><span>bouteille${total > 1 ? "s" : ""} en cave</span></div><div><b>${ready}</b><span>prête${ready > 1 ? "s" : ""} à boire</span></div><div><b>${urgent}</b><span>à ouvrir en priorité</span></div><div><b>${value ? money(Math.round(value), cur) : "—"}</b><span>valeur estimée${value ? ` en ${esc(cur)}` : " non renseignée"}</span></div></div></section>
+    return `<section class="cellar-summary" aria-label="Vue d'ensemble"><div><b>${total}</b><span>bouteille${total > 1 ? "s" : ""} en cave</span></div><div><b>${ready}</b><span>à déguster maintenant</span></div><div><b>${urgent}</b><span>à ouvrir en priorité</span></div><div><b>${value ? money(Math.round(value), cur) : "—"}</b><span>valeur estimée${value ? ` en ${esc(cur)}` : " non renseignée"}</span></div></section>
       <div class="kstrip" role="group" aria-label="Filtrer par type">
-        <div class="kstat total"><b>${total}</b><span>bouteille${total > 1 ? "s" : ""}</span></div>
-        ${shown.map((c) => `<button class="kstat" data-kind="${c.k}" aria-pressed="${state.cat === "kind:" + c.k}"><b>${c.n}</b><span><i style="background:${color(c.k)}"></i>${c.label}</span></button>`).join("")}
+        <button type="button" class="kstat" data-all-kinds aria-pressed="${!state.cat}"><span>Toute la cave</span><b>${total}</b></button>
+        ${shown.map((c) => `<button type="button" class="kstat" data-kind="${c.k}" aria-pressed="${state.cat === "kind:" + c.k}"><span><i style="background:${color(c.k)}"></i>${c.label}</span><b>${c.n}</b></button>`).join("")}
       </div>`;
   }
 
@@ -217,15 +216,15 @@
 
   function draw() {
     if (!items.length) {
-      main.innerHTML = `${head()}<div class="empty">${I.glass}<h2>Cette cave est vide</h2><p class="muted">${canEditHere() ? "Photographiez une étiquette : la fiche se remplit toute seule." : "Les bouteilles ajoutées par les membres apparaîtront ici."}</p>
-        ${canEditHere() ? `<a class="btn big" href="/app/ajouter.html">${I.camera}Ajouter une bouteille</a>` : ""}</div>`;
+      main.innerHTML = `${head()}<div class="cellar-content"><div class="empty cellar-empty">${I.glass}<h2>Cette cave est vide</h2><p class="muted">${canEditHere() ? "Photographiez une étiquette : la fiche se remplit toute seule." : "Les bouteilles ajoutées par les membres apparaîtront ici."}</p>
+        ${canEditHere() ? `<a class="btn big" href="/app/ajouter.html">${I.camera}Ajouter une bouteille</a>` : ""}</div></div>`;
       return;
     }
-    main.innerHTML = `${head()}<div id="dash">${dashboard()}</div><div id="findbar">${findBar()}</div>
-      <div class="list-head"><span id="count" role="status" aria-live="polite"></span><div class="view-switch" role="group" aria-label="Présentation du catalogue"><button type="button" data-view="grid" aria-pressed="${view === "grid"}" aria-label="Grille photographique">${I.grid}<span>Grille</span></button><button type="button" data-view="list" aria-pressed="${view === "list"}" aria-label="Liste compacte">${I.list}<span>Liste</span></button></div></div><div class="catalog" id="list"></div>`;
+    main.innerHTML = `${head()}<div class="cellar-content"><div id="dash">${dashboard()}</div><div class="collection-heading"><div><span class="eyebrow">À découvrir, à garder, à partager</span><h2>Votre collection</h2></div><div class="view-switch" role="group" aria-label="Présentation du catalogue"><button type="button" data-view="grid" aria-pressed="${view === "grid"}" aria-label="Grille photographique">${I.grid}<span>Collection</span></button><button type="button" data-view="list" aria-pressed="${view === "list"}" aria-label="Liste compacte">${I.list}<span>Liste</span></button></div></div><div id="findbar">${findBar()}</div>
+      <div class="list-head"><span id="count" role="status" aria-live="polite"></span></div><div class="catalog" id="list"></div></div>`;
     drawList();
   }
-  const head = () => `<div class="page-head tight"><div><a class="back-link" href="/app/">${I.back}Caves</a><span class="eyebrow">Votre cave, vivante</span><h1>${esc(placeName())}</h1></div></div>`;
+  const head = () => `<section class="cellar-landscape" aria-label="Votre cave au cœur de Lavaux"><img class="landscape-photo" src="/assets/img/lavaux/lavaux-epesses.jpg" alt="Vignobles en terrasses de Lavaux à Épesses, au bord du Léman" width="1280" height="696" fetchpriority="high"><div class="landscape-inner"><a class="back-link" href="/app/">${I.back}Mes caves</a><div class="landscape-copy"><p class="landscape-greeting">Bonjour${ctx.profile.first_name ? ` ${esc(ctx.profile.first_name)}` : ""},</p><h1>${esc(placeName())}</h1><p>Le plaisir de choisir. Le bonheur de partager.</p><div class="row landscape-actions">${canEditHere() ? `<a class="btn" href="/app/ajouter.html">${I.plus}Ajouter un vin</a><a class="btn ghost" href="/app/sortir.html?loc=${encodeURIComponent(loc || "all")}">${I.glass}Ouvrir une bouteille</a>` : `<span class="landscape-readonly">Cave partagée en lecture seule</span>`}</div></div></div><a class="photo-credit" href="/credits.html#epesses">Lavaux, Épesses · Foto-Falk · CC BY-SA 4.0</a></section>`;
 
   main.addEventListener("click", (e) => {
     const toggle = e.target.closest("button[data-view]");
@@ -243,6 +242,7 @@
     }
     const k = e.target.closest("[data-kind]");
     if (k) { state.cat = state.cat === "kind:" + k.dataset.kind ? "" : "kind:" + k.dataset.kind; save(); return refresh(); }
+    if (e.target.closest("[data-all-kinds]")) { state.cat = ""; save(); return refresh(); }
     const x = e.target.closest("[data-clear]");
     if (x) { const g = x.dataset.clear; state[g] = g === "empty" ? false : ""; if (g === "country") state.region = ""; save(); return refresh(); }
     if (e.target.closest("#open-filters")) openFilters();
