@@ -39,13 +39,14 @@
     let cur = Math.max(0, imgs.findIndex((x) => x.p === cover));
     const show = (i) => {
       cur = i;
-      $("#visual").innerHTML = imgs[i] ? `<img src="${esc(imgs[i].u)}" alt="${esc(imgs[i].l)} : ${esc(it.name)}">` : bottleSvg(it);
+      $("#visual").innerHTML = imgs[i] ? `<img src="${esc(imgs[i].u)}" alt="${esc(imgs[i].l)} : ${esc(it.name)}" decoding="async">` : bottleSvg(it);
+      $("#visual").dataset.kind = imgs[i]?.l === "Bouteille" ? "bottle" : "photo";
       $$("#vswitch button[data-i]").forEach((b, j) => b.setAttribute("aria-pressed", String(i === j)));
       const tools = $("#vtools");
       if (!tools) return;
       const x = imgs[i];
       tools.innerHTML = `${x && x.p !== cover ? `<button class="btn quiet" data-v="cover">${I.check}Utiliser comme vignette</button>` : x ? `<span class="faint" style="font-size:var(--fs-s)">Vignette actuelle</span>` : ""}
-        ${x && x.extra ? `<button class="btn quiet" data-v="del">${I.trash}Supprimer</button>` : ""}
+        ${x && x.extra ? `<button class="btn quiet" data-v="del">${I.trash}Retirer de la galerie</button>` : ""}
         <label class="btn quiet">${I.camera}Ajouter une photo<input type="file" accept="image/*" data-v="add" hidden></label>`;
     };
     $("#vswitch").innerHTML = imgs.length > 1 ? imgs.map((x, j) => `<button type="button" data-i="${j}" aria-label="${x.l}"${x.p === cover ? ' class="is-cover"' : ""}><img src="${esc(x.u)}" alt=""></button>`).join("") : "";
@@ -62,11 +63,10 @@
         toast("Vignette mise à jour."); return refresh();
       }
       if (b.dataset.v === "del") {
-        if (!confirm("Supprimer cette photo ?")) return;
+        if (!confirm("Retirer cette photo de la galerie ? Le fichier original sera conservé dans le stockage privé.")) return;
         const { error } = await sb.from("items").update({ photo_paths: (it.photo_paths || []).filter((p) => p !== x.p), ...(it.cover_path === x.p ? { cover_path: null } : {}) }).eq("id", id);
         if (error) return fail(error);
-        await sb.storage.from("labels").remove([x.p]);
-        toast("Photo supprimée."); return refresh();
+        toast("Photo retirée de la galerie. Original conservé."); return refresh();
       }
     };
     $("#vtools").onchange = async (e) => {
@@ -329,7 +329,7 @@
         const path = `${ctx.user.id}/label-${crypto.randomUUID()}.jpg`;
         const up = await sb.storage.from("labels").upload(path, img.blob, { contentType: "image/jpeg" });
         if (up.error) throw up.error;
-        if (it.label_path) await sb.storage.from("labels").remove([it.label_path]);
+        if (it.label_path) patch.photo_paths = [...new Set([...(it.photo_paths || []), it.label_path])];
         patch.label_path = path;
       }
       const { error } = await sb.from("items").update(patch).eq("id", id);
@@ -354,7 +354,7 @@
         patch[k] = v;
       }
       if (res.bottle_path) {
-        if (it.bottle_path) await sb.storage.from("labels").remove([it.bottle_path]);
+        if (it.bottle_path) patch.photo_paths = [...new Set([...(it.photo_paths || []), it.bottle_path])];
         patch.bottle_path = res.bottle_path;
       }
       if (r.image_url) patch.bottle_image_url = r.image_url;
@@ -371,10 +371,9 @@
   async function remove() {
     const n = total();
     if (!confirm(`Supprimer définitivement cette fiche${n ? ` et ses ${n} bouteille${n > 1 ? "s" : ""} en stock` : ""}, avec l'historique des dégustations ?`)) return;
-    const files = [it.label_path, it.label_back_path, it.bottle_path, ...(it.photo_paths || [])].filter(Boolean);
     const { error } = await sb.from("items").delete().eq("id", id);
     if (error) return fail(error);
-    if (files.length) await sb.storage.from("labels").remove(files);
+    // Les fichiers sources restent dans le bucket privé, même après suppression de la fiche.
     location.replace(`/app/cave.html?loc=${encodeURIComponent(VC.getLoc() || "all")}`);
   }
 

@@ -72,4 +72,29 @@ Compléments possibles, par ordre d'intérêt :
 
 ## Cache des navigateurs
 
-Les pages chargent CSS et JS avec `?v=20261110`. Après modification, changer ce suffixe partout.
+Les pages chargent CSS et JS avec `?v=20261105-lavaux`. Après modification, changer ce suffixe partout et versionner le cache de `sw.js` si nécessaire.
+
+## Vinicellar 2 · Phase A (branche de revue)
+
+La modernisation conserve HTML/CSS/JavaScript natifs, les tables existantes et les permissions par collection. Aucune migration ou modification de fonction Supabase n'est incluse.
+
+- Direction photographique et éditoriale : panorama authentique de Lavaux dans la cave connectée, indicateurs discrets, onglets de catégories et bouteilles sans cartes fermées. Palette Terroir contemporain ; Fraunces et Inter conservées. Thème système/clair/sombre mémorisé sur l'appareil.
+- Catalogue photographique : deux colonnes sur mobile, trois à cinq sur écran large ; vue liste compacte mémorisée. Les filtres, tris, liens de fiche et sorties rapides restent disponibles.
+- Les étiquettes et photos restent identifiées comme telles. Le CSS ne transforme pas un fond opaque en transparence et ne crée aucune bouteille Studio.
+- Photographie authentique du Lavaux : attribution visible et détails dans [credits.html](credits.html) et [CREDITS.md](assets/img/lavaux/CREDITS.md).
+- Les anciennes photos remplacées sont conservées dans `photo_paths`. Retirer une photo de la galerie, supprimer une fiche ou supprimer un brouillon ne supprime plus les fichiers sources du stockage privé. Les fichiers détachés n'ont pas encore d'interface de restauration ; ne pas mettre en place de purge automatique.
+- Le cache des URL signées suit leur expiration et distingue les buckets.
+
+Validation locale, sans dépendance à installer :
+
+```sh
+node --test tests/core.test.cjs
+python3 scripts/preview-ui.py
+python3 -m http.server 8000 --directory dist
+```
+
+Ouvrir `/review/compare.html` ou `/review/mobile.html` sur ce serveur. Les sources avant/après sont exécutées avec les mêmes données fictives et des bouteilles illustratives. Le client est simulé et la CSP bloque les connexions réseau aux données (`connect-src 'none'`). `dist/` est un aperçu local ignoré par Git, pas un nouveau frontend de production.
+
+Résultats, limites de vérification et captures : [docs/phase-a-review.md](docs/phase-a-review.md).
+
+La phase B (Studio), les migrations, les fournisseurs d'image et toute mise en production requièrent une validation distincte. Ne pas fusionner la branche de revue avant cette décision.

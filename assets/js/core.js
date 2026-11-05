@@ -15,6 +15,29 @@
     ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey)
     : null;
 
+  // Préférence locale : aucun changement de profil ou de données serveur.
+  let theme = "system";
+  try { theme = localStorage.getItem("vc.theme") || "system"; } catch { /* stockage indisponible */ }
+  if (!["system", "light", "dark"].includes(theme)) theme = "system";
+  const applyTheme = () => {
+    if (theme === "system") delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = theme;
+    document.querySelectorAll("[data-theme-toggle]").forEach((b) => {
+      const label = { system: "Système", light: "Clair", dark: "Sombre" }[theme];
+      b.setAttribute("aria-label", `Thème : ${label}. Changer de thème`);
+      b.title = `Thème : ${label}`;
+      b.textContent = { system: "◐", light: "☀", dark: "☾" }[theme];
+    });
+  };
+  applyTheme();
+  document.addEventListener("DOMContentLoaded", applyTheme, { once: true });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("[data-theme-toggle]")) return;
+    theme = { system: "light", light: "dark", dark: "system" }[theme];
+    try { localStorage.setItem("vc.theme", theme); } catch { /* préférence pour cette session */ }
+    applyTheme();
+  });
+
   // ------------------------------------------------------------------ icônes (traits 1.6, 24×24)
   const P = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const I = {
@@ -35,6 +58,8 @@
     sparkle: P('<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>'),
     back: P('<path d="M15 5 8 12l7 7"/>'),
     filter: P('<path d="M4 6h16M7 12h10M10 18h4"/>'),
+    grid: P('<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/>'),
+    list: P('<path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/>'),
     x: P('<path d="M6 6l12 12M18 6 6 18"/>'),
     move: P('<path d="M4 12h16M14 6l6 6-6 6"/>'),
     out: P('<path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/>'),
@@ -163,16 +188,36 @@
 
   // ------------------------------------------------------------------ images privées (URL signées)
   const signedCache = new Map();
-  async function signed(paths) {
-    const need = [...new Set(paths.filter((p) => p && !signedCache.has(p)))];
+  async function signed(paths, bucket = "labels") {
+    const key = (p) => `${bucket}/${p}`;
+    const fresh = (p) => (signedCache.get(key(p))?.expires || 0) > Date.now();
+    const need = [...new Set(paths.filter((p) => p && !fresh(p)))];
     if (need.length && sb) {
-      const { data } = await sb.storage.from("labels").createSignedUrls(need, 3600);
-      (data || []).forEach((r) => r.signedUrl && signedCache.set(r.path, r.signedUrl));
+      const { data } = await sb.storage.from(bucket).createSignedUrls(need, 3600);
+      (data || []).forEach((r) => r.signedUrl && signedCache.set(key(r.path), { url: r.signedUrl, expires: Date.now() + 55 * 60 * 1000 }));
     }
-    return (p) => signedCache.get(p) || null;
+    return (p) => fresh(p) ? signedCache.get(key(p)).url : null;
   }
   // Vignette : la photo choisie par l'utilisateur, sinon l'image de la bouteille, sinon l'étiquette.
   const mainImagePath = (it) => it.cover_path || it.bottle_path || it.label_path || (it.photo_paths || [])[0] || null;
+
+  // Ne pas présenter une étiquette ou une photo ordinaire comme un détourage Studio.
+  function imageInfo(it) {
+    const path = mainImagePath(it);
+    const kind = path && path === it.bottle_path ? "bottle" : path && [it.label_path, it.label_back_path].includes(path) ? "label" : "photo";
+    return { path, kind, label: { bottle: "Bouteille", label: "Étiquette originale", photo: "Photo originale" }[kind] };
+  }
+  function itemVisual(it, getUrl) {
+    const image = imageInfo(it), url = getUrl(image.path);
+    return `<div class="thumb image-${image.kind}">${url ? `<img src="${esc(url)}" alt="" loading="lazy" decoding="async"><span class="image-fallback" hidden>${bottleSvg(it)}<span>Image indisponible</span></span>` : bottleSvg(it)}</div>`;
+  }
+  document.addEventListener("error", (e) => {
+    const img = e.target;
+    if (img.tagName !== "IMG" || !img.nextElementSibling?.classList.contains("image-fallback")) return;
+    img.hidden = true; img.nextElementSibling.hidden = false;
+  }, true);
+  const lavauxCredit = () => `<a class="photo-credit" href="/credits.html">Lavaux · Photo Krzysztof Golik · CC BY-SA 4.0</a>`;
+  const editorial = (title, text) => `<section class="terroir-banner" aria-label="${esc(title)}"><img src="/assets/img/lavaux/lavaux-leman.jpg" alt="Vignes en terrasses de Lavaux, Léman et Alpes" width="1280" height="329" decoding="async"><div class="terroir-copy"><span class="eyebrow">Vinicellar</span><h2>${esc(title)}</h2><p>${esc(text)}</p></div>${lavauxCredit()}</section>`;
 
   // ------------------------------------------------------------------ navigation
   const NAV = [
@@ -195,7 +240,7 @@
           ${DESKTOP.map((id) => NAV.find((n) => n.id === id)).map((n) => `<a href="${n.href}"${n.id === active ? ' aria-current="page"' : ""}>${n.id === "out" ? "Sortir une bouteille" : n.label}</a>`).join("")}
           <a href="/app/compte.html"${active === "account" ? ' aria-current="page"' : ""}>Compte</a>
           <a class="btn" href="/app/ajouter.html">${I.plus}Ajouter</a>
-        </nav><a class="me" href="/app/compte.html" aria-label="Mon compte">${I.user}</a></div>`;
+        </nav><button class="icon-btn theme-toggle" data-theme-toggle type="button" aria-label="Changer de thème">◐</button><a class="me" href="/app/compte.html" aria-label="Mon compte">${I.user}</a></div>`;
     }
     const tab = $("#tabbar");
     if (tab) {
@@ -205,6 +250,7 @@
         ? `<a class="tab-add" href="${n.href}"${n.id === active ? ' aria-current="page"' : ""}><span class="plus">${I.plus}</span><span class="sr">${n.label}</span></a>`
         : `<a href="${n.href}"${n.id === active ? ' aria-current="page"' : ""}>${I[n.icon]}<span>${n.label}</span></a>`).join("");
     }
+    applyTheme();
   }
 
   // ------------------------------------------------------------------ session
@@ -443,6 +489,10 @@
   function sheet(html) {
     const d = document.createElement("dialog");
     d.innerHTML = `<div class="dlg">${html}</div>`;
+    const heading = d.querySelector("h2");
+    if (heading) {
+      d.setAttribute("aria-label", heading.textContent);
+    }
     document.body.append(d);
     d.addEventListener("close", () => d.remove());
     d.addEventListener("click", (e) => { if (e.target === d || e.target.closest("[data-close]")) d.close(); });
@@ -597,7 +647,7 @@
   window.VC = {
     sb, cfg, I, CATEGORY, CATEGORY_SHORT, STYLE, KIND, CURRENCIES, AI_FIELDS,
     $, $$, esc, money, date, today, year, range, safeUrl, host, isWine, title,
-    windowStatus, bottleSvg, signed, mainImagePath, renderNav, boot, toast, fail, stars,
+    windowStatus, bottleSvg, signed, mainImagePath, imageInfo, itemVisual, editorial, renderNav, boot, toast, fail, stars,
     renderItemForm, readItemForm, identify, shrink,
     carnetNav, wishlistsFor, canEdit, lookalikes, likeness, getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, installHint, standalone, REASON, REGIONS, countryOf, regionOf, regionList, fold, priceOf, PRICE_BANDS
   };

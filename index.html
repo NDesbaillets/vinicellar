@@ -14,8 +14,8 @@
   <link rel="icon" href="/assets/img/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/assets/img/apple-touch-icon.png">
   <link rel="manifest" href="/site.webmanifest">
-  <meta name="theme-color" content="#FAF7F2" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#15110F" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F7F5EF" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#151B17" media="(prefers-color-scheme: dark)">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -23,15 +23,20 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="/assets/css/app.css?v=20261115">
+  <link rel="stylesheet" href="/assets/css/app.css?v=20261105-lavaux">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
-  <script src="/assets/js/config.js?v=20261115"></script>
-  <script src="/assets/js/core.js?v=20261115"></script>
-  <script src="/assets/js/auth.js?v=20261115" defer></script>
+  <script src="/assets/js/config.js?v=20261105-lavaux"></script>
+  <script src="/assets/js/core.js?v=20261105-lavaux"></script>
+  <script src="/assets/js/auth.js?v=20261105-lavaux" defer></script>
 </head>
 <body>
-  <header class="topbar"><div class="wrap"><a class="brand" href="/"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h14l-1 9a6 6 0 0 1-12 0z"/><path d="M16 18v10M11 28h10"/><path d="M10.2 9h11.6" opacity=".55"/></svg><span>Vinicellar</span></a></div></header>
+  <header class="topbar"><div class="wrap"><a class="brand" href="/"><svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h14l-1 9a6 6 0 0 1-12 0z"/><path d="M16 18v10M11 28h10"/><path d="M10.2 9h11.6" opacity=".55"/></svg><span>Vinicellar</span></a><button class="icon-btn theme-toggle" data-theme-toggle type="button" aria-label="Changer de thème">◐</button></div></header>
   <main class="wrap">
+    <section class="terroir-banner landing-landscape" aria-label="Lavaux et le Léman">
+      <img src="/assets/img/lavaux/lavaux-epesses.jpg" alt="Les vignobles en terrasses de Lavaux et le Léman vus depuis Épesses" width="1280" height="696" fetchpriority="high">
+      <div class="terroir-copy"><span class="eyebrow">Des terroirs aux moments partagés</span><h2>Le goût des belles découvertes.</h2></div>
+      <a class="photo-credit" href="/credits.html#epesses">Lavaux, Épesses · Foto-Falk · CC BY-SA 4.0</a>
+    </section>
     <section class="hero">
       <div>
         <span class="eyebrow">Vins, whiskies, sakés, rhums</span>
@@ -69,6 +74,6 @@
       </div>
     </section>
   </main>
-  <footer class="site-foot"><div class="wrap"><span>© 2026 Vinicellar · Lausanne</span><span>L'abus d'alcool est dangereux pour la santé. À consommer avec modération.</span></div></footer>
+  <footer class="site-foot"><div class="wrap"><span>© 2026 Vinicellar · Lausanne · <a href="/credits.html">Crédits photographiques</a></span><span>L'abus d'alcool est dangereux pour la santé. À consommer avec modération.</span></div></footer>
 </body>
 </html>
