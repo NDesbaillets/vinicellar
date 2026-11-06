@@ -35,7 +35,7 @@
   function visual() {
     const studio = VC.Studio, bottle = studio?.asset(it,"bottle"), label = studio?.asset(it,"label");
     const imgs = [studio?.ref(bottle) && {p:studio.ref(bottle),l:bottle.provenance === "bottle_reconstructed" ? "Bouteille Studio · reconstitution indicative" : "Bouteille Studio",studio:true},studio?.ref(label) && {p:studio.ref(label),l:"Étiquette restaurée",studio:true},it.bottle_path && { p: it.bottle_path, l: "Bouteille" }, it.label_path && { p: it.label_path, l: "Étiquette" },
-      it.label_back_path && { p: it.label_back_path, l: "Contre-étiquette" }, ...(it.photo_paths || []).map((p) => ({ p, l: "Photo", extra: true }))]
+      it.label_back_path && { p: it.label_back_path, l: "Contre-étiquette" }, ...(it.photo_paths || []).map((p) => ({ p, l: VC.Visual?.isVisual(p) ? "Visuel propre" : "Photo", extra: true }))]
       .filter(Boolean).map((x) => ({ ...x, u: getUrl(x.p) })).filter((x) => x.u);
     const cover = VC.mainImagePath(it);
     let cur = Math.max(0, imgs.findIndex((x) => x.p === cover));
@@ -47,7 +47,9 @@
       const tools = $("#vtools");
       if (!tools) return;
       const x = imgs[i];
-      tools.innerHTML = `${x && x.p !== cover && !studio?.ref(bottle) && !x.studio ? `<button class="btn quiet" data-v="cover">${I.check}Utiliser comme vignette</button>` : x ? `<span class="faint" style="font-size:var(--fs-s)">${studio?.ref(bottle) ? "Bouteille Studio prioritaire dans le catalogue" : "Vignette actuelle"}</span>` : ""}
+      const hasVisual = imgs.some((y) => VC.Visual?.isVisual(y.p));
+      tools.innerHTML = `${VC.Visual && imgs.some((y) => !VC.Visual.isVisual(y.p) && !y.studio) ? `<button class="btn${hasVisual ? " quiet" : ""}" data-v="visual">${I.sparkle}${hasVisual ? "Refaire le visuel" : "Créer un visuel propre"}</button>` : ""}
+        ${x && x.p !== cover && !studio?.ref(bottle) && !x.studio ? `<button class="btn quiet" data-v="cover">${I.check}Utiliser comme vignette</button>` : x ? `<span class="faint" style="font-size:var(--fs-s)">${studio?.ref(bottle) ? "Bouteille Studio prioritaire dans le catalogue" : "Vignette actuelle"}</span>` : ""}
         ${x && x.extra ? `<button class="btn quiet" data-v="del">${I.trash}Retirer de la galerie</button>` : ""}
         <label class="btn quiet">${I.camera}Ajouter une photo<input type="file" accept="image/*" data-v="add" hidden></label>`;
     };
@@ -59,6 +61,7 @@
       const b = e.target.closest("[data-v]");
       if (!b || b.tagName === "INPUT") return;
       const x = imgs[cur];
+      if (b.dataset.v === "visual") return VC.Visual.open(it, imgs.filter((y) => !y.studio && y.p !== it.bottle_path), refresh);
       if (b.dataset.v === "cover") {
         const { error } = await sb.from("items").update({ cover_path: x.p }).eq("id", id);
         if (error) return fail(error);
