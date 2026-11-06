@@ -1,0 +1,129 @@
+{
+ "size": [
+  1000,
+  1800
+ ],
+ "ppm": 4500.0,
+ "shapes": {
+  "bordeaux": {
+   "variants": [
+    "green-red",
+    "flint-white",
+    "flint-rose"
+   ],
+   "caps": [
+    "foil",
+    "screwcap"
+   ],
+   "body": {
+    "cx": 500.0,
+    "r": 171.5,
+    "top": 927,
+    "bottom": 1611
+   },
+   "neck": {
+    "cx": 500.0,
+    "r": 68.3,
+    "top": 598,
+    "bottom": 684
+   },
+   "foot": 1746,
+   "lip": 396
+  },
+  "burgundy": {
+   "variants": [
+    "olive-red",
+    "olive-white",
+    "flint-white"
+   ],
+   "caps": [
+    "foil",
+    "screwcap"
+   ],
+   "body": {
+    "cx": 500.0,
+    "r": 183.6,
+    "top": 1116,
+    "bottom": 1620
+   },
+   "neck": {
+    "cx": 500.0,
+    "r": 70.7,
+    "top": 612,
+    "bottom": 675
+   },
+   "foot": 1746,
+   "lip": 419
+  },
+  "champagne": {
+   "variants": [
+    "darkgreen-white",
+    "flint-rose"
+   ],
+   "caps": [
+    "champagne"
+   ],
+   "body": {
+    "cx": 500.0,
+    "r": 202.1,
+    "top": 1161,
+    "bottom": 1611
+   },
+   "neck": {
+    "cx": 500.0,
+    "r": 114.8,
+    "top": 756,
+    "bottom": 824
+   },
+   "foot": 1746,
+   "lip": 396
+  },
+  "alsace": {
+   "variants": [
+    "green-white",
+    "flint-white"
+   ],
+   "caps": [
+    "foil",
+    "screwcap"
+   ],
+   "body": {
+    "cx": 500.0,
+    "r": 158.0,
+    "top": 1026,
+    "bottom": 1611
+   },
+   "neck": {
+    "cx": 500.0,
+    "r": 68.6,
+    "top": 374,
+    "bottom": 441
+   },
+   "foot": 1746,
+   "lip": 171
+  },
+  "spirit": {
+   "variants": [
+    "flint-amber",
+    "flint-clear"
+   ],
+   "caps": [
+    "stopper"
+   ],
+   "body": {
+    "cx": 500.0,
+    "r": 191.7,
+    "top": 868,
+    "bottom": 1611
+   },
+   "neck": {
+    "cx": 500.0,
+    "r": 79.6,
+    "top": 585,
+    "bottom": 666
+   },
+   "foot": 1746,
+   "lip": 464
+  }
+ }
+}

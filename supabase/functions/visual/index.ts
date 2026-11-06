@@ -1,5 +1,5 @@
-// Vinicellar · visuel propre d'une bouteille : l'IA repère l'étiquette et décrit la bouteille ;
-// le navigateur redresse l'étiquette et compose l'image. Aucune image n'est générée ni stockée ici.
+// Vinicellar · visuel propre d'une bouteille : l'IA repère l'étiquette (et la collerette) et décrit la bouteille ;
+// le navigateur détoure l'étiquette et la pose sur une bouteille vierge photoréaliste. Aucune image n'est générée ni stockée ici.
 // Secret requis : ANTHROPIC_API_KEY. Optionnel : AI_VISUAL_DAILY_LIMIT (défaut 60 par utilisateur et par 24 h).
 
 import Anthropic from "npm:@anthropic-ai/sdk@0.121.0";
@@ -22,11 +22,13 @@ function cors(req: Request) {
 const json = (req: Request, body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors(req), "Content-Type": "application/json" } });
 
-const SYSTEM = `On te donne la photo d'une étiquette ou d'une bouteille (vin, champagne, spiritueux), ses dimensions en pixels et ce que l'on sait du vin.
-1. Étiquette principale (face avant, la plus grande) : donne ses quatre coins en pixels de l'image, dans l'ordre haut gauche, haut droite, bas droite, bas gauche, au bord du papier, sans marge. Étiquette collée sur une bouteille courbe : les coins de la partie visible de face. Étiquette introuvable : null.
-2. Forme de la bouteille : bordeaux (épaules marquées), burgundy (épaules tombantes), champagne (mousseux, verre épais), alsace (flûte haute et fine) ou spirit. Bouteille invisible : déduis-la de l'appellation, de la région et du type.
-3. Couleurs hexadécimales : body = teinte apparente de la bouteille pleine (verre et liquide ensemble, souvent très sombre pour un rouge), capsule = capsule, surbouchage ou bouchon. Invisibles : l'usage le plus probable pour ce vin.
-Réponds uniquement par ce JSON : {"corners":[[x,y],[x,y],[x,y],[x,y]]|null,"shape":"bordeaux|burgundy|champagne|alsace|spirit","body":"#rrggbb","capsule":"#rrggbb","confidence":0-1}`;
+const SYSTEM = `On te donne la photo d'une étiquette ou d'une bouteille (vin, champagne, spiritueux), ses dimensions en pixels et ce que l'on sait du vin. Coordonnées en pixels de l'image.
+1. label : étiquette principale (face avant). Six points sur son pourtour, dans l'ordre : coin haut gauche, milieu du bord haut, coin haut droite, coin bas droite, milieu du bord bas, coin bas gauche. Collée sur une bouteille, ses bords haut et bas sont courbes : les milieux suivent cette courbe. Forme découpée (ovale, écusson, coins coupés) : les points du rectangle qui l'englobe au plus près, en suivant la courbure. outline : 12 à 24 points qui suivent le bord réel du papier (coins arrondis, arc, ovale, découpes), dans le sens horaire depuis le haut gauche. on_bottle = true si l'étiquette est sur une bouteille, false si elle est à plat. Introuvable : null.
+2. neck_label : examine le col entre la capsule et les épaules. Une collerette est une bande de papier distincte qui entoure le col (souvent colorée, avec le millésime ou le nom) ; si tu en vois une, donne ses six points et son contour comme pour l'étiquette. Seulement si le col est nu : null.
+3. shape : bordeaux (épaules marquées), burgundy (épaules tombantes), champagne (mousseux), alsace (flûte haute et fine) ou spirit. Bouteille invisible : déduis-la de l'appellation, de la région et du type.
+4. glass : darkgreen, green, olive (feuille-morte), amber ou flint (incolore) ; liquid : red, white, rose, amber ou clear. Invisibles : l'usage le plus probable pour ce vin.
+5. closure : type foil (capsule), screwcap (capsule à vis), champagne (coiffe et muselet), wax (cire), stopper (bouchon à tête) ou none ; color = couleur hexadécimale dominante. Invisible : l'usage le plus probable.
+Réponds uniquement par ce JSON : {"neck_label":{"pts":[...],"outline":[...]}|null,"label":{"pts":[[x,y],[x,y],[x,y],[x,y],[x,y],[x,y]],"outline":[[x,y],...],"on_bottle":true}|null,"shape":"","glass":"","liquid":"","closure":{"type":"","color":"#rrggbb"},"confidence":0-1}`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors(req) });
@@ -60,7 +62,7 @@ Deno.serve(async (req) => {
   try {
     msg = await client.beta.messages.create({
       model: MODEL,
-      max_tokens: 3000,
+      max_tokens: 4000,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       output_config: { effort: "low" },
@@ -77,25 +79,33 @@ Deno.serve(async (req) => {
   }
   console.log("usage", JSON.stringify(msg.usage));
   const text = msg.content.filter((b) => b.type === "text").map((b) => (b as { text: string }).text).join("\n");
-  let raw: { corners?: unknown; shape?: unknown; body?: unknown; capsule?: unknown; confidence?: unknown } = {};
+  let raw: Record<string, any> = {};
   try { raw = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)); } catch { /* réponse illisible */ }
   await admin.from("ai_calls").update({ ok: true }).eq("id", callRow?.id);
 
-  // Coins ramenés en coordonnées 0–1 ; rejetés s'ils sortent de l'image ou forment une surface minuscule.
-  let corners: number[][] | null = null;
-  if (Array.isArray(raw.corners) && raw.corners.length === 4) {
-    const p = raw.corners.map((c) => Array.isArray(c) ? [Number(c[0]) / w, Number(c[1]) / h] : [NaN, NaN]);
-    const area = Math.abs(p.reduce((a, c, i) => a + c[0] * p[(i + 1) % 4][1] - p[(i + 1) % 4][0] * c[1], 0)) / 2;
-    if (p.every((c) => c.every((n) => Number.isFinite(n) && n >= -0.02 && n <= 1.02)) && area > 0.01)
-      corners = p.map((c) => c.map((n) => Math.min(1, Math.max(0, Math.round(n * 1000) / 1000))));
-  }
+  // Six points ramenés en coordonnées 0–1 ; rejetés s'ils sortent de l'image ou délimitent une surface minuscule.
+  const grid = (g: any) => {
+    if (!g || !Array.isArray(g.pts) || g.pts.length !== 6) return null;
+    const p = g.pts.map((c: any) => Array.isArray(c) ? [Number(c[0]) / w, Number(c[1]) / h] : [NaN, NaN]);
+    const q = [p[0], p[2], p[3], p[5]];
+    const area = Math.abs(q.reduce((a: number, c: number[], i: number) => a + c[0] * q[(i + 1) % 4][1] - q[(i + 1) % 4][0] * c[1], 0)) / 2;
+    if (!p.every((c: number[]) => c.every((n) => Number.isFinite(n) && n >= -0.03 && n <= 1.03)) || area < 0.0002) return null;
+    const norm = (c: number[]) => c.map((n) => Math.min(1, Math.max(0, Math.round(n * 1000) / 1000)));
+    const o = Array.isArray(g.outline) && g.outline.length >= 8 && g.outline.length <= 40
+      ? g.outline.map((c: any) => Array.isArray(c) ? [Number(c[0]) / w, Number(c[1]) / h] : [NaN, NaN]) : null;
+    const outline = o && o.every((c: number[]) => c.every((n) => Number.isFinite(n) && n >= -0.03 && n <= 1.03)) ? o.map(norm) : null;
+    return { pts: p.map(norm), outline, on_bottle: g.on_bottle !== false };
+  };
+  const pick = (v: unknown, list: string[]) => (list.includes(String(v)) ? String(v) : null);
   const hex = (v: unknown) => (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : null);
   const conf = Number(raw.confidence);
   return json(req, {
-    corners,
-    shape: SHAPES.includes(String(raw.shape)) ? raw.shape : null,
-    body: hex(raw.body),
-    capsule: hex(raw.capsule),
+    label: grid(raw.label),
+    neck_label: grid(raw.neck_label),
+    shape: pick(raw.shape, SHAPES),
+    glass: pick(raw.glass, ["darkgreen", "green", "olive", "amber", "flint"]),
+    liquid: pick(raw.liquid, ["red", "white", "rose", "amber", "clear"]),
+    closure: raw.closure ? { type: pick(raw.closure.type, ["foil", "screwcap", "champagne", "wax", "stopper", "none"]), color: hex(raw.closure.color) } : null,
     confidence: Number.isFinite(conf) && conf >= 0 && conf <= 1 ? conf : null,
   });
 });
