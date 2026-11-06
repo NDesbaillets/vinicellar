@@ -85,7 +85,7 @@ La modernisation conserve HTML/CSS/JavaScript natifs, les tables existantes et l
 - Les anciennes photos remplacées sont conservées dans `photo_paths`. Retirer une photo de la galerie, supprimer une fiche ou supprimer un brouillon ne supprime plus les fichiers sources du stockage privé. Les fichiers détachés n'ont pas encore d'interface de restauration ; ne pas mettre en place de purge automatique.
 - Le cache des URL signées suit leur expiration et distingue les buckets.
 
-Validation locale, sans dépendance à installer :
+Validation locale (pour l’aperçu Studio actuel, installer aussi les dépendances Python indiquées ci-dessous) :
 
 ```sh
 node --test tests/core.test.cjs
@@ -97,4 +97,10 @@ Ouvrir `/review/compare.html` ou `/review/mobile.html` sur ce serveur. Les sourc
 
 Résultats, limites de vérification et captures : [docs/phase-a-review.md](docs/phase-a-review.md).
 
-La phase B (Studio), les migrations, les fournisseurs d'image et toute mise en production requièrent une validation distincte. Ne pas fusionner la branche de revue avant cette décision.
+L’activation de Studio, l’application de ses migrations, les fournisseurs d’image et toute mise en production requièrent une autorisation distincte.
+
+## Studio Vinicellar · phase B
+
+Implémentation sur `feat/vinicellar-studio`, désactivée par défaut (`studioEnabled:false`). Deux sorties indépendantes, moteur photographique local, candidats privés et activation après approbation explicite. Aucun service IA payant. La proposition SQL n'est pas appliquée ; aucune activation ou mise en production n'est incluse.
+
+Architecture, limites, tests, prérequis et procédure d'activation soumise à autorisation : [docs/studio-review.md](docs/studio-review.md). Pour l'aperçu actuel, installer les dépendances du worker puis lancer `python3 scripts/preview-ui.py` ; les images de QA sont calculées localement à partir de fixtures synthétiques. Les pages de l'app utilisent le suffixe de cache `20261105-studio`.

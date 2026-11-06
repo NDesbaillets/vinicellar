@@ -43,6 +43,7 @@
     if (!data.picks || !data.picks.length) {
       $("#answer").innerHTML = `<p class="notice">${esc(data.message || data.missing || "Rien de convaincant dans cette cave pour ce menu.")}</p>`; return;
     }
+    await VC.Studio?.loadActive(items);
     const getUrl = await signed(data.picks.map((p) => { const it = items.find((x) => x.id === p.item_id); return it && mainImagePath(it); }).filter(Boolean));
     $("#answer").innerHTML = `${data.intro ? `<p class="lead-s">${esc(data.intro)}</p>` : ""}
       <div class="picks">${data.picks.map((p, i) => {
@@ -51,7 +52,7 @@
         const url = getUrl(mainImagePath(it));
         const n = stock.filter((s) => s.item_id === it.id && (!loc || s.location_id === loc)).reduce((a, s) => a + s.quantity, 0);
         return `<div class="card pick-card">
-          <div class="match"><div class="thumb">${url ? `<img src="${esc(url)}" alt="">` : bottleSvg(it)}</div>
+          <div class="match">${VC.itemVisual(it, () => url)}
           <div><span class="eyebrow">${i === 0 ? "Notre choix" : "Autre option"}${p.course ? ` · ${esc(p.course)}` : ""}</span>
             <h3 style="margin:0">${esc(it.name)}${it.vintage ? ` <span class="faint">${it.vintage}</span>` : ""}</h3>
             <p class="muted" style="margin:2px 0 8px">${esc([it.producer, it.appellation || it.region].filter(Boolean).join(" · "))}</p>

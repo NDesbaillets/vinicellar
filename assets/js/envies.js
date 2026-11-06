@@ -17,6 +17,7 @@
     lists = a.data || []; entries = b.data || []; places = c; colls = d.data || [];
     if (!lists.length && colls.length) lists = await VC.wishlistsFor((places[0] || {}).collection_id || colls[0].id);
     if (!lists.some((l) => l.id === current)) current = lists[0] ? lists[0].id : null;
+    await VC.Studio?.loadActive(entries.map(e=>e.items).filter(Boolean));
     getUrl = await signed(entries.map((e) => e.items && mainImagePath(e.items)).filter(Boolean));
     draw();
   }
@@ -30,7 +31,7 @@
     const url = getUrl(mainImagePath(it));
     const price = it.market_price ? money(it.market_price, it.market_currency) : "";
     return `<div class="bottle-wrap wish" data-e="${e.id}"><a class="bottle" href="/app/fiche.html?id=${it.id}">
-      <div class="thumb">${url ? `<img src="${esc(url)}" alt="" loading="lazy">` : bottleSvg(it)}</div>
+      ${VC.itemVisual(it, () => url)}
       <div><h3>${esc(it.name || "")}${it.vintage ? ` <span class="faint">${it.vintage}</span>` : ""}</h3>
       <p class="sub">${esc([it.producer, it.appellation || it.region, it.country].filter(Boolean).join(" · ")) || (e.pending ? "Fiche en cours…" : "")}</p>
       <div class="tags">${e.qty_wanted ? `<span class="tag">${e.qty_wanted} bt. voulues</span>` : ""}${price ? `<span class="tag">marché ${price}</span>` : ""}${e.target_price ? `<span class="tag ready">cible ${money(e.target_price, it.market_currency || ctx.profile.currency)}</span>` : ""}</div>
@@ -155,6 +156,7 @@
         load();
       } catch (err) { console.error(err); toast("Fiche non complétée : " + err.message); }
     }
+    VC.Studio?.offer(it.id);
   });
 
   try { await load(); } catch (e) { fail(e, "Impossible de charger les listes."); }

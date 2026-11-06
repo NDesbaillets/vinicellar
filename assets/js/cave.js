@@ -31,6 +31,7 @@
     if (coll) items = items.filter((it) => it.collection_id === coll);
     byItem = new Map();
     for (const s of stock) { if (!byItem.has(s.item_id)) byItem.set(s.item_id, []); byItem.get(s.item_id).push(s); }
+    await VC.Studio?.loadActive(items);
     getUrl = await signed(items.map(mainImagePath));
   }
   const qty = (it) => (byItem.get(it.id) || []).filter((s) => !loc || s.location_id === loc).reduce((a, s) => a + s.quantity, 0);

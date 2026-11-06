@@ -81,3 +81,12 @@ test('préférence de thème valide appliquée ; valeur inconnue ramenée au sys
   assert.equal(setup({ storedTheme: 'light' }).document.documentElement.dataset.theme, 'light');
   assert.equal(setup({ storedTheme: 'invalid' }).document.documentElement.dataset.theme, undefined);
 });
+
+test('Studio : URL candidates et approuvées isolées, courtes et renouvelées',async()=>{
+ const {VC,requests,advance}=setup();
+ const refs=['studio-approved:a.png','studio-candidates:a.png','original.jpg'];
+ const get=await VC.signed(refs);
+ assert.equal(requests.length,3);assert.match(get(refs[0]),/studio-approved/);assert.match(get(refs[1]),/studio-candidates/);
+ advance(271000);assert.equal(get(refs[0]),null);assert.equal(get(refs[1]),null);assert.ok(get(refs[2]));
+ await VC.signed(refs);assert.equal(requests.length,5);
+});

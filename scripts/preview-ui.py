@@ -37,16 +37,18 @@ for variant in ['before', 'after']:
             p = dest / name
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_bytes(subprocess.check_output(['git', 'show', f'{args.before_ref}:{name}'], cwd=ROOT))
-    for page, script in PAGES.items():
-        (dest / f'{page}.html').write_text(f'''<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="{CSP}"><title>Revue Vinicellar · {variant} · données fictives</title><link rel="stylesheet" href="{FONTS}"><link rel="stylesheet" href="{prefix}/assets/css/app.css"><script src="/review/mock.js"></script><script src="{prefix}/assets/js/core.js"></script><script defer src="{prefix}/assets/js/{script}.js"></script></head><body class="app"><header id="topbar"></header><main class="wrap" id="main"><p class="loading" role="status">Chargement…</p></main><nav id="tabbar"></nav></body></html>''')
+    pages = {**PAGES, **({'studio':'studio-page'} if variant == 'after' else {})}
+    studio_script = '<script src="/assets/js/studio.js"></script>' if variant == 'after' else ''
+    for page, script in pages.items():
+        (dest / f'{page}.html').write_text(f'''<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="{CSP}"><title>Revue Vinicellar · {variant} · données fictives</title><link rel="stylesheet" href="{FONTS}"><link rel="stylesheet" href="{prefix}/assets/css/app.css"><script src="/review/mock.js"></script><script src="{prefix}/assets/js/core.js"></script>{studio_script}<script defer src="{prefix}/assets/js/{script}.js"></script></head><body class="app"><header id="topbar"></header><main class="wrap" id="main"><p class="loading" role="status">Chargement…</p></main><nav id="tabbar"></nav></body></html>''')
 
 # Les liens de navigation restent dans l'environnement fictif.
 app = OUT / 'app'
 app.mkdir(exist_ok=True)
-for page, script in PAGES.items():
-    shutil.copy2(review / 'after' / f'{page}.html', app / ('index.html' if script == 'picker' else f'{script}.html'))
+for page, script in {**PAGES,'studio':'studio-page'}.items():
+    shutil.copy2(review / 'after' / f'{page}.html', app / ('index.html' if script == 'picker' else 'studio.html' if page=='studio' else f'{script}.html'))
 for path in app.glob('*.html'):
-    if path.name not in ['index.html', 'cave.html', 'fiche.html', 'ajouter.html']:
+    if path.name not in ['index.html', 'cave.html', 'fiche.html', 'ajouter.html','studio.html']:
         path.unlink()
 landing = (ROOT / 'index.html').read_text()
 landing = '\n'.join(line for line in landing.splitlines() if not any(x in line for x in ['cdn.jsdelivr.net/npm/@supabase', 'src="/assets/js/config.js', 'src="/assets/js/auth.js']))
@@ -59,3 +61,18 @@ shutil.copy2(ROOT / 'credits.html', OUT / 'credits.html')
 for width in [320, 390, 768, 1280, 1536]:
     (review / f'width-{width}.html').write_text(f'<!doctype html><html><title>QA {width}</title><body><iframe title="QA responsive" width="{width}" height="1600" style="border:0" src="after/catalogue.html?loc=home"></iframe></body></html>')
 print(f'Revue préparée dans {OUT} ; aucun accès Supabase, CSP connect-src none.')
+
+# Fixtures traitées par le vrai moteur local ; aucun paysage ni vrai vin simulé.
+import sys
+sys.path.insert(0, str(ROOT / 'studio-worker'))
+from test_processor import label, bottle
+from processor import process
+fixtures = review / 'fixtures'
+fixtures.mkdir(exist_ok=True)
+(fixtures / 'original-label.png').write_bytes(label())
+(fixtures / 'original-bottle.png').write_bytes(bottle())
+(fixtures / 'restored-label.png').write_bytes(process('label', {'label':label()}, {'label_is_crop':True})[0])
+(fixtures / 'studio-bottle.png').write_bytes(process('bottle', {'bottle':bottle()}, {'mode':'cutout','full_bottle':True})[0])
+(fixtures / 'reconstructed-bottle.png').write_bytes(process('bottle', {'label':label()}, {'mode':'reconstructed','template':'bordeaux','glass':'green','confirmed_shape':True,'label_is_crop':True})[0])
+for width in [320,390,768,1280]:
+    (review / f'studio-width-{width}.html').write_text(f'<!doctype html><html><title>Studio QA {width}</title><body style="margin:0"><iframe title="Studio responsive" width="{width}" height="1500" style="border:0;display:block" src="after/studio.html?id=wine-0"></iframe></body></html>')

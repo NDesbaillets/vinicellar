@@ -13,6 +13,7 @@
     const [p, a, b] = await Promise.all([VC.loadPlaces(), sb.from("items").select("*"), sb.from("stock").select("*").gt("quantity", 0)]);
     places = p.filter((x) => VC.canEdit(x.collection_id)); items = (a.data || []).filter((it) => VC.canEdit(it.collection_id)); stock = b.data || [];
     if (loc && !places.some((x) => x.id === loc)) loc = "";
+    await VC.Studio?.loadActive(items);
     getUrl = await signed(items.map(mainImagePath));
   }
   const rowsOf = (id) => stock.filter((s) => s.item_id === id);
@@ -73,7 +74,7 @@
       return;
     }
     const url = getUrl(mainImagePath(it));
-    res.innerHTML = `<div class="card" style="margin-top:16px"><div class="match"><div class="thumb">${url ? `<img src="${esc(url)}" alt="">` : bottleSvg(it)}</div>
+    res.innerHTML = `<div class="card" style="margin-top:16px"><div class="match">${VC.itemVisual(it, () => url)}
       <div><span class="eyebrow">Reconnue${data.confidence != null ? ` · ${Math.round(data.confidence * 100)} %` : ""}</span><h2 style="margin:0">${esc(it.name)}${it.vintage ? ` <span class="faint">${it.vintage}</span>` : ""}</h2><p class="muted" style="margin:4px 0 12px">${esc(it.producer || "")}</p>
       <button class="btn big" id="go">${I.glass}Sortir cette bouteille</button></div></div>
       ${alts.length ? `<p class="muted" style="margin:14px 0 0">Pas la bonne ? Peut-être :</p><div class="pick-list">${alts.map(pickRow).join("")}</div>` : ""}</div>`;
