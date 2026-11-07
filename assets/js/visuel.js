@@ -8,7 +8,7 @@
 (function () {
   const VC = window.VC;
   const { sb, $, esc, I, toast, fail } = VC;
-  const BASE = "/assets/img/bottles/", AV = "?v=20261107";  // AV : version des rendus (cache de l'app installée)
+  const BASE = "/assets/img/bottles/", AV = "?v=20261107b";  // AV : version des rendus (cache de l'app installée)
   const SHAPE_LABEL = { bordeaux: "Bordelaise", burgundy: "Bourguignonne", champagne: "Champenoise", alsace: "Flûte", spirit: "Spiritueux" };
   const VARIANT_LABEL = { "green-red": "Vert · rouge", "flint-white": "Blanc · vin blanc", "flint-rose": "Blanc · rosé", "olive-red": "Feuille-morte · rouge",
     "olive-white": "Feuille-morte · blanc", "darkgreen-white": "Vert foncé", "green-white": "Vert · blanc", "flint-amber": "Ambré", "flint-clear": "Incolore" };
@@ -350,36 +350,26 @@
   }
 
   // ---------------------------------------------------------------- packshot d'une vraie bouteille détourée
-  // La bouteille (PNG transparent de fal) est posée au cadrage et à l'échelle des rendus de studio, sur une ombre
-  // de contact et une ombre portée douce vers l'arrière gauche, comme les bouteilles vierges.
+  // La bouteille (PNG transparent de fal) est posée au cadrage et à l'échelle des rendus de studio, sans ombre :
+  // le visuel reste transparent, et c'est l'affichage (réglage « Fond des aperçus ») qui pose le fond.
   async function composePhoto(png, shape) {
     const s = meta.shapes[shape] || meta.shapes.burgundy, cam = meta.camera, [W, H] = meta.size, R = cam.rot, [ox, oy, oz] = cam.pos;
     const screenY = (x, y, z) => { const px = x - ox, py = y - oy, pz = z - oz; const cy = R[0][1] * px + R[1][1] * py + R[2][1] * pz, cz = R[0][2] * px + R[1][2] * py + R[2][2] * pz; return H / 2 - cam.f * cy / -cz; };
     const foot = screenY(0, -s.body.r, 0), lip = screenY(0, 0, s.h), targetH = foot - lip;
     // recadrage sur la silhouette (alpha)
     const t = document.createElement("canvas"); t.width = png.width; t.height = png.height; const tx = t.getContext("2d"); tx.drawImage(png, 0, 0);
-    const a = tx.getImageData(0, 0, t.width, t.height).data; let x0 = t.width, y0 = t.height, x1 = 0, y1 = 0;
+    const D = tx.getImageData(0, 0, t.width, t.height), a = D.data; let x0 = t.width, y0 = t.height, x1 = 0, y1 = 0;
+    // Nettoyage du haut : un fil ou un câble qui touche la capsule (lampe, suspension) est gardé par le détourage ;
+    // les lignes bien plus étroites que la bouteille (< 12 % de sa largeur maximale) sont retirées au-dessus d'elle.
+    const rowW = new Int32Array(t.height); let maxW = 0;
+    for (let y = 0; y < t.height; y++) { let n = 0; for (let x = 0; x < t.width; x++) if (a[(y * t.width + x) * 4 + 3] > 128) n++; rowW[y] = n; if (n > maxW) maxW = n; }
+    let top = 0; while (top < t.height && rowW[top] < maxW * .12) top++;
+    if (top > 0) { for (let i = 0; i < top * t.width * 4; i += 4) a[i + 3] = 0; tx.putImageData(D, 0, 0); }
     for (let y = 0; y < t.height; y++) for (let x = 0; x < t.width; x++) if (a[(y * t.width + x) * 4 + 3] > 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
     if (x1 <= x0 || y1 <= y0) throw new Error("Détourage vide.");
     const bw0 = x1 - x0 + 1, bh0 = y1 - y0 + 1, k = Math.min(targetH / bh0, W * .7 / bw0), bw = bw0 * k, bh = bh0 * k, dx = (W - bw) / 2, dy = foot - bh;
-    const sil = document.createElement("canvas"); sil.width = bw0; sil.height = bh0; const sx = sil.getContext("2d");
-    sx.drawImage(t, x0, y0, bw0, bh0, 0, 0, bw0, bh0); sx.globalCompositeOperation = "source-in"; sx.fillStyle = "#000"; sx.fillRect(0, 0, bw0, bh0);
     const c = document.createElement("canvas"); c.width = W; c.height = H; const ctx = c.getContext("2d");
-    // ombre portée : silhouette couchée sur le sol vers l'arrière gauche, floutée (réduction puis agrandissement), estompée
-    // Haut de la silhouette → vers la gauche et vers le fond (cisaillement + écrasement), pied fixe.
-    const S = 2, sh = document.createElement("canvas"); sh.width = W / S; sh.height = H / S; const hx = sh.getContext("2d");
-    if ("filter" in hx) hx.filter = "blur(9px)";
-    hx.setTransform(1 / S, 0, .6 / S, .16 / S, (dx - .6 * bh) / S, (foot - .16 * bh) / S); hx.drawImage(sil, 0, 0, bw, bh);
-    hx.filter = "none";
-    hx.setTransform(1, 0, 0, 1, 0, 0); hx.globalCompositeOperation = "destination-in";
-    const g = hx.createRadialGradient(W / 2 / S, foot / S, 0, W / 2 / S, foot / S, bh * .6 / S); g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(1, "rgba(0,0,0,0)");
-    hx.fillStyle = g; hx.fillRect(0, 0, sh.width, sh.height);
-    ctx.globalAlpha = .3; ctx.imageSmoothingQuality = "high"; ctx.drawImage(sh, 0, 0, W, H);
-    // ombre de contact au pied
-    const cs = document.createElement("canvas"); cs.width = W / S; cs.height = H / S; const cx2 = cs.getContext("2d");
-    if ("filter" in cx2) cx2.filter = "blur(4px)";
-    cx2.fillStyle = "#000"; cx2.beginPath(); cx2.ellipse(W / 2 / S, foot / S, bw * .47 / S, 5, 0, 0, Math.PI * 2); cx2.fill();
-    ctx.globalAlpha = .55; ctx.drawImage(cs, 0, 0, W, H); ctx.globalAlpha = 1;
+    ctx.imageSmoothingQuality = "high";
     ctx.drawImage(t, x0, y0, bw0, bh0, dx, dy, bw, bh);
     return c;
   }

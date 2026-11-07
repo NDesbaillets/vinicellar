@@ -21,6 +21,8 @@
       <p class="muted">Export de toute la cave au format du modèle d'import (une ligne par vin et par cave), lisible dans Excel ou Numbers et réimportable tel quel.</p>
       <div class="row"><button class="btn ghost" id="export">${I.download}Exporter la cave (.xlsx)</button><a class="btn ghost" href="/app/importer.html">Importer un tableau</a><button class="btn ghost" id="export-j">${I.download}Exporter le journal (.csv)</button></div>
       <p class="faint" style="margin:14px 0 0;font-size:var(--fs-s)">Analyses d'étiquettes ces dernières 24 h : <span id="quota">…</span></p></div>
+    <div class="card"><h3>Fond des aperçus</h3><p class="muted">Derrière les visuels de bouteilles, dans la cave et les fiches. Modifiable à tout moment, sans refaire les visuels. Réglage propre à cet appareil.</p>
+      <div class="bg-choices" id="visual-bg">${[["white", "Blanc", "#fff"], ["ivory", "Ivoire", "#f3efe7"], ["none", "Aucun", "repeating-conic-gradient(var(--sunk) 0 25%, var(--card) 0 50%) 0 0 / 12px 12px"]].map(([k, l, bg]) => `<button type="button" class="bg-choice" data-bg="${k}" aria-pressed="${VC.getVisualBg() === k}"><i style="background:${bg}"></i>${l}</button>`).join("")}</div></div>
     <div class="card"><h3>Caves et partage</h3><p class="muted">Créer, renommer ou supprimer une cave ; inviter votre conjoint ou votre famille.</p><a class="btn ghost" href="/app/caves.html">${I.share}Gérer les caves et le partage</a></div>
     ${p.is_admin ? `<div class="card"><h3>Administration</h3><p class="muted">Valider les demandes d'invitation.</p><a class="btn ghost" href="/app/admin.html">Demandes d'invitation<span id="req-n"></span></a></div>` : ""}
     <div class="card"><h3>Session</h3><div class="row"><button class="btn ghost" id="logout">${I.out}Se déconnecter</button><button class="btn ghost" id="logout-all">Se déconnecter de tous les appareils</button></div></div>`;
@@ -30,6 +32,12 @@
   sb.from("ai_calls").select("id", { count: "exact", head: true }).gte("created_at", new Date(Date.now() - 864e5).toISOString())
     .then(({ count }) => ($("#quota").textContent = count ?? 0));
 
+  $("#visual-bg").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-bg]"); if (!b) return;
+    VC.setVisualBg(b.dataset.bg);
+    document.querySelectorAll("#visual-bg [data-bg]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    toast("Fond des aperçus modifié.");
+  });
   $("#profile").addEventListener("submit", async (e) => {
     e.preventDefault();
     const f = e.target;
