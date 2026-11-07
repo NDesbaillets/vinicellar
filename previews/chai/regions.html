@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Vinicellar — aperçu des pastilles viticoles</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Inter:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="/assets/css/app.css?v=20261107-regions">
+  <style>
+    .seal-preview { max-width: 1050px; margin: 0 auto; padding: 50px 24px 80px; }
+    .seal-preview h1 { font-size: clamp(2rem, 5vw, 3.5rem); }
+    .seal-preview p { color: var(--ink-2); max-width: 620px; }
+    .seal-preview .preview-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 28px 0; }
+    .seal-preview .preview-actions button { min-height: 44px; padding: 8px 18px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink); font: 500 14px var(--font-ui); cursor: pointer; }
+    .seal-preview .preview-actions button[aria-pressed="true"] { background: var(--wine); border-color: var(--wine); color: var(--card); }
+    .seal-preview .region-seals { max-height: none; overflow: visible; grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: 20px 10px; }
+    .seal-preview .region-seal svg { width: min(100%, 125px); }
+    .seal-preview .region-seal[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--olive); }
+    @media (max-width: 480px) { .seal-preview { padding: 32px 16px; } .seal-preview .region-seals { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px 2px; } }
+  </style>
+  <script src="/assets/js/core.js?v=20261107-regions"></script>
+</head>
+<body>
+  <main class="seal-preview">
+    <div class="eyebrow">Aperçu visuel · Galerie du chai</div>
+    <h1>Les régions de ma cave</h1>
+    <p>Une pastille gravée pour chaque région : son initiale au centre, la région sur l’arc supérieur, le pays en bas. Cliquez pour voir la sélection. Les quantités sont illustratives.</p>
+    <div class="preview-actions" id="countries" aria-label="Pays"></div>
+    <div class="region-seals" id="seals" role="group" aria-label="Régions viticoles"></div>
+    <div class="preview-actions"><button type="button" id="theme">Mode sombre</button></div>
+  </main>
+  <script>
+    const countries = Object.keys(VC.REGIONS), countryBar = document.getElementById('countries'), seals = document.getElementById('seals');
+    let country = 'Suisse', selected = '';
+    function show() {
+      countryBar.innerHTML = countries.map(c => `<button type="button" data-country="${VC.esc(c)}" aria-pressed="${c === country}">${VC.esc(c)}</button>`).join('');
+      seals.innerHTML = VC.regionList(country).map((name, index) => VC.regionSeal(name, country, [12, 8, 4, 15, 3, 7][index % 6], index, name === selected)).join('');
+    }
+    countryBar.addEventListener('click', e => { const b = e.target.closest('[data-country]'); if (!b) return; country = b.dataset.country; selected = ''; show(); });
+    seals.addEventListener('click', e => { const b = e.target.closest('[data-region]'); if (!b) return; selected = b.dataset.region; show(); });
+    document.getElementById('theme').addEventListener('click', e => { document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; e.target.textContent = document.documentElement.dataset.theme === 'dark' ? 'Mode clair' : 'Mode sombre'; });
+    show();
+  </script>
+</body>
+</html>

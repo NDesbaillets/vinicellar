@@ -8,11 +8,12 @@ Pour afficher le prototype avec le serveur de revue local :
 python3 scripts/preview-ui.py
 cp previews/chai/index.html dist/review/chai.html
 cp previews/chai/mobile.html dist/review/chai-mobile.html
+cp previews/chai/regions.html dist/review/chai-regions.html
 cp previews/chai/*.jpg dist/review/
 python3 -m http.server 8000 --directory dist
 ```
 
-Ouvrir `/review/chai.html` ou `/review/chai-mobile.html`. Le panorama de Lavaux est déjà crédité dans `assets/img/lavaux/CREDITS.md` et `credits.html`.
+Ouvrir `/review/chai.html`, `/review/chai-mobile.html` ou `/review/chai-regions.html`. L'aperçu des pastilles réutilise le composant réel et affiche toutes les régions prédéfinies, avec des quantités illustratives. Dans la cave, les régions saisies librement reçoivent aussi une pastille. Le panorama de Lavaux est déjà crédité dans `assets/img/lavaux/CREDITS.md` et `credits.html`.
 
 Photographies complémentaires utilisées uniquement dans ce prototype :
 

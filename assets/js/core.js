@@ -142,6 +142,20 @@
   const priceOf = (it) => (it.market_price != null ? Number(it.market_price) : it.purchase_price != null ? Number(it.purchase_price) : null);
   const PRICE_BANDS = [["0-20", "Moins de 20", 0, 20], ["20-40", "20 à 40", 20, 40], ["40-80", "40 à 80", 40, 80], ["80-150", "80 à 150", 80, 150], ["150-", "Plus de 150", 150, Infinity]];
   const regionList = (country) => Object.keys(REGIONS[country] || {}).map((k) => REGION_LABEL[k] || k);
+  function regionSeal(region, country, count, index, selected = false) {
+    const id = `region-arc-${index}`;
+    const initial = (region.match(/\p{L}/u) || ["?"])[0].toLocaleUpperCase("fr");
+    const nameSize = region.length > 22 ? 10 : region.length > 16 ? 11 : 13;
+    return `<button type="button" class="region-seal" data-region="${esc(region)}" aria-pressed="${selected}" aria-label="${esc(region)}, ${esc(country)} : ${count} bouteille${count > 1 ? "s" : ""}">
+      <svg viewBox="0 0 160 160" aria-hidden="true" focusable="false">
+        <defs><path id="${id}" d="M 24,82 A 56,56 0 0,1 136,82"/></defs>
+        <circle class="seal-ring" cx="80" cy="80" r="76"/>
+        <text class="seal-region" font-size="${nameSize}"><textPath href="#${id}" startOffset="50%" text-anchor="middle"${region.length > 24 ? ' textLength="154" lengthAdjust="spacingAndGlyphs"' : ""}>${esc(region.toLocaleUpperCase("fr"))}</textPath></text>
+        <circle class="seal-dot" cx="15" cy="82" r="2"/><circle class="seal-dot" cx="145" cy="82" r="2"/>
+        <text class="seal-initial" x="80" y="98" text-anchor="middle">${esc(initial)}</text>
+        <text class="seal-country" x="80" y="130" text-anchor="middle">${esc(country.toLocaleUpperCase("fr"))}</text>
+      </svg><span class="seal-count">${count} bouteille${count > 1 ? "s" : ""}</span></button>`;
+  }
 
   // ------------------------------------------------------------------ utilitaires
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -658,6 +672,6 @@
     $, $$, esc, money, date, today, year, range, safeUrl, host, isWine, title,
     windowStatus, bottleSvg, signed, mainImagePath, imageInfo, itemVisual, editorial, renderNav, boot, toast, fail, stars,
     renderItemForm, readItemForm, identify, shrink,
-    carnetNav, wishlistsFor, canEdit, lookalikes, likeness, getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, installHint, standalone, REASON, REGIONS, countryOf, regionOf, regionList, fold, priceOf, PRICE_BANDS
+    carnetNav, wishlistsFor, canEdit, lookalikes, likeness, getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, installHint, standalone, REASON, REGIONS, countryOf, regionOf, regionList, regionSeal, fold, priceOf, PRICE_BANDS
   };
 })();
