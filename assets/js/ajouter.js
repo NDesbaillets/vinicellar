@@ -11,7 +11,9 @@
   let here = VC.getLoc();
   if (!places.some((p) => p.id === here)) here = places[0] ? places[0].id : "";
 
-  const shots = [null, null];          // { blob, preview } : étiquette, contre-étiquette
+  const shots = [null, null, null];    // { blob, preview } : étiquette, contre-étiquette, bouteille entière
+  const KINDS = ["label", "back", "full"];   // préfixe du fichier : la photo est reconnue par son nom, pas par sa place
+  const ready = () => !!(shots[0] && shots[2]);
   let drafts = [], thumbs = () => null, poll = null;
   let defaults = { loc: here, qty: 1 };
   const saveKeys = new WeakMap();
@@ -67,7 +69,7 @@
       const paths = [];
       for (const [i, s] of shots.entries()) {
         if (!s) continue;
-        const path = `${ctx.user.id}/${i ? "back" : "label"}-${crypto.randomUUID()}.${s.blob.type.split("/")[1] || "jpg"}`;
+        const path = `${ctx.user.id}/${KINDS[i]}-${crypto.randomUUID()}.${s.blob.type.split("/")[1] || "jpg"}`;
         const { error } = await sb.storage.from("labels").upload(path, s.blob, { contentType: s.blob.type, upsert: false });
         if (error) throw error;
         paths.push(path);
@@ -76,7 +78,7 @@
         collection_id: collOf(loc), location_id: loc || null, qty, photo_paths: paths, hint: hint || {}
       }).select("id").single();
       if (error) throw error;
-      shots[0] = shots[1] = null;
+      shots[0] = shots[1] = shots[2] = null;
       drawCapture();
       toast(hint ? "Recherche lancée." : "Analyse lancée. Photographiez la bouteille suivante.");
       const { error: fe } = await sb.functions.invoke("identify", { body: { draft_id: d.id } });
@@ -86,27 +88,36 @@
         await sb.from("drafts").update({ status: "error", error: msg }).eq("id", d.id);
       }
     } catch (e) { fail(e, "Envoi impossible. Vérifiez la connexion."); }
-    finally { if ($("#go")) $("#go").disabled = !shots[0]; loadDrafts(); }
+    finally { if ($("#go")) $("#go").disabled = !ready(); loadDrafts(); }
+  }
+
+  // Rôle d'une photo de brouillon, d'après le préfixe de son nom ; anciens brouillons : 1re = étiquette, 2e = contre-étiquette.
+  function photoOf(d, kind) {
+    const ps = (d.photo_paths || []).filter(Boolean), named = ps.find((p) => p.split("/").pop().startsWith(kind + "-"));
+    if (named) return named;
+    if (ps.some((p) => /\/(label|back|full)-/.test(p))) return null;
+    return kind === "label" ? ps[0] || null : kind === "back" ? ps[1] || null : null;
   }
 
   // ---------------------------------------------------------------- saisie
   function slot(i) {
     const s = shots[i];
-    const title = i ? "Contre-étiquette" : "Étiquette";
+    const title = ["Étiquette", "Contre-étiquette", "Bouteille entière"][i];
+    const hint = ["De face, sans reflet", "Souvent le millésime et l'assemblage", "De la capsule au pied, de face : pour l'aperçu"][i];
     if (s) return `<div class="shot"><img src="${s.preview}" alt="${title}"><span class="shot-label">${title}</span><button class="icon-btn shot-x" data-x="${i}" aria-label="Retirer">×</button></div>`;
-    return `<div class="shot empty"><span class="shot-label">${title}${i ? " <small>(facultatif)</small>" : ""}</span>
-      <div class="shot-btns"><label class="btn ${i ? "ghost" : ""}">${I.camera}<span>Photo</span><input type="file" accept="image/*" capture="environment" data-shot="${i}" hidden></label>
+    return `<div class="shot empty"><span class="shot-label">${title}${i === 1 ? " <small>(facultatif)</small>" : ""}</span>
+      <div class="shot-btns"><label class="btn ${i === 1 ? "ghost" : ""}">${I.camera}<span>Photo</span><input type="file" accept="image/*" capture="environment" data-shot="${i}" hidden></label>
       <label class="btn ghost">${I.image}<span>Album</span><input type="file" accept="image/*" data-shot="${i}" hidden></label></div>
-      ${i ? `<small class="muted">Souvent le millésime et l'assemblage</small>` : `<small class="muted">De face, sans reflet</small>`}</div>`;
+      <small class="muted">${hint}</small></div>`;
   }
 
   function drawCapture() {
-    $("#capture").innerHTML = `<div class="shots">${slot(0)}${slot(1)}</div>
+    $("#capture").innerHTML = `<div class="shots shots-3">${slot(0)}${slot(1)}${slot(2)}</div>
       <div class="form-line" style="margin-top:14px">
         <label>Cave<select id="loc">${locOptions(defaults.loc)}</select></label>
         <label>Bouteilles<input id="qty" type="number" min="0" max="999" inputmode="numeric" value="${defaults.qty}"></label>
-        <button class="btn big" id="go"${shots[0] ? "" : " disabled"}>${I.sparkle}Lancer l'analyse</button></div>
-      <p class="hint" style="margin:10px 0 0">Enchaînez les bouteilles : chaque analyse continue pendant que vous photographiez la suivante.</p>`;
+        <button class="btn big" id="go"${ready() ? "" : " disabled"}>${I.sparkle}Lancer l'analyse</button></div>
+      <p class="hint" style="margin:10px 0 0">${shots[0] && !shots[2] ? "Ajoutez la photo de la bouteille entière : elle sert à créer l'aperçu." : "Enchaînez les bouteilles : chaque analyse continue pendant que vous photographiez la suivante."}</p>`;
   }
 
   function stepCapture() {
@@ -144,7 +155,7 @@
     const inp = e.target.closest("[data-shot]");
     if (!inp || !inp.files[0]) return;
     const i = +inp.dataset.shot;
-    try { const img = await (VC.Studio?.enabled() ? VC.Studio.original(inp.files[0]) : VC.shrink(inp.files[0])); shots[i] = { blob: img.blob, preview: img.preview }; }
+    try { const img = await (VC.Studio?.enabled() ? VC.Studio.original(inp.files[0]) : i === 2 ? VC.shrink(inp.files[0], 2400, .9) : VC.shrink(inp.files[0])); shots[i] = { blob: img.blob, preview: img.preview }; }
     catch (err) { return fail(err, "Image illisible. Essayez une autre photo (JPEG ou PNG)."); }
     const loc = $("#loc").value, qty = $("#qty").value;
     defaults = { loc, qty };
@@ -309,7 +320,8 @@
           btn.disabled = false; $("#dups").scrollIntoView({ behavior: "smooth" }); return;
         }
         const row = { ...data, ...(coll ? { collection_id: coll } : {}),
-          label_path: d ? d.photo_paths[0] || null : null, label_back_path: d ? d.photo_paths[1] || null : null,
+          label_path: d ? photoOf(d, "label") : null, label_back_path: d ? photoOf(d, "back") : null,
+          photo_paths: d && photoOf(d, "full") ? [photoOf(d, "full")] : [],
           bottle_path: d && d.result ? d.bottle_path : null, bottle_image_url: d && d.result ? d.result.image_url || null : null,
           sources: d ? d.sources || [] : [], ai_enriched_at: d && d.result ? d.updated_at : null };
         const { data: ins, error } = await sb.from("items").insert(row).select("id").single();
@@ -326,6 +338,13 @@
       }
       if (d && !VC.Studio?.enabled()) await removeDraft(d);
       if (!wish) defaults.loc = loc;
+      const full = d && photoOf(d, "full");
+      if (full && VC.Visual) {
+        // L'aperçu se prépare en arrière-plan : on peut enchaîner la bouteille suivante.
+        VC.Visual.auto({ ...data, id }, full)
+          .then(() => toast("Aperçu de la bouteille prêt.", { label: "Voir", run: () => (location.href = `/app/fiche.html?id=${id}`) }))
+          .catch((err) => { console.warn(err); toast("Aperçu non créé : vous pourrez le faire depuis la fiche."); });
+      }
       toast(wish ? `Ajouté à « ${wish.name} ».` : target ? `${qty} bouteille${qty > 1 ? "s" : ""} ajoutée${qty > 1 ? "s" : ""} à la fiche existante.` : "Ajouté à votre cave.", { label: "Voir la fiche", run: () => (location.href = `/app/fiche.html?id=${id}`) });
       back();
       VC.Studio?.offer(id);

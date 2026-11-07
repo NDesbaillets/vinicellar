@@ -418,12 +418,51 @@
     return { image: c.toDataURL("image/jpeg", .88).split(",")[1], width: c.width, height: c.height };
   }
 
+  // ---------------------------------------------------------------- enregistrement et génération automatique
+  // Le visuel (900 × 1200) rejoint la galerie et devient la vignette ; un visuel précédent sort de la galerie
+  // (son fichier reste dans le stockage privé). Les chemins sont relus pour ne pas écraser un ajout récent.
+  async function saveVisual(itemId, canvas) {
+    const small = document.createElement("canvas"); small.width = 900; small.height = 1200;
+    const sx = small.getContext("2d"); sx.imageSmoothingQuality = "high"; sx.drawImage(canvas, 0, 0, 900, 1200);
+    const blob = await new Promise((r) => small.toBlob(r, "image/png"));
+    const { data: { user } } = await sb.auth.getUser();
+    const path = `${user.id}/visual-${crypto.randomUUID()}.png`;
+    const up = await sb.storage.from("labels").upload(path, blob, { contentType: "image/png" });
+    if (up.error) throw up.error;
+    const { data: cur } = await sb.from("items").select("photo_paths").eq("id", itemId).single();
+    const list = [...((cur && cur.photo_paths) || []).filter((p) => !p.includes("/visual-")), path];
+    const { error } = await sb.from("items").update({ photo_paths: list, cover_path: path }).eq("id", itemId);
+    if (error) throw error;
+    return path;
+  }
+  // Aperçu sans interface, à partir de la photo de la bouteille entière : vraie bouteille détourée si possible,
+  // sinon l'étiquette de cette photo posée sur une bouteille de studio. Utilisé juste après l'ajout d'un vin.
+  async function auto(it, path) {
+    await loadMeta();
+    const url = (await VC.signed([path]))(path);
+    if (!url) throw new Error("Photo inaccessible.");
+    const src = await loadSource(url);
+    const { data, error } = await sb.functions.invoke("visual", { body: { ...forAi(src), wine: { category: it.category, style: it.style, name: it.name, producer: it.producer, appellation: it.appellation, region: it.region, country: it.country } } });
+    if (error || !data) throw new Error("Analyse indisponible.");
+    const shape = data.shape && meta.shapes[data.shape] ? data.shape : guessShape(it);
+    let canvas = null;
+    if (data.bottle?.complete) { try { canvas = await composePhoto(await falCutout(src, data.bottle.box), shape); } catch (e) { console.warn(e); } }
+    if (!canvas && data.label) {
+      const label = cutout(unwrap(src, alignFrame(data.label), data.label.on_bottle, data.label.outline), "auto");
+      const neck = data.neck_label ? cutout(unwrap(src, alignFrame(data.neck_label), true, data.neck_label.outline), "auto") : null;
+      canvas = await compose({ shape, variant: variantFor(shape, data.glass || (liquidOf(it) === "red" ? "green" : "flint"), data.liquid || liquidOf(it)),
+        cap: capFor(shape, data.closure?.type || "foil"), capColor: data.closure?.color || "#5a1525", label, neck });
+    }
+    if (!canvas) throw new Error("Aperçu impossible avec cette photo.");
+    return saveVisual(it.id, canvas);
+  }
+
   // ---------------------------------------------------------------- feuille « Visuel propre »
-  async function open(it, sources, onSaved) {
+  async function open(it, sources, onSaved, prefer) {
     const photos = sources.filter((x) => !String(x.p).includes("/visual-"));
     if (!photos.length) return toast("Ajoutez d'abord une photo de l'étiquette.");
     try { await loadMeta(); } catch { return toast("Bouteilles vierges indisponibles. Réessayez."); }
-    let pick = photos.find((x) => x.p === it.label_path) || photos[0];
+    let pick = photos.find((x) => x.p === prefer) || photos.find((x) => isFull(x.p)) || photos.find((x) => x.p === it.label_path) || photos[0];
     const shape0 = guessShape(it);
     const st = { shape: shape0, variant: null, cap: null, capColor: it.category === "wine" && it.style === "red" ? "#5a1525" : "#c9b48a",
       label: { pts: DEFAULT_GRID.map((p) => [...p]), on: true }, neck: null, useNeck: false, edit: "label", mode: "auto", src: null, ai: {}, render: "studio", cut: new Map() };
@@ -589,22 +628,13 @@
     q("#vis-save").addEventListener("click", async () => {
       const btn = q("#vis-save"); btn.disabled = true; btn.textContent = "Enregistrement…";
       const canvas = q("#vis-out canvas");
-      // 900 × 1200 (3:4) : net sur la fiche en écran Retina, plus léger que le rendu de travail.
-      const small = document.createElement("canvas"); small.width = 900; small.height = 1200;
-      const sx = small.getContext("2d"); sx.imageSmoothingQuality = "high"; sx.drawImage(canvas, 0, 0, 900, 1200);
-      const blob = await new Promise((r) => small.toBlob(r, "image/png"));
-      const { data: { user } } = await sb.auth.getUser();
-      const path = `${user.id}/visual-${crypto.randomUUID()}.png`;
-      const up = await sb.storage.from("labels").upload(path, blob, { contentType: "image/png" });
-      if (up.error) { btn.disabled = false; btn.textContent = "Utiliser comme vignette"; return fail(up.error); }
-      // Un seul visuel dans la galerie : le précédent en sort (le fichier reste dans le stockage privé).
-      const list = [...(it.photo_paths || []).filter((p) => !p.includes("/visual-")), path];
-      const { error } = await sb.from("items").update({ photo_paths: list, cover_path: path }).eq("id", it.id);
-      if (error) { btn.disabled = false; return fail(error); }
+      try { await saveVisual(it.id, canvas); }
+      catch (err) { btn.disabled = false; btn.textContent = "Utiliser comme vignette"; return fail(err); }
       d.close(); toast("Visuel enregistré et utilisé comme vignette."); onSaved && onSaved();
     });
     controls(); analyse();
   }
 
-  VC.Visual = { open, unwrap, cutout, compose, composePhoto, loadMeta, alignFrame, isVisual: (p) => String(p || "").includes("/visual-") };
+  const isFull = (p) => String(p || "").includes("/full-");
+  VC.Visual = { open, auto, isFull, unwrap, cutout, compose, composePhoto, loadMeta, alignFrame, isVisual: (p) => String(p || "").includes("/visual-") };
 })();

@@ -775,3 +775,12 @@ dialog:has(.vis-sheet) { width: min(860px, calc(100vw - 24px)); }
 .vis-out { background: #fff; }
 .vis-sheet.photo .studio-only, .vis-sheet.photo #vis-which { display: none; }
 #vis-render .chip:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ajout : trois photos (étiquette, contre-étiquette, bouteille entière) */
+.shots.shots-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.shots-3 .shot { min-height: 210px; padding: 10px 8px; }
+.shots-3 .shot-label { font-size: var(--fs-s); line-height: 1.25; }
+.shots-3 .shot-btns .btn { min-height: 44px; padding: 6px 8px; font-size: var(--fs-s); gap: 6px; }
+.shots-3 .shot small.muted { font-size: var(--fs-xs); line-height: 1.3; }
+@media (max-width: 380px) { .shots.shots-3 { grid-template-columns: 1fr 1fr; } }
+.vis-tip { flex-basis: 100%; margin: 4px 0 0; }
