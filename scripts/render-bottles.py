@@ -1,7 +1,7 @@
 """Rendu des bouteilles vierges de Vinicellar (Blender / Cycles, sans étiquette).
 
 Produit, dans assets/img/bottles/ :
-  {forme}-{verre}.webp    bouteille vierge, fond transparent (verre + vin, éclairage studio)
+  {forme}-{verre}.webp    bouteille vierge, fond transparent, sans ombre (verre + vin, éclairage studio ; --shadow pour l'ombre portée)
   {forme}-cap-{type}.webp capsule neutre (grise) à teinter dans le navigateur
   {forme}-sleeve.webp     éclairage d'une étiquette en papier blanc posée sur le corps et sur le col
   bottles.json            géométrie en pixels (zones d'étiquette, rayon, capsule) pour la composition
@@ -194,7 +194,7 @@ def px(z):  # hauteur (m) → ligne de pixel
 
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("--samples", type=int, default=96); ap.add_argument("--only"); ap.add_argument("--pct", type=int, default=100); ap.add_argument("--variant"); ap.add_argument("--bottles-only", action="store_true"); ap.add_argument("--meta-only", action="store_true")
+    ap = argparse.ArgumentParser(); ap.add_argument("--samples", type=int, default=96); ap.add_argument("--only"); ap.add_argument("--pct", type=int, default=100); ap.add_argument("--variant"); ap.add_argument("--bottles-only", action="store_true"); ap.add_argument("--meta-only", action="store_true"); ap.add_argument("--shadow", action="store_true")
     a = ap.parse_args([x for x in os.sys.argv[1:]])
     global PCT; PCT = a.pct
     os.makedirs(OUT, exist_ok=True)
@@ -213,7 +213,7 @@ def main():
         if a.meta_only: continue
         for g, l in VARIANTS[shape]:
             if a.variant and f"{g}-{l}" != a.variant: continue
-            sc = reset(); sc.cycles.samples = a.samples; floor(); bottle(shape, g, l); render(sc, os.path.join(OUT, f"{shape}-{g}-{l}"))
+            sc = reset(); sc.cycles.samples = a.samples; a.shadow and floor(); bottle(shape, g, l); render(sc, os.path.join(OUT, f"{shape}-{g}-{l}"))
         if a.bottles_only: continue
         for k in CAPS[shape]:
             sc = reset(); sc.cycles.samples = 24; cap(shape, k); render(sc, os.path.join(OUT, f"{shape}-cap-{k}"))

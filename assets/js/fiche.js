@@ -55,7 +55,7 @@
         <label class="btn quiet">${I.image}Ajouter une photo<input type="file" accept="image/*" data-v="add" hidden></label>
         ${!imgs.some((y) => VC.Visual?.isFull(y.p)) ? `<p class="hint vis-tip">Photographiez la bouteille entière, de la capsule au pied et de face : l'aperçu utilisera votre vraie bouteille.</p>` : ""}`;
     };
-    $("#vswitch").innerHTML = imgs.length > 1 ? imgs.map((x, j) => `<button type="button" data-i="${j}" aria-label="${x.l}"${x.p === cover ? ' class="is-cover"' : ""}><img src="${esc(x.u)}" alt=""></button>`).join("") : "";
+    $("#vswitch").innerHTML = imgs.length > 1 ? imgs.map((x, j) => `<button type="button" data-i="${j}" aria-label="${x.l}" class="${x.p === cover ? "is-cover" : ""}${VC.Visual?.isVisual(x.p) ? " is-visual" : ""}"><img src="${esc(x.u)}" alt=""></button>`).join("") : "";
     $$("#vswitch button[data-i]").forEach((b) => b.addEventListener("click", () => show(+b.dataset.i)));
     show(cur);
     if (ro() || !$("#vtools")) return;

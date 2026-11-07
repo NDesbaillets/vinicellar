@@ -16,6 +16,11 @@
     : null;
 
   // Préférence locale : aucun changement de profil ou de données serveur.
+  // Fond derrière les aperçus de bouteille (images transparentes) : blanc, ivoire ou aucun. Réglage de l'appareil.
+  const VISUAL_BG = ["white", "ivory", "none"];
+  const getVisualBg = () => { try { const v = localStorage.getItem("vc.visual-bg"); return VISUAL_BG.includes(v) ? v : "white"; } catch { return "white"; } };
+  const setVisualBg = (v) => { try { localStorage.setItem("vc.visual-bg", v); } catch { /* stockage indisponible */ } document.documentElement.dataset.visualBg = v; };
+  document.documentElement.dataset.visualBg = getVisualBg();
   let theme = "system";
   try { theme = localStorage.getItem("vc.theme") || "system"; } catch { /* stockage indisponible */ }
   if (!["system", "light", "dark"].includes(theme)) theme = "system";
@@ -672,6 +677,6 @@
     $, $$, esc, money, date, today, year, range, safeUrl, host, isWine, title,
     windowStatus, bottleSvg, signed, mainImagePath, imageInfo, itemVisual, editorial, renderNav, boot, toast, fail, stars,
     renderItemForm, readItemForm, identify, shrink,
-    carnetNav, wishlistsFor, canEdit, lookalikes, likeness, getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, installHint, standalone, REASON, REGIONS, countryOf, regionOf, regionList, regionSeal, fold, priceOf, PRICE_BANDS
+    carnetNav, wishlistsFor, canEdit, lookalikes, likeness, getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, installHint, getVisualBg, setVisualBg, standalone, REASON, REGIONS, countryOf, regionOf, regionList, regionSeal, fold, priceOf, PRICE_BANDS
   };
 })();

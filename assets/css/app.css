@@ -786,12 +786,19 @@ dialog:has(.vis-sheet) { width: min(860px, calc(100vw - 24px)); }
 .vis-which { align-items: center; margin-bottom: 6px; } .vis-which:empty { display: none; }
 
 /* visuel propre : packshot sur fond blanc, comme une photo de catalogue (dans les deux thèmes) */
-.thumb.image-visual, .visual[data-kind="visual"] { background: #fff; }
+/* Fond des aperçus : les visuels sont transparents ; le fond est un réglage d'affichage (Compte), sans régénération. */
+:root { --visual-bg: #fff; }
+:root[data-visual-bg="ivory"] { --visual-bg: #f3efe7; }
+:root[data-visual-bg="none"] { --visual-bg: transparent; }
+.thumb.image-visual, .visual[data-kind="visual"], #vswitch button.is-visual { background: var(--visual-bg); }
 .thumb.image-visual img { object-fit: contain; padding: 0; }
 .visual[data-kind="visual"] img { padding: 0; }
-:root[data-theme="dark"] .thumb.image-visual, :root[data-theme="dark"] .visual[data-kind="visual"] { background: #f4f2ef; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .thumb.image-visual, :root:not([data-theme="light"]) .visual[data-kind="visual"] { background: #f4f2ef; } }
-.vis-out { background: #fff; }
+.vis-out { background: var(--visual-bg); }
+:root[data-visual-bg="none"] .vis-out { background: repeating-conic-gradient(var(--sunk) 0 25%, var(--card) 0 50%) 0 0 / 22px 22px; }
+.bg-choices { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.bg-choice { display: grid; justify-items: center; gap: 6px; min-width: 88px; padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--card); color: var(--ink); font: inherit; cursor: pointer; }
+.bg-choice[aria-pressed="true"] { border-color: var(--wine); box-shadow: 0 0 0 2px var(--wine-soft); }
+.bg-choice i { width: 44px; height: 58px; border-radius: 8px; border: 1px solid var(--line); }
 .vis-sheet.photo .studio-only, .vis-sheet.photo #vis-which { display: none; }
 #vis-render .chip:disabled { opacity: .45; cursor: not-allowed; }
 
