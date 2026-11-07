@@ -349,6 +349,58 @@
     return c;
   }
 
+  // ---------------------------------------------------------------- packshot d'une vraie bouteille détourée
+  // La bouteille (PNG transparent de fal) est posée au cadrage et à l'échelle des rendus de studio, sur une ombre
+  // de contact et une ombre portée douce vers l'arrière gauche, comme les bouteilles vierges.
+  async function composePhoto(png, shape) {
+    const s = meta.shapes[shape] || meta.shapes.burgundy, cam = meta.camera, [W, H] = meta.size, R = cam.rot, [ox, oy, oz] = cam.pos;
+    const screenY = (x, y, z) => { const px = x - ox, py = y - oy, pz = z - oz; const cy = R[0][1] * px + R[1][1] * py + R[2][1] * pz, cz = R[0][2] * px + R[1][2] * py + R[2][2] * pz; return H / 2 - cam.f * cy / -cz; };
+    const foot = screenY(0, -s.body.r, 0), lip = screenY(0, 0, s.h), targetH = foot - lip;
+    // recadrage sur la silhouette (alpha)
+    const t = document.createElement("canvas"); t.width = png.width; t.height = png.height; const tx = t.getContext("2d"); tx.drawImage(png, 0, 0);
+    const a = tx.getImageData(0, 0, t.width, t.height).data; let x0 = t.width, y0 = t.height, x1 = 0, y1 = 0;
+    for (let y = 0; y < t.height; y++) for (let x = 0; x < t.width; x++) if (a[(y * t.width + x) * 4 + 3] > 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    if (x1 <= x0 || y1 <= y0) throw new Error("Détourage vide.");
+    const bw0 = x1 - x0 + 1, bh0 = y1 - y0 + 1, k = Math.min(targetH / bh0, W * .7 / bw0), bw = bw0 * k, bh = bh0 * k, dx = (W - bw) / 2, dy = foot - bh;
+    const sil = document.createElement("canvas"); sil.width = bw0; sil.height = bh0; const sx = sil.getContext("2d");
+    sx.drawImage(t, x0, y0, bw0, bh0, 0, 0, bw0, bh0); sx.globalCompositeOperation = "source-in"; sx.fillStyle = "#000"; sx.fillRect(0, 0, bw0, bh0);
+    const c = document.createElement("canvas"); c.width = W; c.height = H; const ctx = c.getContext("2d");
+    // ombre portée : silhouette couchée sur le sol vers l'arrière gauche, floutée (réduction puis agrandissement), estompée
+    // Haut de la silhouette → vers la gauche et vers le fond (cisaillement + écrasement), pied fixe.
+    const S = 2, sh = document.createElement("canvas"); sh.width = W / S; sh.height = H / S; const hx = sh.getContext("2d");
+    if ("filter" in hx) hx.filter = "blur(9px)";
+    hx.setTransform(1 / S, 0, .6 / S, .16 / S, (dx - .6 * bh) / S, (foot - .16 * bh) / S); hx.drawImage(sil, 0, 0, bw, bh);
+    hx.filter = "none";
+    hx.setTransform(1, 0, 0, 1, 0, 0); hx.globalCompositeOperation = "destination-in";
+    const g = hx.createRadialGradient(W / 2 / S, foot / S, 0, W / 2 / S, foot / S, bh * .6 / S); g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(1, "rgba(0,0,0,0)");
+    hx.fillStyle = g; hx.fillRect(0, 0, sh.width, sh.height);
+    ctx.globalAlpha = .3; ctx.imageSmoothingQuality = "high"; ctx.drawImage(sh, 0, 0, W, H);
+    // ombre de contact au pied
+    const cs = document.createElement("canvas"); cs.width = W / S; cs.height = H / S; const cx2 = cs.getContext("2d");
+    if ("filter" in cx2) cx2.filter = "blur(4px)";
+    cx2.fillStyle = "#000"; cx2.beginPath(); cx2.ellipse(W / 2 / S, foot / S, bw * .47 / S, 5, 0, 0, Math.PI * 2); cx2.fill();
+    ctx.globalAlpha = .55; ctx.drawImage(cs, 0, 0, W, H); ctx.globalAlpha = 1;
+    ctx.drawImage(t, x0, y0, bw0, bh0, dx, dy, bw, bh);
+    return c;
+  }
+  // Détourage par fal.ai (fonction « cutout ») de la photo recadrée sur la bouteille.
+  async function falCutout(src, box) {
+    // Marge large : le cadre de l'IA peut être un peu serré, et fal retire le fond de toute façon.
+    const [bx0, by0, bx1, by1] = box, mxp = (bx1 - bx0) * .3, myp = (by1 - by0) * .08;
+    const X0 = Math.max(0, (bx0 - mxp) * src.width), Y0 = Math.max(0, (by0 - myp) * src.height), X1 = Math.min(src.width, (bx1 + mxp) * src.width), Y1 = Math.min(src.height, (by1 + myp) * src.height);
+    const k = Math.min(1, 2000 / Math.max(X1 - X0, Y1 - Y0)), c = document.createElement("canvas");
+    c.width = Math.round((X1 - X0) * k); c.height = Math.round((Y1 - Y0) * k);
+    c.getContext("2d").drawImage(src, X0, Y0, X1 - X0, Y1 - Y0, 0, 0, c.width, c.height);
+    const { data, error } = await sb.functions.invoke("cutout", { body: { image: c.toDataURL("image/jpeg", .92).split(",")[1] } });
+    if (error || !data?.png) {
+      let msg = "Détourage indisponible : bouteille de studio utilisée.";
+      try { const j = await error.context.json(); if (j?.message) msg = j.message; } catch { /* réseau */ }
+      throw new Error(msg);
+    }
+    const img = new Image(); img.src = "data:image/png;base64," + data.png; await img.decode();
+    return img;
+  }
+
   // ---------------------------------------------------------------- photo source
   async function loadSource(url) {
     const res = await fetch(url);
@@ -374,22 +426,25 @@
     let pick = photos.find((x) => x.p === it.label_path) || photos[0];
     const shape0 = guessShape(it);
     const st = { shape: shape0, variant: null, cap: null, capColor: it.category === "wine" && it.style === "red" ? "#5a1525" : "#c9b48a",
-      label: { pts: DEFAULT_GRID.map((p) => [...p]), on: true }, neck: null, useNeck: false, edit: "label", mode: "auto", src: null, ai: {} };
+      label: { pts: DEFAULT_GRID.map((p) => [...p]), on: true }, neck: null, useNeck: false, edit: "label", mode: "auto", src: null, ai: {}, render: "studio", cut: new Map() };
     st.variant = variantFor(st.shape, liquidOf(it) === "red" ? "green" : "flint", liquidOf(it));
     st.cap = capFor(st.shape, "foil");
     const d = VC.sheet(`<div class="vis-sheet"><h2>Visuel propre</h2>
-      <p class="muted vis-intro">L'IA repère l'étiquette et les détails de la bouteille. Ajustez si besoin, puis utilisez le visuel comme vignette.</p>
+      <p class="muted vis-intro">L'IA repère la bouteille et son étiquette. Choisissez le rendu, ajustez si besoin, puis utilisez le visuel comme vignette.</p>
       ${photos.length > 1 ? `<label>Photo source<select id="vis-src">${photos.map((x, i) => `<option value="${i}"${x === pick ? " selected" : ""}>${esc(x.l)} ${i + 1}</option>`).join("")}</select></label>` : ""}
       <div class="vis-grid">
-        <div><div class="field-label">Photo · glissez les points</div><div class="chips vis-which" id="vis-which"></div><div class="vis-edit" id="vis-edit"><p class="muted">Chargement…</p></div></div>
+        <div><div class="field-label" id="vis-edit-title">Photo · glissez les points</div><div class="chips vis-which" id="vis-which"></div><div class="vis-edit" id="vis-edit"><p class="muted">Chargement…</p></div></div>
         <div><div class="field-label">Résultat</div><div class="vis-out" id="vis-out"><div class="vis-wait"><span class="spin"></span>Analyse de la photo…</div></div><p class="hint" id="vis-note"></p></div>
       </div>
+      <div class="fgroup"><div class="field-label">Rendu</div><div class="chips" id="vis-render"></div></div>
+      <div class="studio-only">
       <div class="fgroup"><div class="chips" id="vis-opts"></div></div>
       <div class="fgroup"><div class="field-label">Forme</div><div class="chips" id="vis-shape"></div></div>
       <div class="fgroup"><div class="field-label">Verre et vin</div><div class="chips" id="vis-variant"></div></div>
       <div class="fgroup vis-colors"><div><div class="field-label">Fermeture</div><div class="chips" id="vis-cap"></div></div>
         <label class="vis-cap">Couleur<input type="color" id="vis-capcolor"></label></div>
-      <p class="hint">L'étiquette est votre photo, détourée et posée en perspective sur une bouteille de studio vierge. Vos photos d'origine restent dans la galerie.</p>
+      </div>
+      <p class="hint" id="vis-hint"></p>
       <div class="row end vis-actions"><button type="button" class="btn quiet" data-close>Annuler</button><button type="button" class="btn" id="vis-save" disabled>${I.check}Utiliser comme vignette</button></div></div>`);
     const q = (s) => d.querySelector(s);
 
@@ -401,7 +456,16 @@
       q("#vis-cap").innerHTML = [...s.caps, "none"].map((k) => chip("cap", k, CAP_LABEL[k], k === st.cap)).join("");
       q("#vis-capcolor").value = st.capColor; q("#vis-capcolor").disabled = st.cap === "none";
       q("#vis-opts").innerHTML = `${chip("toggle", "on", "Étiquette courbée (sur la bouteille)", st.label.on)}${chip("toggle", "mode", "Contour rectangulaire", st.mode === "rect")}${st.neck ? chip("toggle", "neck", "Collerette", st.useNeck) : chip("toggle", "addneck", "Ajouter une collerette", false)}`;
-      q("#vis-which").innerHTML = st.neck && st.useNeck ? `<span class="hint">Ajuster :</span>${chip("edit", "label", "Étiquette", st.edit !== "neck")}${chip("edit", "neck", "Collerette", st.edit === "neck")}` : "";
+      const photoOk = !!st.ai.bottle?.complete;
+      q("#vis-render").innerHTML = `${chip("render", "photo", "Ma bouteille (photo détourée)", st.render === "photo")}${chip("render", "studio", "Bouteille de studio", st.render === "studio")}`;
+      q('[data-render="photo"]').disabled = !photoOk;
+      if (!photoOk) q('[data-render="photo"]').title = "La photo doit montrer la bouteille entière, de la capsule au pied.";
+      d.querySelector(".vis-sheet").classList.toggle("photo", st.render === "photo");
+      q("#vis-hint").textContent = st.render === "photo"
+        ? "Votre vraie bouteille, détourée par IA (fal.ai, environ 0,02 $ par détourage) et posée sur fond blanc. Vos photos d'origine restent dans la galerie."
+        : photoOk ? "L'étiquette est votre photo, posée en perspective sur une bouteille de studio vierge. Vos photos d'origine restent dans la galerie."
+          : "L'étiquette est votre photo, posée en perspective sur une bouteille de studio vierge. Pour utiliser votre vraie bouteille, photographiez-la entière.";
+      q("#vis-which").innerHTML = st.render === "studio" && st.neck && st.useNeck ? `<span class="hint">Ajuster :</span>${chip("edit", "label", "Étiquette", st.edit !== "neck")}${chip("edit", "neck", "Collerette", st.edit === "neck")}` : "";
     }
     let busy = false, again = false;
     async function render() {
@@ -409,6 +473,20 @@
       if (busy) { again = true; return; }
       busy = true;
       try {
+        if (st.render === "photo") {
+          let cut = st.cut.get(pick.p);
+          if (!cut) {
+            q("#vis-out").innerHTML = `<div class="vis-wait"><span class="spin"></span>Détourage de la bouteille…</div>`;
+            try { cut = await falCutout(st.src, st.ai.bottle.box); st.cut.set(pick.p, cut); }
+            catch (e) { toast(e.message); st.render = "studio"; busy = false; editor(); controls(); return render(); }
+          }
+          const out = await composePhoto(cut, st.shape);
+          out.className = "vis-canvas"; q("#vis-out").replaceChildren(out);
+          q("#vis-note").textContent = "Bouteille détourée.";
+          q("#vis-save").disabled = false;
+          busy = false; if (again) { again = false; render(); }
+          return;
+        }
         const label = cutout(unwrap(st.src, st.label.pts, st.label.on, st.label.outline), st.mode);
         const neck = st.neck && st.useNeck ? cutout(unwrap(st.src, st.neck.pts, st.neck.on, st.neck.outline), st.mode) : null;
         const out = await compose({ shape: st.shape, variant: st.variant, cap: st.cap, capColor: st.capColor, label, neck });
@@ -421,6 +499,12 @@
     }
     // Points déplaçables au doigt ou au clavier ; contour courbe dessiné en SVG.
     function editor() {
+      q("#vis-edit-title").textContent = st.render === "photo" ? "Photo · bouteille repérée" : "Photo · glissez les points";
+      if (st.render === "photo") {
+        const [x0, y0, x1, y1] = st.ai.bottle.box;
+        q("#vis-edit").innerHTML = `<div class="vis-stage" style="aspect-ratio:${(st.src.width / st.src.height).toFixed(4)}"><img alt="Photo source" src="${esc(pick.u)}" style="width:100%;left:0;top:0"><svg viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true"><path d="M${x0},${y0} L${x1},${y0} L${x1},${y1} L${x0},${y1} Z"/></svg></div>`;
+        return;
+      }
       if (st.edit === "neck" && !(st.neck && st.useNeck)) st.edit = "label";
       const box = q("#vis-edit"), sets = st.edit === "neck" ? [["neck", st.neck]] : [["label", st.label]];
       // Cadrage : la photo est zoomée sur la zone des points (avec une marge), pour que chaque point soit attrapable.
@@ -478,12 +562,14 @@
         st.variant = variantFor(st.shape, data.glass || (liquidOf(it) === "red" ? "green" : "flint"), data.liquid || liquidOf(it));
         st.cap = capFor(st.shape, data.closure?.type || "foil");
         if (data.closure?.color) st.capColor = data.closure.color;
+        if (data.bottle?.complete) st.render = "photo";
       }
       editor(); controls(); render();
     }
 
     d.addEventListener("click", (e) => {
-      const b = e.target.closest("[data-shape],[data-variant],[data-cap],[data-toggle],[data-edit]"); if (!b) return;
+      const b = e.target.closest("[data-shape],[data-variant],[data-cap],[data-toggle],[data-edit],[data-render]"); if (!b || b.disabled) return;
+      if (b.dataset.render) { st.render = b.dataset.render; editor(); controls(); return render(); }
       if (b.dataset.edit) { st.edit = b.dataset.edit; editor(); return controls(); }
       if (b.dataset.toggle === "addneck") {                 // collerette posée à la main, juste sous la capsule supposée
         const [l] = st.label.pts, r = st.label.pts[2], cx = (l[0] + r[0]) / 2, hw = Math.max(.03, (r[0] - l[0]) * .22), y = Math.max(.04, l[1] - (st.label.pts[5][1] - l[1]) * .9);
@@ -499,7 +585,7 @@
       controls(); render();
     });
     q("#vis-capcolor").addEventListener("input", (e) => { st.capColor = e.target.value; render(); });
-    q("#vis-src")?.addEventListener("change", (e) => { pick = photos[+e.target.value]; st.neck = null; st.useNeck = false; analyse(); });
+    q("#vis-src")?.addEventListener("change", (e) => { pick = photos[+e.target.value]; st.neck = null; st.useNeck = false; st.render = "studio"; st.ai = {}; analyse(); });
     q("#vis-save").addEventListener("click", async () => {
       const btn = q("#vis-save"); btn.disabled = true; btn.textContent = "Enregistrement…";
       const canvas = q("#vis-out canvas");
@@ -520,5 +606,5 @@
     controls(); analyse();
   }
 
-  VC.Visual = { open, unwrap, cutout, compose, loadMeta, alignFrame, isVisual: (p) => String(p || "").includes("/visual-") };
+  VC.Visual = { open, unwrap, cutout, compose, composePhoto, loadMeta, alignFrame, isVisual: (p) => String(p || "").includes("/visual-") };
 })();

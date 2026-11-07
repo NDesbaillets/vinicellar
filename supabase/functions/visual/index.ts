@@ -27,8 +27,9 @@ const SYSTEM = `On te donne la photo d'une étiquette ou d'une bouteille (vin, c
 2. neck_label : examine le col entre la capsule et les épaules. Une collerette est une bande de papier distincte qui entoure le col (souvent colorée, avec le millésime ou le nom) ; si tu en vois une, donne ses six points et son contour comme pour l'étiquette. Seulement si le col est nu : null.
 3. shape : bordeaux (épaules marquées), burgundy (épaules tombantes), champagne (mousseux), alsace (flûte haute et fine) ou spirit. Bouteille invisible : déduis-la de l'appellation, de la région et du type.
 4. glass : darkgreen, green, olive (feuille-morte), amber ou flint (incolore) ; liquid : red, white, rose, amber ou clear. Invisibles : l'usage le plus probable pour ce vin.
-5. closure : type foil (capsule), screwcap (capsule à vis), champagne (coiffe et muselet), wax (cire), stopper (bouchon à tête) ou none ; color = couleur hexadécimale dominante. Invisible : l'usage le plus probable.
-Réponds uniquement par ce JSON : {"neck_label":{"pts":[...],"outline":[...]}|null,"label":{"pts":[[x,y],[x,y],[x,y],[x,y],[x,y],[x,y]],"outline":[[x,y],...],"on_bottle":true}|null,"shape":"","glass":"","liquid":"","closure":{"type":"","color":"#rrggbb"},"confidence":0-1}`;
+5. bottle : box = rectangle [x0,y0,x1,y1] qui englobe toute la bouteille, capsule comprise ; complete = true seulement si la bouteille entière est visible, du haut de la capsule au pied, sans être coupée par le bord de l'image ni masquée. Pas de bouteille : null.
+6. closure : type foil (capsule), screwcap (capsule à vis), champagne (coiffe et muselet), wax (cire), stopper (bouchon à tête) ou none ; color = couleur hexadécimale dominante. Invisible : l'usage le plus probable.
+Réponds uniquement par ce JSON : {"neck_label":{"pts":[...],"outline":[...]}|null,"label":{"pts":[[x,y],[x,y],[x,y],[x,y],[x,y],[x,y]],"outline":[[x,y],...],"on_bottle":true}|null,"shape":"","glass":"","liquid":"","closure":{"type":"","color":"#rrggbb"},"bottle":{"box":[x0,y0,x1,y1],"complete":true}|null,"confidence":0-1}`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors(req) });
@@ -96,6 +97,12 @@ Deno.serve(async (req) => {
     const outline = o && o.every((c: number[]) => c.every((n) => Number.isFinite(n) && n >= -0.03 && n <= 1.03)) ? o.map(norm) : null;
     return { pts: p.map(norm), outline, on_bottle: g.on_bottle !== false };
   };
+  const bottleBox = (b: any) => {
+    if (!b || !Array.isArray(b.box) || b.box.length !== 4) return null;
+    const [x0, y0, x1, y1] = b.box.map(Number), n = [x0 / w, y0 / h, x1 / w, y1 / h];
+    if (!n.every((v) => Number.isFinite(v) && v >= -0.03 && v <= 1.03) || n[2] - n[0] < 0.03 || n[3] - n[1] < 0.1) return null;
+    return { box: n.map((v) => Math.min(1, Math.max(0, Math.round(v * 1000) / 1000))), complete: b.complete === true };
+  };
   const pick = (v: unknown, list: string[]) => (list.includes(String(v)) ? String(v) : null);
   const hex = (v: unknown) => (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v) ? v.toLowerCase() : null);
   const conf = Number(raw.confidence);
@@ -106,6 +113,7 @@ Deno.serve(async (req) => {
     glass: pick(raw.glass, ["darkgreen", "green", "olive", "amber", "flint"]),
     liquid: pick(raw.liquid, ["red", "white", "rose", "amber", "clear"]),
     closure: raw.closure ? { type: pick(raw.closure.type, ["foil", "screwcap", "champagne", "wax", "stopper", "none"]), color: hex(raw.closure.color) } : null,
+    bottle: bottleBox(raw.bottle),
     confidence: Number.isFinite(conf) && conf >= 0 && conf <= 1 ? conf : null,
   });
 });

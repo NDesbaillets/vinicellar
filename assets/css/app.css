@@ -773,3 +773,5 @@ dialog:has(.vis-sheet) { width: min(860px, calc(100vw - 24px)); }
 :root[data-theme="dark"] .thumb.image-visual, :root[data-theme="dark"] .visual[data-kind="visual"] { background: #f4f2ef; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .thumb.image-visual, :root:not([data-theme="light"]) .visual[data-kind="visual"] { background: #f4f2ef; } }
 .vis-out { background: #fff; }
+.vis-sheet.photo .studio-only, .vis-sheet.photo #vis-which { display: none; }
+#vis-render .chip:disabled { opacity: .45; cursor: not-allowed; }
