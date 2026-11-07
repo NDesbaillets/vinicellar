@@ -42,7 +42,7 @@
     const show = (i) => {
       cur = i;
       $("#visual").innerHTML = imgs[i] ? `<img src="${esc(imgs[i].u)}" alt="${esc(imgs[i].l)} : ${esc(it.name)}" decoding="async">${imgs[i].studio ? `<span class="studio-badge">${esc(imgs[i].l)}</span>` : ""}` : bottleSvg(it);
-      $("#visual").dataset.kind = imgs[i]?.l.startsWith("Bouteille") ? "bottle" : "photo";
+      $("#visual").dataset.kind = VC.Visual?.isVisual(imgs[i]?.p) ? "visual" : imgs[i]?.l.startsWith("Bouteille") ? "bottle" : "photo";
       $$("#vswitch button[data-i]").forEach((b, j) => b.setAttribute("aria-pressed", String(i === j)));
       const tools = $("#vtools");
       if (!tools) return;

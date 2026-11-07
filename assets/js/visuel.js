@@ -8,7 +8,7 @@
 (function () {
   const VC = window.VC;
   const { sb, $, esc, I, toast, fail } = VC;
-  const BASE = "/assets/img/bottles/";
+  const BASE = "/assets/img/bottles/", AV = "?v=20261107";  // AV : version des rendus (cache de l'app installée)
   const SHAPE_LABEL = { bordeaux: "Bordelaise", burgundy: "Bourguignonne", champagne: "Champenoise", alsace: "Flûte", spirit: "Spiritueux" };
   const VARIANT_LABEL = { "green-red": "Vert · rouge", "flint-white": "Blanc · vin blanc", "flint-rose": "Blanc · rosé", "olive-red": "Feuille-morte · rouge",
     "olive-white": "Feuille-morte · blanc", "darkgreen-white": "Vert foncé", "green-white": "Vert · blanc", "flint-amber": "Ambré", "flint-clear": "Incolore" };
@@ -24,7 +24,7 @@
     return imgs.get(src);
   };
   async function loadMeta() {
-    if (!meta) meta = await (await fetch(BASE + "bottles.json?v=20261106b")).json();
+    if (!meta) meta = await (await fetch(BASE + "bottles.json" + AV)).json();
     return meta;
   }
   const pixels = (img) => { const c = document.createElement("canvas"); c.width = img.width; c.height = img.height; const x = c.getContext("2d"); x.drawImage(img, 0, 0); return x.getImageData(0, 0, c.width, c.height); };
@@ -92,6 +92,20 @@
     return { data: out, w: W, h: H, mx, my, cw: w, ch: h, poly };
   }
 
+  // Cadre de déroulage aligné sur la bouteille (côtés verticaux, haut et bas suivant les cercles du verre), déduit
+  // du contour : une étiquette en biais ou en parallélogramme garde sa forme au lieu d'être redressée et cisaillée.
+  // Seule la courbure des bords (perspective) est reprise des six points de l'IA.
+  function alignFrame(g) {
+    if (!g.outline || g.on_bottle === false) return g.pts;
+    const xs = g.outline.map((p) => p[0]), ys = g.outline.map((p) => p[1]);
+    const xl = Math.min(...xs), xr = Math.max(...xs), yt = Math.min(...ys), yb = Math.max(...ys), xc = (xl + xr) / 2;
+    const [TL, TM, TR, BR, BM, BL] = g.pts;
+    const sag = Math.max(-.03, Math.min(.03, ((TM[1] - (TL[1] + TR[1]) / 2) + (BM[1] - (BL[1] + BR[1]) / 2)) / 2));
+    // Le bord du cadre passe par l'extrême du contour : on décale le cercle pour l'englober entièrement.
+    const top = sag > 0 ? yt - sag : yt, bot = sag > 0 ? yb : yb - sag;
+    return [[xl, top], [xc, top + sag], [xr, top], [xr, bot], [xc, bot + sag], [xl, bot]];
+  }
+
   // ---------------------------------------------------------------- détourage selon la forme réelle
   // Deux modèles de couleur : le papier (relevé au centre de l'étiquette) et le fond (relevé dans la marge :
   // verre, reflets, table). Le fond est propagé depuis le bord du cadre à travers les pixels plus proches du fond
@@ -123,7 +137,7 @@
   // selon sa couleur (modèles relevés de part et d'autre de la bande). Hors bande, le tracé fait foi.
   function refine(u) {
     const { data, w: W, h: H, cw, ch, poly } = u, d = data.data, n = W * H;
-    const rad = Math.max(2, Math.round(Math.min(cw, ch) * .025));
+    const rad = Math.max(3, Math.round(Math.min(cw, ch) * .06));
     const core = morph(poly, W, H, Math.max(1, rad >> 2), 1), inner = morph(poly, W, H, rad, 1), outer = morph(poly, W, H, rad, 0), far = morph(poly, W, H, rad * 2, 0);
     const fgIdx = [], bgIdx = [];
     for (let p = 0; p < n; p += 2) { if (!d[p * 4 + 3]) continue; if (core[p]) fgIdx.push(p * 4); else if (!far[p]) bgIdx.push(p * 4); }
@@ -138,7 +152,7 @@
       const j = p * 4;
       if (inner[p]) f[p] = 1;
       else if (!outer[p] || !d[j + 3]) f[p] = 0;
-      else f[p] = near(d, j, FG) * (poly[p] ? .8 : 1.2) <= near(d, j, BG) ? 1 : 0;
+      else f[p] = near(d, j, FG) * (poly[p] ? .88 : 1.12) <= near(d, j, BG) ? 1 : 0;
     }
     // Lissage du contour : flou séparable puis seuil à 0,5 (bord net, sans dents ni grains).
     const blur = (src, r) => {
@@ -147,11 +161,22 @@
       for (let x = 0; x < W; x++) { let acc = 0; for (let y = -r; y <= r; y++) acc += t[Math.min(H - 1, Math.max(0, y)) * W + x]; for (let y = 0; y < H; y++) { o[y * W + x] = acc / k; acc += t[Math.min(H - 1, y + r + 1) * W + x] - t[Math.max(0, y - r) * W + x]; } }
       return o;
     };
-    const sm = blur(blur(f, Math.max(1, rad >> 1)), Math.max(1, rad >> 1));
+    const sr = Math.max(1, Math.round(rad / 4)), sm = blur(blur(f, sr), sr);
     const m = Uint8Array.from(sm, (v) => v >= .5 ? 1 : 0);
+    // Nettoyage : le fond est propagé depuis l'extérieur à travers les pixels nettement « verre » restés dans le
+    // masque (coins mal tracés). Le texte foncé, entouré de papier, n'est pas atteint.
+    const stack = [];
+    for (let p = 0; p < n; p++) if (!m[p]) stack.push(p);
+    while (stack.length) {
+      const p = stack.pop(), x = p % W;
+      for (const r of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, p - W, p + W]) {
+        if (r < 0 || r >= n || !m[r]) continue;
+        const j = r * 4; if (near(d, j, BG) < near(d, j, FG) * .7) { m[r] = 0; stack.push(r); }
+      }
+    }
     let agree = 0; for (let p = 0; p < n; p++) if (m[p] === poly[p]) agree++;
     // Garde-fou : un affinage qui s'écarte trop du tracé (fond trop proche du papier) est abandonné pour le tracé.
-    return agree / n > .9 ? m : poly;
+    return agree / n > .85 ? m : poly;
   }
   function cutout(u, mode) {
     const { data, w: W, h: H, mx, my, cw, ch } = u, d = data.data, n = W * H;
@@ -250,24 +275,48 @@
 
   // ---------------------------------------------------------------- composition
   // Étiquette enroulée sur le cylindre (zone du rendu), éclairée par la passe « papier blanc » du rendu.
-  function wrap(ctx, label, zone, sleeve, maxArcR, fill) {
-    const R = zone.r, zh = zone.bottom - zone.top, a = label.height / label.width;
-    let arc = Math.min(maxArcR * R, zh * fill / a), lh = arc * a;
-    const top = zone.top + (zh - lh) / 2, layer = document.createElement("canvas"); layer.width = ctx.canvas.width; layer.height = ctx.canvas.height;
-    const lx = layer.getContext("2d"), strips = 260;
-    for (let i = 0; i < strips; i++) {
-      const u0 = i / strips, u1 = (i + 1) / strips, X = (u) => zone.cx + R * Math.sin((u - .5) * arc / R);
-      lx.drawImage(label, u0 * label.width, 0, (u1 - u0) * label.width + .5, label.height, X(u0), top, X(u1) - X(u0) + .6, lh);
+  // Projection en perspective : pour chaque pixel, le rayon de la caméra du rendu (bottles.json) coupe le cylindre
+  // de la zone d'étiquette ; on lit l'étiquette à cet endroit (angle → largeur, hauteur → hauteur), puis on applique
+  // l'éclairage du papier rendu au même pixel. Les bords se courbent exactement comme sur une vraie bouteille.
+  function project(ctx, label, zone, cam, sleeve, maxArcR, fill) {
+    const r = zone.r, zh = zone.z1 - zone.z0, aspect = label.height / label.width;
+    const arc = Math.min(maxArcR * r, zh * fill / aspect), lh = arc * aspect, zc = (zone.z0 + zone.z1) / 2, half = arc / (2 * r);
+    const [W, H] = cam.size, f = cam.f, R = cam.rot, [ox, oy, oz] = cam.pos;
+    const toScreen = (x, y, z) => {                      // monde → pixel
+      const px = x - ox, py = y - oy, pz = z - oz;
+      const cx = R[0][0] * px + R[1][0] * py + R[2][0] * pz, cy = R[0][1] * px + R[1][1] * py + R[2][1] * pz, cz = R[0][2] * px + R[1][2] * py + R[2][2] * pz;
+      return [W / 2 + f * cx / -cz, H / 2 - f * cy / -cz];
+    };
+    let x0 = W, y0 = H, x1 = 0, y1 = 0;
+    for (let i = 0; i <= 16; i++) for (const z of [zc - lh / 2, zc, zc + lh / 2]) {
+      const t = -half + 2 * half * i / 16, [sx, sy] = toScreen(r * Math.sin(t), -r * Math.cos(t), z);
+      x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy);
     }
-    const x0 = Math.floor(zone.cx - R), x1 = Math.ceil(zone.cx + R), y0 = Math.floor(top), y1 = Math.ceil(top + lh);
-    const L = lx.getImageData(x0, y0, x1 - x0, y1 - y0), ld = L.data, S = sleeve.data, sw = sleeve.width;
-    for (let y = 0; y < L.height; y++) for (let x = 0; x < L.width; x++) {
-      const i = (y * L.width + x) * 4; if (!ld[i + 3]) continue;
-      const j = ((y + y0) * sw + (x + x0)) * 4, k = S[j + 3] ? Math.min(1.12, lum(S, j) / sleeve.ref) : 1;
-      ld[i] = Math.min(255, ld[i] * k); ld[i + 1] = Math.min(255, ld[i + 1] * k); ld[i + 2] = Math.min(255, ld[i + 2] * k);
+    x0 = Math.max(0, Math.floor(x0) - 2); y0 = Math.max(0, Math.floor(y0) - 4); x1 = Math.min(W, Math.ceil(x1) + 2); y1 = Math.min(H, Math.ceil(y1) + 4);
+    const bw = x1 - x0, bh = y1 - y0; if (bw <= 0 || bh <= 0) return;
+    const lc = document.createElement("canvas"); lc.width = label.width; lc.height = label.height; lc.getContext("2d").drawImage(label, 0, 0);
+    const L = lc.getContext("2d").getImageData(0, 0, lc.width, lc.height).data, lw = lc.width, lhpx = lc.height;
+    const out = ctx.createImageData(bw, bh), od = out.data, S = sleeve.data, sw = sleeve.width;
+    for (let py = y0; py < y1; py++) for (let px = x0; px < x1; px++) {
+      const dx0 = (px + .5 - W / 2) / f, dy0 = -(py + .5 - H / 2) / f;   // direction caméra (−Z vers l'avant)
+      const dx = R[0][0] * dx0 + R[0][1] * dy0 - R[0][2], dy = R[1][0] * dx0 + R[1][1] * dy0 - R[1][2], dz = R[2][0] * dx0 + R[2][1] * dy0 - R[2][2];
+      const A = dx * dx + dy * dy, B = 2 * (ox * dx + oy * dy), C = ox * ox + oy * oy - r * r, disc = B * B - 4 * A * C;
+      if (disc < 0) continue;
+      const t = (-B - Math.sqrt(disc)) / (2 * A), X = ox + t * dx, Y = oy + t * dy, Z = oz + t * dz;
+      const u = Math.atan2(X, -Y) * r / arc + .5, v = (zc + lh / 2 - Z) / lh;
+      if (u < 0 || u >= 1 || v < 0 || v >= 1) continue;
+      // lecture bilinéaire de l'étiquette
+      const fx = u * (lw - 1), fy = v * (lhpx - 1), ix = fx | 0, iy = fy | 0, ax = fx - ix, ay = fy - iy;
+      const i00 = (iy * lw + ix) * 4, i10 = i00 + (ix < lw - 1 ? 4 : 0), i01 = i00 + (iy < lhpx - 1 ? lw * 4 : 0), i11 = i01 + (ix < lw - 1 ? 4 : 0);
+      const o = ((py - y0) * bw + (px - x0)) * 4, j = (py * sw + px) * 4;
+      const k = S[j + 3] > 30 ? Math.min(1.1, lum(S, j) / sleeve.ref) : 1;
+      for (let c = 0; c < 4; c++) {
+        const val = (L[i00 + c] * (1 - ax) + L[i10 + c] * ax) * (1 - ay) + (L[i01 + c] * (1 - ax) + L[i11 + c] * ax) * ay;
+        od[o + c] = c < 3 ? Math.min(255, val * k) : val;
+      }
     }
-    lx.putImageData(L, x0, y0);
-    ctx.drawImage(layer, 0, 0);
+    const layer = document.createElement("canvas"); layer.width = bw; layer.height = bh; layer.getContext("2d").putImageData(out, 0, 0);
+    ctx.drawImage(layer, x0, y0);
   }
   function tint(img, hex) {
     const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
@@ -286,19 +335,16 @@
   async function compose(o) {
     const s = meta.shapes[o.shape], [W, H] = meta.size;
     const [bottleImg, sleeveImg, capImg] = await Promise.all([
-      loadImg(`${BASE}${o.shape}-${o.variant}.webp`), loadImg(`${BASE}${o.shape}-sleeve.webp`), o.cap !== "none" ? loadImg(`${BASE}${o.shape}-cap-${o.cap}.webp`) : null
+      loadImg(`${BASE}${o.shape}-${o.variant}.webp${AV}`), loadImg(`${BASE}${o.shape}-sleeve.webp${AV}`), o.cap !== "none" ? loadImg(`${BASE}${o.shape}-cap-${o.cap}.webp${AV}`) : null
     ]);
     if (!sleeveImg.px) {                   // passe d'éclairage : niveau de référence du papier (90e centile)
       const p = pixels(sleeveImg), v = []; for (let i = 0; i < p.data.length; i += 16) if (p.data[i + 3] > 200) v.push(lum(p.data, i));
       v.sort((a, b) => a - b); p.ref = v[Math.floor(v.length * .9)] || 200; sleeveImg.px = p;
     }
     const c = document.createElement("canvas"); c.width = W; c.height = H; const ctx = c.getContext("2d");
-    const sh = ctx.createRadialGradient(W / 2, s.foot, 4, W / 2, s.foot, s.body.r * 1.5);
-    sh.addColorStop(0, "rgba(0,0,0,.25)"); sh.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = sh; ctx.beginPath(); ctx.ellipse(W / 2, s.foot, s.body.r * 1.5, 18, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.drawImage(bottleImg, 0, 0, W, H);
-    if (o.label) wrap(ctx, o.label, s.body, sleeveImg.px, 2.1, .94);
-    if (o.neck) wrap(ctx, o.neck, s.neck, sleeveImg.px, 2.6, .96);
+    ctx.drawImage(bottleImg, 0, 0, W, H);                  // bouteille vierge avec son ombre portée
+    if (o.label) project(ctx, o.label, s.body, meta.camera, sleeveImg.px, 2.1, .94);
+    if (o.neck) project(ctx, o.neck, s.neck, meta.camera, sleeveImg.px, 2.7, .96);
     if (capImg) ctx.drawImage(tint(capImg, o.capColor), 0, 0, W, H);
     return c;
   }
@@ -343,7 +389,7 @@
       <div class="fgroup"><div class="field-label">Verre et vin</div><div class="chips" id="vis-variant"></div></div>
       <div class="fgroup vis-colors"><div><div class="field-label">Fermeture</div><div class="chips" id="vis-cap"></div></div>
         <label class="vis-cap">Couleur<input type="color" id="vis-capcolor"></label></div>
-      <p class="hint">L'étiquette est votre photo, détourée ; la bouteille est une photo de studio vierge. Vos photos d'origine restent dans la galerie.</p>
+      <p class="hint">L'étiquette est votre photo, détourée et posée en perspective sur une bouteille de studio vierge. Vos photos d'origine restent dans la galerie.</p>
       <div class="row end vis-actions"><button type="button" class="btn quiet" data-close>Annuler</button><button type="button" class="btn" id="vis-save" disabled>${I.check}Utiliser comme vignette</button></div></div>`);
     const q = (s) => d.querySelector(s);
 
@@ -425,9 +471,9 @@
         toast(msg);
       } else {
         st.ai = data;
-        if (data.label) st.label = { pts: data.label.pts, on: data.label.on_bottle, outline: data.label.outline };
+        if (data.label) st.label = { pts: alignFrame(data.label), on: data.label.on_bottle, outline: data.label.outline };
         else toast("Étiquette non repérée : placez les six points.");
-        if (data.neck_label) { st.neck = { pts: data.neck_label.pts, on: true, outline: data.neck_label.outline }; st.useNeck = true; }
+        if (data.neck_label) { st.neck = { pts: alignFrame(data.neck_label), on: true, outline: data.neck_label.outline }; st.useNeck = true; }
         if (data.shape && meta.shapes[data.shape]) st.shape = data.shape;
         st.variant = variantFor(st.shape, data.glass || (liquidOf(it) === "red" ? "green" : "flint"), data.liquid || liquidOf(it));
         st.cap = capFor(st.shape, data.closure?.type || "foil");
@@ -457,9 +503,9 @@
     q("#vis-save").addEventListener("click", async () => {
       const btn = q("#vis-save"); btn.disabled = true; btn.textContent = "Enregistrement…";
       const canvas = q("#vis-out canvas");
-      // 750 × 1350 : net sur la fiche en écran Retina, deux fois plus léger que le rendu de travail.
-      const small = document.createElement("canvas"); small.width = 750; small.height = 1350;
-      const sx = small.getContext("2d"); sx.imageSmoothingQuality = "high"; sx.drawImage(canvas, 0, 0, 750, 1350);
+      // 900 × 1200 (3:4) : net sur la fiche en écran Retina, plus léger que le rendu de travail.
+      const small = document.createElement("canvas"); small.width = 900; small.height = 1200;
+      const sx = small.getContext("2d"); sx.imageSmoothingQuality = "high"; sx.drawImage(canvas, 0, 0, 900, 1200);
       const blob = await new Promise((r) => small.toBlob(r, "image/png"));
       const { data: { user } } = await sb.auth.getUser();
       const path = `${user.id}/visual-${crypto.randomUUID()}.png`;
@@ -474,5 +520,5 @@
     controls(); analyse();
   }
 
-  VC.Visual = { open, unwrap, cutout, compose, loadMeta, isVisual: (p) => String(p || "").includes("/visual-") };
+  VC.Visual = { open, unwrap, cutout, compose, loadMeta, alignFrame, isVisual: (p) => String(p || "").includes("/visual-") };
 })();

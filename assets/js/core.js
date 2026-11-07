@@ -212,7 +212,7 @@
     const studio = window.VC?.Studio, bottle = studio?.asset(it,"bottle"), label = studio?.asset(it,"label");
     if (path && path === studio?.ref(bottle)) return {path,kind:"bottle",label:"Bouteille Studio",reconstructed:bottle.provenance==="bottle_reconstructed"};
     if (path && path === studio?.ref(label)) return {path,kind:"label",label:"Étiquette restaurée"};
-    if (path && path.includes("/visual-")) return { path, kind: "bottle", label: "Visuel propre" };
+    if (path && path.includes("/visual-")) return { path, kind: "visual", label: "Visuel propre" };
     const kind = path && path === it.bottle_path ? "bottle" : path && [it.label_path, it.label_back_path].includes(path) ? "label" : "photo";
     return { path, kind, label: { bottle: "Bouteille", label: "Étiquette originale", photo: "Photo originale" }[kind] };
   }

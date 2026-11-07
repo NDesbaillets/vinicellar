@@ -765,3 +765,11 @@ dialog:has(.vis-sheet) { width: min(860px, calc(100vw - 24px)); }
 .vis-actions { position: sticky; bottom: -1px; margin: 14px -22px -22px; padding: 12px 22px calc(12px + env(safe-area-inset-bottom)); background: var(--card); border-top: 1px solid var(--line); }
 
 .vis-which { align-items: center; margin-bottom: 6px; } .vis-which:empty { display: none; }
+
+/* visuel propre : packshot sur fond blanc, comme une photo de catalogue (dans les deux thèmes) */
+.thumb.image-visual, .visual[data-kind="visual"] { background: #fff; }
+.thumb.image-visual img { object-fit: contain; padding: 0; }
+.visual[data-kind="visual"] img { padding: 0; }
+:root[data-theme="dark"] .thumb.image-visual, :root[data-theme="dark"] .visual[data-kind="visual"] { background: #f4f2ef; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .thumb.image-visual, :root:not([data-theme="light"]) .visual[data-kind="visual"] { background: #f4f2ef; } }
+.vis-out { background: #fff; }

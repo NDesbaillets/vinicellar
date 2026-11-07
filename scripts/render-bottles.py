@@ -6,18 +6,20 @@ Produit, dans assets/img/bottles/ :
   {forme}-sleeve.webp     éclairage d'une étiquette en papier blanc posée sur le corps et sur le col
   bottles.json            géométrie en pixels (zones d'étiquette, rayon, capsule) pour la composition
 
-Toutes les images partagent le même cadrage orthographique (1000 × 1800 px, 0,40 m de haut) :
+Toutes les images partagent la même caméra de packshot (85 mm, légère plongée, 1200 × 1600 px, ombre portée sur fond transparent) :
 les calques se superposent au pixel près et les formes gardent leurs proportions réelles.
 
 Usage : python scripts/render-bottles.py [--samples 96] [--only bordeaux]   (paquet pip « bpy »)
 """
 import argparse, json, math, os
-import bpy, bmesh
+import bpy, bmesh, mathutils
 import numpy as np
 from PIL import Image
 
-W, H, SCALE = 1000, 1800, 0.40          # pixels, hauteur de champ en mètres
-PPM = H / SCALE
+W, H = 1200, 1600                        # pixels (3:4)
+# Caméra de packshot : 85 mm, légèrement plongeante (7°), visée au milieu de la bouteille, même cadrage pour toutes.
+LENS, SENSOR, DIST, ELEV, TARGET_Z = 85, 24, 1.42, 7, .182
+SCALE = .40; PPM = H / SCALE               # (anciens rendus orthographiques ; conservé pour la compatibilité)
 PCT = 100
 OUT = os.path.join(os.path.dirname(__file__), "..", "assets", "img", "bottles")
 
@@ -35,7 +37,7 @@ SHAPES = {
                "body": (.030, .195), "neck": (.240, .258), "fill": .232},
 }
 # Verre (couleur de transmission) et liquide (couleur d'absorption, densité) par variante.
-GLASS = {"darkgreen": (.025, .085, .035), "green": (.05, .17, .07), "olive": (.20, .19, .06), "amber": (.36, .18, .05), "flint": (.96, .97, .96)}
+GLASS = {"darkgreen": (.025, .085, .035), "green": (.035, .12, .05), "olive": (.10, .09, .03), "amber": (.36, .18, .05), "flint": (.96, .97, .96)}
 LIQUID = {"red": ((.28, .02, .05), 90), "white": ((.95, .82, .35), 30), "rose": ((.95, .42, .40), 40), "amber": ((.85, .42, .06), 55), "clear": ((.97, .97, .97), .5), "none": None}
 VARIANTS = {
     "bordeaux": [("green", "red"), ("flint", "white"), ("flint", "rose")],
@@ -106,17 +108,38 @@ def reset():
     sc.cycles.use_denoising = True
     sc.cycles.max_bounces, sc.cycles.transmission_bounces, sc.cycles.glossy_bounces, sc.cycles.volume_bounces = 16, 16, 8, 2
     world = bpy.data.worlds.new("w"); sc.world = world; world.use_nodes = True
-    bg = world.node_tree.nodes["Background"]; bg.inputs[0].default_value = (.8, .8, .8, 1); bg.inputs[1].default_value = .35
+    bg = world.node_tree.nodes["Background"]; bg.inputs[0].default_value = (1, 1, 1, 1); bg.inputs[1].default_value = .55
     cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam")); sc.collection.objects.link(cam); sc.camera = cam
-    cam.data.type = "ORTHO"; cam.data.ortho_scale = SCALE
-    cam.location = (0, -1.5, SCALE / 2 - .012); cam.rotation_euler = (math.pi / 2, 0, 0)
-    # Studio : deux boîtes à lumière verticales (reflets en bandes), un dessus, un contre-jour.
-    for name, loc, rot, size, power in [("left", (-.42, -.55, .16), (math.radians(90), 0, math.radians(-38)), (.10, .75), 14),
-                                        ("right", (.45, -.50, .17), (math.radians(90), 0, math.radians(42)), (.06, .75), 9),
-                                        ("top", (0, -.25, .62), (math.radians(25), 0, 0), (.4, .4), 5),
-                                        ("back", (0, .7, .2), (math.radians(-90), 0, 0), (.6, .6), 8)]:
-        l = bpy.data.lights.new(name, "AREA"); l.shape = "RECTANGLE"; l.size, l.size_y = size; l.energy = power
-        o = bpy.data.objects.new(name, l); o.location = loc; o.rotation_euler = rot; sc.collection.objects.link(o)
+    cam.data.lens = LENS; cam.data.sensor_fit = "VERTICAL"; cam.data.sensor_height = SENSOR
+    e = math.radians(ELEV); cam.location = (0, -DIST * math.cos(e), TARGET_Z + DIST * math.sin(e))
+    cam.rotation_euler = (math.pi / 2 - e, 0, 0)
+    # Studio de packshot : grande boîte à lumière à droite (ombre portée vers l'arrière gauche), réflecteur haut
+    # à gauche (reflet doux et large), liseré en contre-jour à droite, lumière douce du dessus.
+    def area(name, loc, size, power, target=(0, 0, .17), shadow=True):
+        l = bpy.data.lights.new(name, "AREA"); l.shape = "ELLIPSE" if name == "key" else "RECTANGLE"; l.size, l.size_y = size; l.energy = power; l.use_shadow = shadow
+        o = bpy.data.objects.new(name, l); o.location = loc; sc.collection.objects.link(o)
+        d = mathutils.Vector(target) - mathutils.Vector(loc); o.rotation_euler = d.to_track_quat("-Z", "Y").to_euler()
+    area("key", (1.0, -1.0, 1.1), (1.6, 1.6), 330)
+    area("fill", (-1.1, -.7, .4), (.9, 2.0), 170, shadow=False)
+    area("rim", (.6, .8, .35), (.3, 1.5), 90, shadow=False)
+    area("top", (0, -.1, 1.3), (.9, .9), 50, shadow=False)
+    return sc
+
+
+def floor():
+    """Sol attrape-ombre : seule l'ombre (en transparence) apparaît dans l'image."""
+    bpy.ops.mesh.primitive_plane_add(size=4, location=(0, 0, 0)); ob = bpy.context.object
+    ob.is_shadow_catcher = True
+    ob.visible_transmission = ob.visible_glossy = ob.visible_diffuse = False   # invisible à travers et dans le verre
+
+
+def camera_meta():
+    """Paramètres de la caméra pour reprojeter l'étiquette dans le navigateur (rayon → cylindre)."""
+    sc = reset(); cam = sc.camera
+    bpy.context.view_layer.update()
+    R = cam.matrix_world.to_3x3()
+    return {"pos": [round(v, 6) for v in cam.location], "rot": [[round(R[i][j], 6) for j in range(3)] for i in range(3)],
+            "f": round(LENS / SENSOR * H, 4), "size": [W, H]}
     return sc
 
 
@@ -129,7 +152,7 @@ def bottle(shape, glass, liquid):
     s = SHAPES[shape]; prof = profile(s["pts"])
     ob = lathe("glass", prof, close_bottom=True)
     mod = ob.modifiers.new("thick", "SOLIDIFY"); mod.thickness = .0032; mod.offset = -1
-    ob.data.materials.append(material("glass", **{"Base Color": (*GLASS[glass], 1), "Transmission Weight": 1.0, "Roughness": .02, "IOR": 1.52}))
+    ob.data.materials.append(material("glass", **{"Base Color": (*GLASS[glass], 1), "Transmission Weight": 1.0, "Roughness": .07, "IOR": 1.52}))
     if LIQUID[liquid]:
         inner = [(z, max(r - .0036, .001)) for z, r in prof if .005 <= z <= s["fill"]]
         lq = lathe("liquid", inner, close_bottom=True, close_top=True)
@@ -171,24 +194,27 @@ def px(z):  # hauteur (m) → ligne de pixel
 
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument("--samples", type=int, default=96); ap.add_argument("--only"); ap.add_argument("--pct", type=int, default=100); ap.add_argument("--variant")
+    ap = argparse.ArgumentParser(); ap.add_argument("--samples", type=int, default=96); ap.add_argument("--only"); ap.add_argument("--pct", type=int, default=100); ap.add_argument("--variant"); ap.add_argument("--bottles-only", action="store_true"); ap.add_argument("--meta-only", action="store_true")
     a = ap.parse_args([x for x in os.sys.argv[1:]])
     global PCT; PCT = a.pct
     os.makedirs(OUT, exist_ok=True)
-    meta = {"size": [W, H], "ppm": PPM, "shapes": {}}
+    meta = {"size": [W, H], "camera": camera_meta(), "shapes": {}}
     for shape, s in SHAPES.items():
         if a.only and shape != a.only: continue
         prof = profile(s["pts"]); r_at = lambda z: min(prof, key=lambda p: abs(p[0] - z))[1]
         bz, nz = s["body"], s["neck"]
+        # Zones d'étiquette : cylindres (rayon et hauteurs en mètres) sur lesquels le navigateur projette l'étiquette.
         meta["shapes"][shape] = {
             "variants": [f"{g}-{l}" for g, l in VARIANTS[shape]], "caps": CAPS[shape],
-            "body": {"cx": W / 2, "r": round((r_at((bz[0] + bz[1]) / 2) + .0006) * PPM, 1), "top": px(bz[1]), "bottom": px(bz[0])},
-            "neck": {"cx": W / 2, "r": round((r_at((nz[0] + nz[1]) / 2) + .0006) * PPM, 1), "top": px(nz[1]), "bottom": px(nz[0])},
-            "foot": px(0), "lip": px(s["h"]),
+            "body": {"r": round(r_at((bz[0] + bz[1]) / 2) + .0006, 5), "z0": bz[0], "z1": bz[1]},
+            "neck": {"r": round(r_at((nz[0] + nz[1]) / 2) + .0006, 5), "z0": nz[0], "z1": nz[1]},
+            "h": s["h"],
         }
+        if a.meta_only: continue
         for g, l in VARIANTS[shape]:
             if a.variant and f"{g}-{l}" != a.variant: continue
-            sc = reset(); sc.cycles.samples = a.samples; bottle(shape, g, l); render(sc, os.path.join(OUT, f"{shape}-{g}-{l}"))
+            sc = reset(); sc.cycles.samples = a.samples; floor(); bottle(shape, g, l); render(sc, os.path.join(OUT, f"{shape}-{g}-{l}"))
+        if a.bottles_only: continue
         for k in CAPS[shape]:
             sc = reset(); sc.cycles.samples = 24; cap(shape, k); render(sc, os.path.join(OUT, f"{shape}-cap-{k}"))
         sc = reset(); sc.cycles.samples = 24; sleeve(shape); render(sc, os.path.join(OUT, f"{shape}-sleeve"))
