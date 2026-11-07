@@ -810,3 +810,4 @@ dialog:has(.vis-sheet) { width: min(860px, calc(100vw - 24px)); }
 .shots-3 .shot small.muted { font-size: var(--fs-xs); line-height: 1.3; }
 @media (max-width: 380px) { .shots.shots-3 { grid-template-columns: 1fr 1fr; } }
 .vis-tip { flex-basis: 100%; margin: 4px 0 0; }
+.vis-edit img.vis-src { display: block; max-width: 100%; max-height: 340px; object-fit: contain; }

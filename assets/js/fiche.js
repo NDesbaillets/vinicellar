@@ -48,7 +48,7 @@
       if (!tools) return;
       const x = imgs[i];
       const hasVisual = imgs.some((y) => VC.Visual?.isVisual(y.p));
-      tools.innerHTML = `${VC.Visual && imgs.some((y) => !VC.Visual.isVisual(y.p) && !y.studio) ? `<button class="btn${hasVisual ? " quiet" : ""}" data-v="visual">${I.sparkle}${hasVisual ? "Refaire le visuel" : "Créer un visuel propre"}</button>` : ""}
+      tools.innerHTML = `${VC.Visual && imgs.some((y) => !VC.Visual.isVisual(y.p) && !y.studio) ? `<button class="btn${hasVisual ? " quiet" : ""}" data-v="visual">${I.sparkle}${hasVisual ? "Refaire l'aperçu" : "Créer l'aperçu"}</button>` : ""}
         ${x && x.p !== cover && !studio?.ref(bottle) && !x.studio ? `<button class="btn quiet" data-v="cover">${I.check}Utiliser comme vignette</button>` : x ? `<span class="faint" style="font-size:var(--fs-s)">${studio?.ref(bottle) ? "Bouteille Studio prioritaire dans le catalogue" : "Vignette actuelle"}</span>` : ""}
         ${x && x.extra ? `<button class="btn quiet" data-v="del">${I.trash}Retirer de la galerie</button>` : ""}
         <label class="btn ${imgs.some((y) => VC.Visual?.isFull(y.p)) ? "quiet" : "ghost"}">${I.camera}${imgs.some((y) => VC.Visual?.isFull(y.p)) ? "Nouvelle photo de la bouteille" : "Photo de la bouteille entière"}<input type="file" accept="image/*" capture="environment" data-v="full" hidden></label>
