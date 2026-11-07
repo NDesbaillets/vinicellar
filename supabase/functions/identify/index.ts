@@ -25,10 +25,11 @@ function cors(req: Request) {
 const json = (req: Request, body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors(req), "Content-Type": "application/json" } });
 
-const SYSTEM = `Documentaliste-sommelier de Vinicellar (cave : vins, whiskies, sakés, rhums, cognacs, gins, liqueurs). Entrée : 1 ou 2 photos (étiquette, contre-étiquette, qui porte souvent millésime, assemblage, degré) et/ou un nom.
+const SYSTEM = `Documentaliste-sommelier de Vinicellar (cave : vins, whiskies, sakés, rhums, cognacs, gins, liqueurs). Entrée : 1 à 5 photos de la même bouteille, dans un ordre quelconque (étiquette, contre-étiquette qui porte souvent millésime, assemblage, degré, bouteille entière), et/ou un nom.
 1. Lis : producteur, cuvée, millésime, appellation, degré, contenance, mentions (âge, fût, type de saké…).
 2. Fais toujours tes recherches web sur cette bouteille avant de répondre, même si l'étiquette suffit à l'identifier. Sources par priorité : site du producteur, fiches techniques, cavistes (prix : suisses d'abord, Mövenpick, Gerstl, Martel, Flaschenpost, Globus ; sinon Wine-Searcher, Vinatis), puis Vivino, CellarTracker, Whiskybase, Sakenowa (note, garde).
-3. image_url : URL directe d'une image de la bouteille (.jpg/.png/.webp), producteur sinon revendeur, relevée par web_fetch (og:image ou image produit). Jamais inventée.
+3. photos : pour chaque photo reçue, dans l'ordre : label (étiquette principale vue de près), back (contre-étiquette), full (bouteille entière visible, de la capsule au pied) ou other.
+4. image_url : URL directe d'une image de la bouteille (.jpg/.png/.webp), producteur sinon revendeur, relevée par web_fetch (og:image ou image produit). Jamais inventée.
 Règles :
 - Aucun chiffre inventé : introuvable = null. Garde estimable d'après appellation, style, millésime : window_source "estimation", sinon la source.
 - Prix d'une bouteille de 75 cl (ou contenance lue), en CHF si source suisse, sinon devise de la source.
@@ -40,13 +41,13 @@ Règles :
   Suisse : Lavaux, Chablais, La Côte, Côtes de l'Orbe, Bonvillars, Vully (jamais « Vaud » seul), Valais, Genève, Neuchâtel, Lac de Bienne, Tessin, Suisse alémanique.
   Italie : Piémont, Vallée d'Aoste, Lombardie, Trentin-Haut-Adige, Vénétie, Frioul-Vénétie julienne, Ligurie, Émilie-Romagne, Toscane, Ombrie, Marches, Latium, Abruzzes, Molise, Campanie, Pouilles, Basilicate, Calabre, Sicile, Sardaigne.
 Réponds uniquement par ce JSON, valeur inconnue = null :
-{"identified":bool,"confidence":0-1,"category":"wine|whisky|sake|rum|brandy|gin|liqueur|other","style":"red|white|rose|sparkling|sweet|fortified|orange","name":"cuvée affichée, sans le producteur","producer":"","producer_url":"site officiel","vintage":int,"country":"","region":"","appellation":"","grapes":["Cépage (xx %)"],"abv":num,"volume_cl":int,"image_url":"","description":"2-3 phrases : le vin, son style","vinification":"2-3 phrases : récolte, fermentation, élevage","terroir":"2-3 phrases : sols, exposition, climat","vintage_notes":"1-2 phrases : millésime ou particularités de la cuvée","pairings":["4 accords"],"serving_temp_min":int,"serving_temp_max":int,"drink_from":int,"drink_to":int,"peak_from":int,"peak_to":int,"aging_potential_years":int,"window_source":"","avg_score":num,"avg_score_scale":"5|10|20|100","avg_score_source":"","market_price":num,"market_currency":"CHF|EUR|USD|GBP","price_source":"","details":{"clé":"valeur"},"caveats":"incertitudes (ex. millésime illisible)"}`;
+{"identified":bool,"confidence":0-1,"photos":["label|back|full|other"],"category":"wine|whisky|sake|rum|brandy|gin|liqueur|other","style":"red|white|rose|sparkling|sweet|fortified|orange","name":"cuvée affichée, sans le producteur","producer":"","producer_url":"site officiel","vintage":int,"country":"","region":"","appellation":"","grapes":["Cépage (xx %)"],"abv":num,"volume_cl":int,"image_url":"","description":"2-3 phrases : le vin, son style","vinification":"2-3 phrases : récolte, fermentation, élevage","terroir":"2-3 phrases : sols, exposition, climat","vintage_notes":"1-2 phrases : millésime ou particularités de la cuvée","pairings":["4 accords"],"serving_temp_min":int,"serving_temp_max":int,"drink_from":int,"drink_to":int,"peak_from":int,"peak_to":int,"aging_potential_years":int,"window_source":"","avg_score":num,"avg_score_scale":"5|10|20|100","avg_score_source":"","market_price":num,"market_currency":"CHF|EUR|USD|GBP","price_source":"","details":{"clé":"valeur"},"caveats":"incertitudes (ex. millésime illisible)"}`;
 
 type Img = { data: string; media_type: string };
 type Payload = {
   image?: string;        // ancienne forme : une photo en base64 sans préfixe data:
   media_type?: string;
-  images?: Img[];        // une ou deux photos : étiquette, contre-étiquette
+  images?: Img[];        // 1 à 5 photos, dans un ordre quelconque : l'analyse dit le rôle de chacune
   draft_id?: string;     // file d'analyses : les photos sont lues dans le stockage, le résultat est écrit dans la ligne
   hint?: { name?: string; producer?: string; vintage?: number | string; category?: string };
 };
@@ -85,6 +86,7 @@ function clean(raw: Record<string, unknown>) {
   }
   return {
     identified: raw.identified === true,
+    photos: Array.isArray(raw.photos) ? raw.photos.slice(0, 5).map((v) => oneOf(v, ["label", "back", "full", "other"] as const) ?? "other") : null,
     confidence: num(raw.confidence, 0, 1),
     category: oneOf(raw.category, ["wine", "whisky", "sake", "rum", "brandy", "gin", "liqueur", "other"] as const) ?? "wine",
     style: oneOf(raw.style, ["red", "white", "rose", "sparkling", "sweet", "fortified", "orange"] as const),
@@ -155,7 +157,7 @@ class Fail extends Error { constructor(public status: number, message: string) {
 async function analyse(admin: any, apiKey: string, userId: string, images: Img[], hint: NonNullable<Payload["hint"]>) {
   const hintText = [hint.producer, hint.name, hint.vintage].filter(Boolean).join(" · ");
   const content: Anthropic.Beta.BetaContentBlockParam[] = [];
-  images.slice(0, 2).forEach((im) => {
+  images.slice(0, 5).forEach((im) => {
     const media = (["image/jpeg", "image/png", "image/webp", "image/gif"].includes(im.media_type) ? im.media_type : "image/jpeg") as
       "image/jpeg" | "image/png" | "image/webp" | "image/gif";
     content.push({ type: "image", source: { type: "base64", media_type: media, data: im.data } });
@@ -163,7 +165,7 @@ async function analyse(admin: any, apiKey: string, userId: string, images: Img[]
   content.push({
     type: "text",
     text: [
-      images.length === 2 ? "Photo 1 : étiquette. Photo 2 : contre-étiquette." : images.length ? "" : "Sans photo.",
+      images.length ? `${images.length} photo${images.length > 1 ? "s" : ""}, dans l'ordre reçu.` : "Sans photo.",
       hintText ? `Indications (prioritaires sur ta lecture) : ${hintText}${hint.category ? ` · ${hint.category}` : ""}.` : "",
       `Année : ${new Date().getFullYear()}.`,
     ].filter(Boolean).join("\n"),
@@ -238,7 +240,7 @@ Deno.serve(async (req) => {
   try { body = await req.json(); } catch { return json(req, { error: "bad_request" }, 400); }
   let hint = body.hint ?? {};
   let images: Img[] = Array.isArray(body.images)
-    ? body.images.filter((i) => typeof i?.data === "string" && i.data.length > 100).slice(0, 2)
+    ? body.images.filter((i) => typeof i?.data === "string" && i.data.length > 100).slice(0, 5)
     : typeof body.image === "string" && body.image.length > 100 ? [{ data: body.image, media_type: body.media_type ?? "image/jpeg" }] : [];
 
   // File d'analyses : la ligne doit être visible par l'utilisateur (règles RLS), les photos sont relues dans le stockage.
@@ -249,14 +251,14 @@ Deno.serve(async (req) => {
     draftId = draft.id;
     hint = { ...(draft.hint ?? {}), ...hint };
     images = [];
-    for (const path of (draft.photo_paths ?? []).slice(0, 2)) {
+    for (const path of (draft.photo_paths ?? []).slice(0, 5)) {
       const { data: file } = await admin.storage.from("labels").download(path);
       if (file) images.push({ data: b64(new Uint8Array(await file.arrayBuffer())), media_type: file.type || "image/jpeg" });
     }
   }
   const hintText = [hint.producer, hint.name, hint.vintage].filter(Boolean).join("");
   if (!images.length && !hintText) return json(req, { error: "bad_request", message: "Photo ou nom requis." }, 400);
-  if (images.reduce((a, i) => a + i.data.length, 0) > 12_000_000) return json(req, { error: "too_large" }, 413);
+  if (images.reduce((a, i) => a + i.data.length, 0) > 16_000_000) return json(req, { error: "too_large" }, 413);
 
   const { data: callRow } = await admin.from("ai_calls").insert({ user_id: user.id, kind: images.length ? "identify" : "refresh" }).select("id").single();
   const run = analyse(admin, apiKey, user.id, images, hint);

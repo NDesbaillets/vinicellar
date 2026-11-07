@@ -811,3 +811,17 @@ dialog:has(.vis-sheet) { width: min(860px, calc(100vw - 24px)); }
 @media (max-width: 380px) { .shots.shots-3 { grid-template-columns: 1fr 1fr; } }
 .vis-tip { flex-basis: 100%; margin: 4px 0 0; }
 .vis-edit img.vis-src { display: block; max-width: 100%; max-height: 340px; object-fit: contain; }
+
+/* ajout : photos en série, rôle reconnu par l'analyse */
+.multi-shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.mshot { position: relative; aspect-ratio: 3 / 4; border-radius: 14px; overflow: hidden; background: var(--sunk); border: 1px solid var(--line); }
+.mshot img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mshot-n { position: absolute; left: 8px; bottom: 8px; min-width: 24px; height: 24px; border-radius: 12px; background: rgba(0,0,0,.6); color: #fff; font-size: var(--fs-xs); font-weight: 700; display: grid; place-items: center; }
+.mshot .shot-x { position: absolute; top: 6px; right: 6px; }
+.mshot.add { display: grid; align-content: center; gap: 8px; padding: 10px; border-style: dashed; background: var(--card); }
+.mshot.add .btn { min-height: 44px; padding: 6px 8px; font-size: var(--fs-s); gap: 6px; display: flex; justify-content: center; }
+.mshot.add .btn > input { position: absolute; width: 0; height: 0; padding: 0; border: 0; }
+.review-imgs .rshot { margin: 0; display: grid; gap: 6px; flex: none; }
+.review-imgs .rshot img { height: 150px; }
+.review-imgs .rshot select { min-height: 40px; padding: 6px 8px; font-size: var(--fs-s); }
+.review-imgs .rshot figcaption { font-size: var(--fs-xs); color: var(--ink-2); }

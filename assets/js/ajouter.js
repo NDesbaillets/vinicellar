@@ -1,4 +1,5 @@
-// Ajouter des bouteilles à la chaîne : étiquette (+ contre-étiquette) → analyse lancée en arrière-plan →
+// Ajouter des bouteilles à la chaîne : 1 à 5 photos dans n'importe quel ordre (étiquette, contre-étiquette,
+// bouteille entière) → l'analyse reconnaît le rôle de chaque photo et remplit la fiche en arrière-plan →
 // on photographie la suivante pendant ce temps → on vérifie chaque fiche quand elle est prête.
 (async function () {
   const VC = window.VC;
@@ -11,9 +12,11 @@
   let here = VC.getLoc();
   if (!places.some((p) => p.id === here)) here = places[0] ? places[0].id : "";
 
-  const shots = [null, null, null];    // { blob, preview } : étiquette, contre-étiquette, bouteille entière
-  const KINDS = ["label", "back", "full"];   // préfixe du fichier : la photo est reconnue par son nom, pas par sa place
-  const ready = () => !!(shots[0] && shots[2]);
+  const shots = [];                    // { blob, preview }, dans l'ordre de prise ; l'analyse dit le rôle de chacune
+  const MAX_SHOTS = 5;
+  const ROLE = { label: "Étiquette", back: "Contre-étiquette", full: "Bouteille entière", other: "Autre" };
+  const roleEdits = new Map();         // corrections faites à la vérification : draft id → rôles
+  const ready = () => shots.length > 0;
   let drafts = [], thumbs = () => null, poll = null;
   let defaults = { loc: here, qty: 1 };
   const saveKeys = new WeakMap();
@@ -67,9 +70,8 @@
       const loc = $("#loc").value, qty = Math.max(0, parseInt($("#qty").value, 10) || 0);
       defaults = { loc, qty: qty || 1 };
       const paths = [];
-      for (const [i, s] of shots.entries()) {
-        if (!s) continue;
-        const path = `${ctx.user.id}/${KINDS[i]}-${crypto.randomUUID()}.${s.blob.type.split("/")[1] || "jpg"}`;
+      for (const s of shots) {
+        const path = `${ctx.user.id}/shot-${crypto.randomUUID()}.${s.blob.type.split("/")[1] || "jpg"}`;
         const { error } = await sb.storage.from("labels").upload(path, s.blob, { contentType: s.blob.type, upsert: false });
         if (error) throw error;
         paths.push(path);
@@ -78,7 +80,7 @@
         collection_id: collOf(loc), location_id: loc || null, qty, photo_paths: paths, hint: hint || {}
       }).select("id").single();
       if (error) throw error;
-      shots[0] = shots[1] = shots[2] = null;
+      shots.length = 0;
       drawCapture();
       toast(hint ? "Recherche lancée." : "Analyse lancée. Photographiez la bouteille suivante.");
       const { error: fe } = await sb.functions.invoke("identify", { body: { draft_id: d.id } });
@@ -91,33 +93,41 @@
     finally { if ($("#go")) $("#go").disabled = !ready(); loadDrafts(); }
   }
 
-  // Rôle d'une photo de brouillon, d'après le préfixe de son nom ; anciens brouillons : 1re = étiquette, 2e = contre-étiquette.
+  // Rôles des photos d'un brouillon : corrigés à la vérification, sinon ceux reconnus par l'analyse
+  // (même ordre que photo_paths), sinon d'après le nom (label-, back-, full-), sinon 1re = étiquette, 2e = contre-étiquette.
+  function rolesOf(d) {
+    const ps = (d.photo_paths || []).filter(Boolean), r = roleEdits.get(d.id) || d.result?.photos;
+    if (Array.isArray(r) && r.length === ps.length) return r;
+    return ps.map((p, i) => { const m = p.split("/").pop().match(/^(label|back|full)-/); return m ? m[1] : ps.some((x) => /\/(label|back|full)-/.test(x)) ? "other" : i === 0 ? "label" : i === 1 ? "back" : "other"; });
+  }
   function photoOf(d, kind) {
-    const ps = (d.photo_paths || []).filter(Boolean), named = ps.find((p) => p.split("/").pop().startsWith(kind + "-"));
-    if (named) return named;
-    if (ps.some((p) => /\/(label|back|full)-/.test(p))) return null;
-    return kind === "label" ? ps[0] || null : kind === "back" ? ps[1] || null : null;
+    const ps = (d.photo_paths || []).filter(Boolean), roles = rolesOf(d), i = roles.indexOf(kind);
+    if (i >= 0) return ps[i];
+    // Pas de gros plan de l'étiquette : la photo de la bouteille entière (où elle se lit) en tient lieu.
+    return kind === "label" ? ps[roles.indexOf("full")] || ps[0] || null : null;
+  }
+
+  async function fullCopy(d) {
+    if (d.fullPath !== undefined) return d.fullPath;
+    const src = rolesOf(d).includes("full") ? photoOf(d, "full") : null;
+    if (!src) return (d.fullPath = null);
+    if (/\/full-/.test(src)) return (d.fullPath = src);
+    const to = `${ctx.user.id}/full-${crypto.randomUUID()}.${src.split(".").pop() || "jpg"}`;
+    const { error } = await sb.storage.from("labels").copy(src, to);
+    return (d.fullPath = error ? src : to);
   }
 
   // ---------------------------------------------------------------- saisie
-  function slot(i) {
-    const s = shots[i];
-    const title = ["Étiquette", "Contre-étiquette", "Bouteille entière"][i];
-    const hint = ["De face, sans reflet", "Souvent le millésime et l'assemblage", "De la capsule au pied, de face : pour l'aperçu"][i];
-    if (s) return `<div class="shot"><img src="${s.preview}" alt="${title}"><span class="shot-label">${title}</span><button class="icon-btn shot-x" data-x="${i}" aria-label="Retirer">×</button></div>`;
-    return `<div class="shot empty"><span class="shot-label">${title}${i === 1 ? " <small>(facultatif)</small>" : ""}</span>
-      <div class="shot-btns"><label class="btn ${i === 1 ? "ghost" : ""}">${I.camera}<span>Photo</span><input type="file" accept="image/*" capture="environment" data-shot="${i}" hidden></label>
-      <label class="btn ghost">${I.image}<span>Album</span><input type="file" accept="image/*" data-shot="${i}" hidden></label></div>
-      <small class="muted">${hint}</small></div>`;
-  }
-
   function drawCapture() {
-    $("#capture").innerHTML = `<div class="shots shots-3">${slot(0)}${slot(1)}${slot(2)}</div>
+    $("#capture").innerHTML = `<div class="multi-shots">${shots.map((s, i) => `<div class="mshot"><img src="${s.preview}" alt="Photo ${i + 1}"><span class="mshot-n">${i + 1}</span><button class="icon-btn shot-x" data-x="${i}" aria-label="Retirer la photo ${i + 1}">×</button></div>`).join("")}
+        ${shots.length < MAX_SHOTS ? `<div class="mshot add"><label class="btn${shots.length ? " ghost" : ""}">${I.camera}<span>Photo</span><input type="file" accept="image/*" capture="environment" data-shot hidden></label>
+          <label class="btn ghost">${I.image}<span>Album</span><input type="file" accept="image/*" multiple data-shot hidden></label></div>` : ""}</div>
+      <p class="hint" style="margin:10px 0 0">L'étiquette, la contre-étiquette et la bouteille entière (de la capsule au pied, pour l'aperçu), dans l'ordre que vous voulez : l'app reconnaît chaque photo. ${MAX_SHOTS} photos au plus.</p>
       <div class="form-line" style="margin-top:14px">
         <label>Cave<select id="loc">${locOptions(defaults.loc)}</select></label>
         <label>Bouteilles<input id="qty" type="number" min="0" max="999" inputmode="numeric" value="${defaults.qty}"></label>
         <button class="btn big" id="go"${ready() ? "" : " disabled"}>${I.sparkle}Lancer l'analyse</button></div>
-      <p class="hint" style="margin:10px 0 0">${shots[0] && !shots[2] ? "Ajoutez la photo de la bouteille entière : elle sert à créer l'aperçu." : "Enchaînez les bouteilles : chaque analyse continue pendant que vous photographiez la suivante."}</p>`;
+      <p class="hint" style="margin:10px 0 0">Enchaînez les bouteilles : chaque analyse continue pendant que vous photographiez la suivante.</p>`;
   }
 
   function stepCapture() {
@@ -154,9 +164,12 @@
   main.addEventListener("change", async (e) => {
     const inp = e.target.closest("[data-shot]");
     if (!inp || !inp.files[0]) return;
-    const i = +inp.dataset.shot;
-    try { const img = await (VC.Studio?.enabled() ? VC.Studio.original(inp.files[0]) : i === 2 ? VC.shrink(inp.files[0], 2400, .9) : VC.shrink(inp.files[0])); shots[i] = { blob: img.blob, preview: img.preview }; }
-    catch (err) { return fail(err, "Image illisible. Essayez une autre photo (JPEG ou PNG)."); }
+    // 2000 px : assez pour lire l'étiquette sur la photo de la bouteille entière et pour un détourage net.
+    try {
+      const room = MAX_SHOTS - shots.length, files = [...inp.files];
+      for (const f of files.slice(0, room)) { const img = await VC.shrink(f, 2000, .9); shots.push({ blob: img.blob, preview: img.preview }); }
+      if (files.length > room) toast(`${MAX_SHOTS} photos au plus : les suivantes n'ont pas été ajoutées.`);
+    } catch (err) { return fail(err, "Image illisible. Essayez une autre photo (JPEG ou PNG)."); }
     const loc = $("#loc").value, qty = $("#qty").value;
     defaults = { loc, qty };
     drawCapture();
@@ -165,7 +178,7 @@
   main.addEventListener("click", async (e) => {
     if (e.target.closest("#go")) return launch(null);
     const x = e.target.closest("[data-x]");
-    if (x) { shots[+x.dataset.x] = null; defaults = { loc: $("#loc").value, qty: $("#qty").value }; return drawCapture(); }
+    if (x) { shots.splice(+x.dataset.x, 1); defaults = { loc: $("#loc").value, qty: $("#qty").value }; return drawCapture(); }
     const q = e.target.closest("[data-q]");
     if (!q) return;
     const d = drafts.find((y) => y.id === q.closest(".qitem").dataset.id);
@@ -210,7 +223,10 @@
       ${notice}
       <div id="dups"></div>
       <form id="item-form" class="card" novalidate style="margin-top:16px">
-        ${imgs.length ? `<div class="review-imgs">${imgs.map((u) => `<img src="${esc(u)}" alt="">`).join("")}</div>` : ""}
+        ${d && d.photo_paths.length ? `<div class="review-imgs">${d.photo_paths.map((p, i) => urls(p) ? `<figure class="rshot"><img src="${esc(urls(p))}" alt="Photo ${i + 1}">
+            <select data-role="${i}" aria-label="Rôle de la photo ${i + 1}">${Object.entries(ROLE).map(([k, l]) => `<option value="${k}"${rolesOf(d)[i] === k ? " selected" : ""}>${l}</option>`).join("")}</select></figure>` : "").join("")}
+            ${d.bottle_path && urls(d.bottle_path) ? `<figure class="rshot"><img src="${esc(urls(d.bottle_path))}" alt="Image trouvée"><figcaption>Image trouvée en ligne</figcaption></figure>` : ""}</div>
+          <p class="hint" id="roles-note"></p>` : imgs.length ? `<div class="review-imgs">${imgs.map((u) => `<img src="${esc(u)}" alt="">`).join("")}</div>` : ""}
         <fieldset><legend>En cave</legend><div class="grid3">
           <label>Mettre dans<select name="loc">${locOptions((d && d.location_id) || defaults.loc)}${(wishlists || []).length ? `<optgroup label="Liste d'envies (sans bouteille)">${wishlists.map((w) => `<option value="wl:${w.id}">${esc(w.name)}</option>`).join("")}</optgroup>` : ""}</select></label>
           <label>Bouteilles<input type="number" name="qty" value="${d ? d.qty : 1}" min="0" max="999" inputmode="numeric"></label>
@@ -226,6 +242,12 @@
     $("#back").addEventListener("click", back);
     $("#back2").addEventListener("click", back);
     $("#item-form").addEventListener("submit", (e) => { e.preventDefault(); saveItem(e.target, d, back); });
+    // Rôles des photos : reconnus par l'analyse, corrigeables ici.
+    const rolesNote = () => { const n = $("#roles-note"); if (n && d) n.textContent = rolesOf(d).includes("full") ? "" : "Aucune photo de la bouteille entière : l'aperçu ne pourra pas être créé. Vous pourrez l'ajouter depuis la fiche."; };
+    main.querySelectorAll("[data-role]").forEach((sel) => sel.addEventListener("change", () => {
+      const r = [...rolesOf(d)]; r[+sel.dataset.role] = sel.value; roleEdits.set(d.id, r); rolesNote();
+    }));
+    rolesNote();
     window.scrollTo(0, 0);
     showLookalikes(it, d, back);
   }
@@ -308,9 +330,11 @@
         // Même vin : les bouteilles rejoignent la fiche existante ; la photo y est ajoutée.
         id = target.id;
         if (!wish && collOf(loc) !== target.collection_id) locUse = (places.find((p) => p.collection_id === target.collection_id) || {}).id || loc;
-        const photos = d ? d.photo_paths.filter(Boolean) : [];
-        if (photos.length) {
-          const patch = target.label_path ? { photo_paths: [...(target.photo_paths || []), ...photos] } : { label_path: photos[0], photo_paths: [...(target.photo_paths || []), ...photos.slice(1)] };
+        if (d && d.photo_paths.length) {
+          const full = await fullCopy(d), lab = photoOf(d, "label");
+          const extra = [full, ...d.photo_paths.filter((p) => p !== lab && p !== photoOf(d, "full"))].filter(Boolean);
+          const patch = target.label_path ? { photo_paths: [...(target.photo_paths || []), ...(lab && lab !== photoOf(d, "full") ? [lab] : []), ...extra] }
+            : { label_path: lab, photo_paths: [...(target.photo_paths || []), ...extra] };
           await sb.from("items").update(patch).eq("id", id);
         }
       } else {
@@ -321,7 +345,7 @@
         }
         const row = { ...data, ...(coll ? { collection_id: coll } : {}),
           label_path: d ? photoOf(d, "label") : null, label_back_path: d ? photoOf(d, "back") : null,
-          photo_paths: d && photoOf(d, "full") ? [photoOf(d, "full")] : [],
+          photo_paths: d ? [await fullCopy(d), ...d.photo_paths.filter((p, i) => rolesOf(d)[i] === "other")].filter(Boolean) : [],
           bottle_path: d && d.result ? d.bottle_path : null, bottle_image_url: d && d.result ? d.result.image_url || null : null,
           sources: d ? d.sources || [] : [], ai_enriched_at: d && d.result ? d.updated_at : null };
         const { data: ins, error } = await sb.from("items").insert(row).select("id").single();
@@ -338,7 +362,7 @@
       }
       if (d && !VC.Studio?.enabled()) await removeDraft(d);
       if (!wish) defaults.loc = loc;
-      const full = d && photoOf(d, "full");
+      const full = d && d.fullPath;
       if (full && VC.Visual) {
         // L'aperçu se prépare en arrière-plan : on peut enchaîner la bouteille suivante.
         VC.Visual.auto({ ...data, id }, full)
