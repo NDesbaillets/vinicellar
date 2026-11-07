@@ -110,10 +110,13 @@
       <div class="fgroup"><div class="field-label">Garde</div><div class="chips">${chip("win", "", "Tout")}${Object.entries(WIN).map(([k, l]) => chip("win", k, l)).join("")}</div></div>
       <div class="fgroup"><div class="geo">
         <label>Pays<select id="f-country"><option value="">Tous</option>${opt(countries, state.country)}</select></label>
-        <label>Région<select id="f-region"${state.country ? "" : " disabled"}><option value="">${state.country ? "Toutes" : "Choisir un pays"}</option>${opt(regions, state.region)}</select></label>
         <label>Cépage<select id="f-grape"><option value="">Tous</option>${[...grapes].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "fr")).map(([k, n]) => `<option value="${esc(k)}"${k === state.grape ? " selected" : ""}>${esc(k)} (${n})</option>`).join("")}</select></label>
         <label>Prix<select id="f-price"><option value="">Tous</option>${VC.PRICE_BANDS.map(([k, l]) => { const n = bandN(k); return `<option value="${k}"${k === state.price ? " selected" : ""}>${l} ${esc(ctx.profile.currency || "CHF")}${n ? ` (${n})` : ""}</option>`; }).join("")}</select></label>
       </div></div>
+      <div class="fgroup region-filter" role="group" aria-label="Région viticole"><div class="field-label">Région</div>
+        ${state.country ? `<div class="region-seals"><button type="button" class="region-all" data-region="" aria-pressed="${!state.region}">Toutes les régions</button>
+          ${[...regions].sort((a, b) => a[0].localeCompare(b[0], "fr")).map(([name, count], index) => VC.regionSeal(name, state.country, count, index, state.region === name)).join("")}</div>` : `<p class="region-hint">Choisir un pays pour voir ses régions.</p>`}
+      </div>
       <div class="fgroup"><label>Trier par<select id="sort"><option value="urgent">À boire en priorité</option><option value="name">Nom</option><option value="vintage">Millésime</option><option value="qty">Quantité</option><option value="recent">Ajout récent</option></select></label></div>
       <div class="fgroup"><div class="chips"><button type="button" class="chip" data-group="empty" aria-pressed="${state.empty}">Sorties / à racheter</button></div></div>
       <div class="row end" style="margin-top:18px"><button type="button" class="btn quiet" id="f-reset">Tout effacer</button><button type="button" class="btn" data-close id="f-done">Voir ${filtered().length} vin${filtered().length > 1 ? "s" : ""}</button></div></div>`;
@@ -122,15 +125,19 @@
   function openFilters() {
     const d = VC.sheet(filterSheetHtml());
     const redraw = () => {
-      const focus = document.activeElement, id = focus?.id, group = focus?.dataset.group, value = focus?.dataset.val;
+      const focus = document.activeElement, id = focus?.id, group = focus?.dataset.group, value = focus?.dataset.val, region = focus?.dataset.region;
       d.querySelector(".dlg").innerHTML = filterSheetHtml();
       d.querySelector("#sort").value = state.sort;
       refresh();
-      const next = id ? d.querySelector(`#${CSS.escape(id)}`) : [...d.querySelectorAll("[data-group]")].find((b) => b.dataset.group === group && b.dataset.val === value);
+      const next = id ? d.querySelector(`#${CSS.escape(id)}`) : region !== undefined
+        ? [...d.querySelectorAll("[data-region]")].find((b) => b.dataset.region === region)
+        : [...d.querySelectorAll("[data-group]")].find((b) => b.dataset.group === group && b.dataset.val === value);
       next?.focus();
     };
     d.querySelector("#sort").value = state.sort;
     d.addEventListener("click", (e) => {
+      const region = e.target.closest("[data-region]");
+      if (region) { state.region = region.dataset.region; save(); return redraw(); }
       const c = e.target.closest("[data-group]");
       if (c) {
         const grp = c.dataset.group;
@@ -144,7 +151,6 @@
       const id = e.target.id, v = e.target.value;
       if (id === "sort") { state.sort = v; save(); }
       if (id === "f-country") { state.country = v; state.region = ""; }
-      if (id === "f-region") state.region = v;
       if (id === "f-price") state.price = v;
       if (id === "f-grape") state.grape = v;
       redraw();
