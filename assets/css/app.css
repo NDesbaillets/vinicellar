@@ -825,3 +825,11 @@ dialog:has(.vis-sheet) { width: min(860px, calc(100vw - 24px)); }
 .review-imgs .rshot img { height: 150px; }
 .review-imgs .rshot select { min-height: 40px; padding: 6px 8px; font-size: var(--fs-s); }
 .review-imgs .rshot figcaption { font-size: var(--fs-xs); color: var(--ink-2); }
+.review-imgs .rvisual:empty { display: none; }
+.review-imgs .rvisual img, .rvisual-wait { height: 150px; aspect-ratio: 3 / 4; object-fit: contain; background: var(--visual-bg); border-radius: 10px; border: 1px solid var(--line); }
+.rvisual-wait { display: grid; place-items: center; text-align: center; padding: 8px; font-size: var(--fs-xs); color: var(--ink-2); background: var(--sunk); }
+
+/* sommelier : une section par plat, 3 à 4 vins de gammes de prix différentes */
+.course { margin-top: 18px; }
+.course-title { font-size: var(--fs-l); margin: 0 0 10px; }
+.tag.price { background: var(--card); border: 1px solid var(--line); color: var(--ink); }

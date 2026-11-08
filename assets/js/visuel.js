@@ -78,12 +78,24 @@
   // ---------------------------------------------------------------- enregistrement
   // Le visuel rejoint la galerie et devient la vignette ; un visuel précédent sort de la galerie (son fichier reste
   // dans le stockage privé). Les chemins sont relus pour ne pas écraser un ajout récent.
-  async function saveVisual(itemId, canvas) {
+  async function uploadVisual(canvas) {
     const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
     const { data: { user } } = await sb.auth.getUser();
     const path = `${user.id}/visual-${crypto.randomUUID()}.png`;
     const up = await sb.storage.from("labels").upload(path, blob, { contentType: "image/png" });
     if (up.error) throw up.error;
+    return path;
+  }
+  // Aperçu préparé avant que la fiche existe (ajout d'un vin) : photo de la bouteille entière → chemin du visuel.
+  async function prepare(photoPath) {
+    const url = (await VC.signed([photoPath]))(photoPath);
+    if (!url) throw new Error("Photo inaccessible.");
+    const { canvas, cut } = await build(url);
+    if (cut) throw new Error("La bouteille semble coupée sur la photo.");
+    return uploadVisual(canvas);
+  }
+  async function saveVisual(itemId, canvas) {
+    const path = await uploadVisual(canvas);
     const { data: cur } = await sb.from("items").select("photo_paths").eq("id", itemId).single();
     const list = [...((cur && cur.photo_paths) || []).filter((p) => !p.includes("/visual-")), path];
     const { error } = await sb.from("items").update({ photo_paths: list, cover_path: path }).eq("id", itemId);
@@ -143,5 +155,5 @@
 
   const isVisual = (p) => String(p || "").includes("/visual-");
   const isFull = (p) => String(p || "").includes("/full-");
-  VC.Visual = { open, auto, isVisual, isFull };
+  VC.Visual = { open, auto, prepare, isVisual, isFull };
 })();

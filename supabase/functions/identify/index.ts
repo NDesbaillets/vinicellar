@@ -206,8 +206,25 @@ async function analyse(admin: any, apiKey: string, userId: string, images: Img[]
     throw new Fail(e instanceof Anthropic.RateLimitError ? 429 : 502, "Le service d'analyse ne répond pas. Réessayez dans un instant.");
   }
   if (!final || final.stop_reason === "refusal") throw new Fail(422, "Analyse impossible pour cette image.");
-  const text = final.content.filter((b) => b.type === "text").map((b) => (b as { text: string }).text).join("\n");
-  const raw = extractJson(text);
+  const textOf = (m: Anthropic.Beta.BetaMessage) => m.content.filter((b) => b.type === "text").map((b) => (b as { text: string }).text).join("\n");
+  let raw = extractJson(textOf(final));
+  if (!raw) {
+    // Réponse sans JSON exploitable (texte autour, coupure) : on redemande une fois le JSON seul, sans nouvelle recherche.
+    try {
+      messages.push({ role: "assistant", content: final.content }, { role: "user", content: "Donne maintenant uniquement le JSON demandé, complet, sans aucun texte autour." });
+      const again = await client.beta.messages.create({
+        model: MODEL, max_tokens: 8000, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default", output_config: { effort: "low" },
+        system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
+        tools: [
+          { type: "web_search_20260209", name: "web_search", max_uses: 1 },
+          { type: "web_fetch_20260209", name: "web_fetch", max_uses: 1, max_content_tokens: 20000 },
+        ],
+        messages,
+      });
+      console.log("usage retry", JSON.stringify(again.usage));
+      raw = extractJson(textOf(again));
+    } catch (e) { console.error("retry error", e); }
+  }
   if (!raw) throw new Fail(502, "Réponse illisible. Réessayez ou saisissez le vin à la main.");
   const result = clean(raw);
   const bottle_path = result.image_url ? await saveBottleImage(admin, userId, result.image_url) : null;

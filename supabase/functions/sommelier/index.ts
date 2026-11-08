@@ -20,17 +20,22 @@ function cors(req: Request) {
 const json = (req: Request, body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors(req), "Content-Type": "application/json" } });
 
-const SYSTEM = `Sommelier personnel d'un amateur exigeant. On te donne la liste numérotée des bouteilles de sa cave, avec leur statut de garde, puis un menu. Choisis uniquement dans cette liste.
-Priorité : « à l'apogée », puis « prête » ou « à boire vite ». « Trop jeune » seulement faute de mieux, « fenêtre dépassée » seulement par choix délibéré, en le disant.
-Accord concret : structure, acidité, tanins, sucre, sauce, cuisson, gras, épices, intensité. Menu en plusieurs services : un vin par service ou un vin pour l'ensemble.
+const SYSTEM = `Sommelier personnel d'un amateur exigeant. On te donne la liste numérotée des bouteilles de sa cave (statut de garde, prix, gamme de prix relative à sa cave), puis un menu. Choisis uniquement dans cette liste.
+Pour chaque plat ou service du menu, propose au moins 3 vins différents si la cave le permet (4 au plus), du meilleur accord au moins bon, en couvrant si possible 2 à 3 gammes de prix (abordable, intermédiaire, belle bouteille) ; sans prix connu, varie plutôt les styles. Un plat unique = un seul service. Un même vin peut revenir pour un autre plat si c'est vraiment le meilleur accord.
+Priorité de garde : « à l'apogée », puis « prête » ou « à boire vite ». « Trop jeune » seulement faute de mieux, « fenêtre dépassée » seulement par choix délibéré, en le disant.
+Accord concret : structure, acidité, tanins, sucre, sauce, cuisson, gras, épices, intensité.
 Français, sobre, sans superlatifs ; chaque justification en 1 à 2 phrases.
-Réponds uniquement par ce JSON, 3 propositions au plus, la meilleure d'abord :
-{"intro":"1 phrase sur l'approche","picks":[{"n":ligne,"course":"service ou null","why":"pourquoi cet accord","serve":"température, carafage, verre"}],"missing":"si rien ne convient : style à acheter, sinon null"}`;
+Réponds uniquement par ce JSON :
+{"intro":"1 phrase sur l'approche","courses":[{"course":"nom du plat ou du service","picks":[{"n":ligne,"why":"pourquoi cet accord","serve":"température, carafage, verre"}]}],"missing":"si un plat manque de bons accords : style à acheter, sinon null"}`;
 
 const year = new Date().getFullYear();
 type Item = { id: string; name: string; producer: string | null; vintage: number | null; category: string; style: string | null; grapes: string[] | null;
   country: string | null; region: string | null; appellation: string | null; drink_from: number | null; drink_to: number | null;
-  peak_from: number | null; peak_to: number | null; pairings: string[] | null; description: string | null };
+  peak_from: number | null; peak_to: number | null; pairings: string[] | null; description: string | null;
+  market_price: number | null; market_currency: string | null; purchase_price: number | null; purchase_currency: string | null };
+// Prix d'une bouteille : valeur de marché, sinon prix d'achat.
+const priceOf = (it: Item) => it.market_price ? { v: Number(it.market_price), c: it.market_currency || "CHF" } : it.purchase_price ? { v: Number(it.purchase_price), c: it.purchase_currency || "CHF" } : null;
+const TIERS = ["abordable", "intermédiaire", "belle bouteille"];
 
 function status(it: Item) {
   const { drink_from: f, drink_to: t, peak_from: pf, peak_to: pt } = it;
@@ -65,7 +70,7 @@ Deno.serve(async (req) => {
   const menu = (body.menu ?? "").trim().slice(0, 2000);
   if (menu.length < 3) return json(req, { error: "bad_request", message: "Décrivez le menu." }, 400);
 
-  let q = sb.from("stock").select("location_id, quantity, items(id, name, producer, vintage, category, style, grapes, country, region, appellation, drink_from, drink_to, peak_from, peak_to, pairings, description)").gt("quantity", 0);
+  let q = sb.from("stock").select("location_id, quantity, items(id, name, producer, vintage, category, style, grapes, country, region, appellation, drink_from, drink_to, peak_from, peak_to, pairings, description, market_price, market_currency, purchase_price, purchase_currency)").gt("quantity", 0);
   if (body.location_id) q = q.eq("location_id", body.location_id);
   const { data: rows, error } = await q.limit(1000);
   if (error) return json(req, { error: "db" }, 500);
@@ -79,10 +84,15 @@ Deno.serve(async (req) => {
   const list = [...seen.values()].sort((a, b) => a.it.id.localeCompare(b.it.id));   // ordre stable pour le cache
   if (!list.length) return json(req, { intro: null, picks: [], missing: null, message: "Aucune bouteille en stock ici." });
 
+  // Gamme de prix relative à la cave : tiers inférieur, milieu, tiers supérieur des prix connus.
+  const prices = list.map(({ it }) => priceOf(it)?.v).filter((v): v is number => Number.isFinite(v)).sort((a, b) => a - b);
+  const q1 = prices[Math.floor(prices.length / 3)], q2 = prices[Math.floor(prices.length * 2 / 3)];
+  const tierOf = (it: Item) => { const p = priceOf(it); if (!p || prices.length < 3) return null; return p.v < q1 ? TIERS[0] : p.v < q2 ? TIERS[1] : TIERS[2]; };
   const lines = list.map(({ it, qty }, i) => `${i + 1}. ${[
     it.producer, it.name, it.vintage, it.category === "wine" ? it.style : it.category, (it.grapes ?? []).join(", "),
     [it.appellation, it.region, it.country].filter(Boolean).join(", "), `statut : ${status(it)}`,
-    (it.pairings ?? []).length ? `accords connus : ${(it.pairings ?? []).slice(0, 4).join(" ; ")}` : null, `${qty} bt.`,
+    (it.pairings ?? []).length ? `accords connus : ${(it.pairings ?? []).slice(0, 4).join(" ; ")}` : null,
+    priceOf(it) ? `prix : ${Math.round(priceOf(it)!.v)} ${priceOf(it)!.c}${tierOf(it) ? ` (${tierOf(it)})` : ""}` : "prix inconnu", `${qty} bt.`,
   ].filter(Boolean).join(" | ")}`).join("\n");
 
   const { data: callRow } = await admin.from("ai_calls").insert({ user_id: user.id, kind: "sommelier" }).select("id").single();
@@ -91,7 +101,7 @@ Deno.serve(async (req) => {
   try {
     msg = await client.beta.messages.create({
       model: MODEL,
-      max_tokens: 6000,
+      max_tokens: 12000,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       output_config: { effort: "medium" },
@@ -108,14 +118,23 @@ Deno.serve(async (req) => {
   if (msg.stop_reason === "refusal") return json(req, { error: "ai", message: "Conseil impossible pour ce menu." }, 422);
 
   const text = msg.content.filter((b) => b.type === "text").map((b) => (b as { text: string }).text).join("\n");
-  let raw: { intro?: unknown; picks?: unknown; missing?: unknown } = {};
+  let raw: { intro?: unknown; courses?: unknown; picks?: unknown; missing?: unknown } = {};
   try { raw = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)); } catch { /* réponse illisible */ }
   const s = (v: unknown, n = 600) => (typeof v === "string" && v.trim() ? v.trim().slice(0, n) : null);
-  const picks = (Array.isArray(raw.picks) ? raw.picks : []).map((p: Record<string, unknown>) => {
+  const pick = (p: Record<string, unknown>) => {
     const i = Number(p?.n);
     if (!Number.isInteger(i) || i < 1 || i > list.length) return null;
-    return { item_id: list[i - 1].it.id, course: s(p.course, 120), why: s(p.why), serve: s(p.serve, 200), status: status(list[i - 1].it) };
-  }).filter(Boolean).slice(0, 3);
+    const it = list[i - 1].it, pr = priceOf(it);
+    return { item_id: it.id, why: s(p.why), serve: s(p.serve, 200), status: status(it), tier: tierOf(it), price: pr ? Math.round(pr.v) : null, currency: pr?.c ?? null };
+  };
+  // Par plat : jusqu'à 4 vins différents ; ancienne forme (« picks » sans plats) acceptée.
+  const rawCourses = Array.isArray(raw.courses) ? raw.courses : Array.isArray(raw.picks) ? [{ course: null, picks: raw.picks }] : [];
+  const courses = rawCourses.slice(0, 6).map((c: Record<string, unknown>) => {
+    const seenIds = new Set<string>();
+    const picks = (Array.isArray(c?.picks) ? c.picks : []).map(pick).filter((p) => p && !seenIds.has(p.item_id) && seenIds.add(p.item_id)).slice(0, 4);
+    return { course: s(c?.course, 120), picks };
+  }).filter((c) => c.picks.length);
+  const picks = courses.flatMap((c) => c.picks);
   await admin.from("ai_calls").update({ ok: picks.length > 0 }).eq("id", callRow?.id);
-  return json(req, { intro: s(raw.intro), picks, missing: s(raw.missing) });
+  return json(req, { intro: s(raw.intro), courses, picks, missing: s(raw.missing) });
 });

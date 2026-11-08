@@ -29,8 +29,9 @@
   async function loadDrafts() {
     const { data } = await sb.from("drafts").select("*").order("created_at", { ascending: true });
     drafts = data || [];
-    thumbs = await VC.signed(drafts.map((d) => d.photo_paths[0] || d.bottle_path).filter(Boolean));
+    thumbs = await VC.signed(drafts.map((d) => d.result?.visual_path || d.photo_paths[0] || d.bottle_path).filter(Boolean));
     drawQueue();
+    drafts.filter((d) => d.status === "ready").forEach((d) => prepareVisual(d));
     const pending = drafts.some((d) => d.status === "pending" && Date.now() - new Date(d.created_at) < STUCK_MS);
     clearTimeout(poll);
     if (pending) poll = setTimeout(loadDrafts, 4000);
@@ -51,11 +52,11 @@
       <div class="queue">${drafts.map((d) => {
         const stuck = d.status === "pending" && Date.now() - new Date(d.created_at) > STUCK_MS;
         const st = stuck ? "error" : d.status;
-        const url = thumbs(d.photo_paths[0] || d.bottle_path);
+        const url = thumbs(d.result?.visual_path || d.photo_paths[0] || d.bottle_path);
         return `<div class="qitem" data-id="${d.id}">
           <div class="qthumb">${url ? `<img src="${esc(url)}" alt="">` : I.glass}</div>
           <div class="qbody"><b>${esc(draftTitle(d) || (st === "pending" ? "Analyse en cours…" : "Bouteille"))}</b>
-            <small>${st === "pending" ? `<span class="spin"></span>Recherche du producteur, de la garde, des prix…` : st === "ready" ? "Fiche prête" : esc(stuck ? "L'analyse n'a pas abouti." : d.error || "Analyse impossible.")}
+            <small>${st === "pending" ? `<span class="spin"></span>Recherche du producteur, de la garde, des prix…` : st === "ready" ? (visualJobs.has(d.id) ? `<span class="spin"></span>Fiche prête · aperçu en préparation` : "Fiche prête") : esc(stuck ? "L'analyse n'a pas abouti." : d.error || "Analyse impossible.")}
             ${d.qty ? ` · ${d.qty} bt.` : ""}</small></div>
           <div class="qacts">${st === "ready" ? `<button class="btn" data-q="review">Vérifier</button>`
             : st === "error" ? `<button class="btn ghost" data-q="retry">Réessayer</button><button class="btn quiet" data-q="manual">À la main</button>` : ""}
@@ -105,6 +106,32 @@
     if (i >= 0) return ps[i];
     // Pas de gros plan de l'étiquette : la photo de la bouteille entière (où elle se lit) en tient lieu.
     return kind === "label" ? ps[roles.indexOf("full")] || ps[0] || null : null;
+  }
+
+  // Aperçu préparé pendant qu'on continue : détourage de la photo de la bouteille entière, enregistré dans le brouillon
+  // (result.visual_path) ; il devient la vignette de la fiche à sa création. Une seule tentative par photo.
+  const visualJobs = new Map();
+  function prepareVisual(d) {
+    const src = rolesOf(d).includes("full") ? photoOf(d, "full") : null;
+    if (!src || !VC.Visual || !d.result) return Promise.resolve(null);
+    if (d.result.visual_src === src && (d.result.visual_path || d.result.visual_error)) return Promise.resolve(d.result.visual_path || null);
+    const key = d.id + "|" + src;
+    if (visualJobs.has(d.id) && visualJobs.get(d.id).key === key) return visualJobs.get(d.id).job;
+    const job = VC.Visual.prepare(src)
+      .then((path) => ({ visual_path: path, visual_src: src, visual_error: null }))
+      .catch((e) => ({ visual_path: null, visual_src: src, visual_error: e.message || "Aperçu impossible." }))
+      .then(async (v) => {
+        d.result = { ...d.result, ...v };
+        await sb.from("drafts").update({ result: d.result }).eq("id", d.id);
+        visualJobs.delete(d.id);
+        drawQueue();
+        if (v.visual_path) { const u = (await VC.signed([v.visual_path]))(v.visual_path); thumbs = ((t) => (p) => p === v.visual_path ? u : t(p))(thumbs); drawQueue(); }
+        document.dispatchEvent(new CustomEvent("vc:visual", { detail: { id: d.id } }));
+        return v.visual_path;
+      });
+    visualJobs.set(d.id, { key, job });
+    drawQueue();
+    return job;
   }
 
   async function fullCopy(d) {
@@ -223,7 +250,7 @@
       ${notice}
       <div id="dups"></div>
       <form id="item-form" class="card" novalidate style="margin-top:16px">
-        ${d && d.photo_paths.length ? `<div class="review-imgs">${d.photo_paths.map((p, i) => urls(p) ? `<figure class="rshot"><img src="${esc(urls(p))}" alt="Photo ${i + 1}">
+        ${d && d.photo_paths.length ? `<div class="review-imgs"><figure class="rshot rvisual" id="rvisual"></figure>${d.photo_paths.map((p, i) => urls(p) ? `<figure class="rshot"><img src="${esc(urls(p))}" alt="Photo ${i + 1}">
             <select data-role="${i}" aria-label="Rôle de la photo ${i + 1}">${Object.entries(ROLE).map(([k, l]) => `<option value="${k}"${rolesOf(d)[i] === k ? " selected" : ""}>${l}</option>`).join("")}</select></figure>` : "").join("")}
             ${d.bottle_path && urls(d.bottle_path) ? `<figure class="rshot"><img src="${esc(urls(d.bottle_path))}" alt="Image trouvée"><figcaption>Image trouvée en ligne</figcaption></figure>` : ""}</div>
           <p class="hint" id="roles-note"></p>` : imgs.length ? `<div class="review-imgs">${imgs.map((u) => `<img src="${esc(u)}" alt="">`).join("")}</div>` : ""}
@@ -243,9 +270,23 @@
     $("#back2").addEventListener("click", back);
     $("#item-form").addEventListener("submit", (e) => { e.preventDefault(); saveItem(e.target, d, back); });
     // Rôles des photos : reconnus par l'analyse, corrigeables ici.
+    // Aperçu de la vignette : prêt, en préparation, ou à refaire si le rôle « bouteille entière » a changé.
+    const drawVisual = async () => {
+      const box = $("#rvisual"); if (!box || !d) return;
+      const job = visualJobs.get(d.id);
+      if (d.result?.visual_path && d.result.visual_src === photoOf(d, "full")) {
+        const u = (await VC.signed([d.result.visual_path]))(d.result.visual_path);
+        box.innerHTML = `<img src="${esc(u)}" alt="Aperçu de la bouteille"><figcaption>Vignette</figcaption>`;
+      } else if (job) box.innerHTML = `<div class="rvisual-wait"><span class="spin"></span>Aperçu…</div><figcaption>Vignette</figcaption>`;
+      else box.innerHTML = rolesOf(d).includes("full") ? `<div class="rvisual-wait">${esc(d.result?.visual_error || "Aperçu à préparer")}</div><figcaption>Vignette</figcaption>` : "";
+    };
+    const onVisual = (e) => { if (e.detail.id === d?.id) drawVisual(); };
+    document.addEventListener("vc:visual", onVisual);
+    if (d) { prepareVisual(d); drawVisual(); }
     const rolesNote = () => { const n = $("#roles-note"); if (n && d) n.textContent = rolesOf(d).includes("full") ? "" : "Aucune photo de la bouteille entière : l'aperçu ne pourra pas être créé. Vous pourrez l'ajouter depuis la fiche."; };
     main.querySelectorAll("[data-role]").forEach((sel) => sel.addEventListener("change", () => {
       const r = [...rolesOf(d)]; r[+sel.dataset.role] = sel.value; roleEdits.set(d.id, r); rolesNote();
+      prepareVisual(d); drawVisual();
     }));
     rolesNote();
     window.scrollTo(0, 0);
@@ -316,6 +357,13 @@
     const btn = f.querySelector("button[type=submit]");
     btn.disabled = true;
     try {
+      // Aperçu : attendu s'il est en préparation (quelques secondes), refait si la photo de bouteille a changé.
+      let visual = null;
+      if (d && rolesOf(d).includes("full")) {
+        const label = btn.innerHTML; btn.innerHTML = `<span class="spin"></span>Préparation de l'aperçu…`;
+        visual = await prepareVisual(d).catch(() => null);
+        btn.innerHTML = label;
+      }
       const coll = wish ? wish.collection_id : collOf(loc);
       let id, locUse = loc;
       if (VC.Studio?.enabled()) {
@@ -333,8 +381,10 @@
         if (d && d.photo_paths.length) {
           const full = await fullCopy(d), lab = photoOf(d, "label");
           const extra = [full, ...d.photo_paths.filter((p) => p !== lab && p !== photoOf(d, "full"))].filter(Boolean);
-          const patch = target.label_path ? { photo_paths: [...(target.photo_paths || []), ...(lab && lab !== photoOf(d, "full") ? [lab] : []), ...extra] }
-            : { label_path: lab, photo_paths: [...(target.photo_paths || []), ...extra] };
+          const keep = (target.photo_paths || []).filter((p) => !visual || !p.includes("/visual-"));
+          const patch = target.label_path ? { photo_paths: [...keep, ...(lab && lab !== photoOf(d, "full") ? [lab] : []), ...extra, ...(visual ? [visual] : [])] }
+            : { label_path: lab, photo_paths: [...keep, ...extra, ...(visual ? [visual] : [])] };
+          if (visual) patch.cover_path = visual;
           await sb.from("items").update(patch).eq("id", id);
         }
       } else {
@@ -345,7 +395,8 @@
         }
         const row = { ...data, ...(coll ? { collection_id: coll } : {}),
           label_path: d ? photoOf(d, "label") : null, label_back_path: d ? photoOf(d, "back") : null,
-          photo_paths: d ? [await fullCopy(d), ...d.photo_paths.filter((p, i) => rolesOf(d)[i] === "other")].filter(Boolean) : [],
+          photo_paths: d ? [await fullCopy(d), ...d.photo_paths.filter((p, i) => rolesOf(d)[i] === "other"), visual].filter(Boolean) : [],
+          cover_path: visual || null,
           bottle_path: d && d.result ? d.bottle_path : null, bottle_image_url: d && d.result ? d.result.image_url || null : null,
           sources: d ? d.sources || [] : [], ai_enriched_at: d && d.result ? d.updated_at : null };
         const { data: ins, error } = await sb.from("items").insert(row).select("id").single();
@@ -363,7 +414,7 @@
       if (d && !VC.Studio?.enabled()) await removeDraft(d);
       if (!wish) defaults.loc = loc;
       const full = d && d.fullPath;
-      if (full && VC.Visual) {
+      if (full && VC.Visual && !visual) {                    // aperçu pas prêt à temps : il se fait après coup
         // L'aperçu se prépare en arrière-plan : on peut enchaîner la bouteille suivante.
         VC.Visual.auto({ ...data, id }, full)
           .then(() => toast("Aperçu de la bouteille prêt.", { label: "Voir", run: () => (location.href = `/app/fiche.html?id=${id}`) }))

@@ -13,6 +13,7 @@
     if (loc && !places.some((x) => x.id === loc)) loc = "";
   }
   const EXAMPLES = ["Filets de perche, sauce au beurre", "Fondue moitié-moitié", "Côte de bœuf au feu de bois", "Sushis et sashimis", "Risotto aux truffes", "Plateau de fromages d'alpage", "Canard laqué", "Tarte Tatin"];
+  const TIER = { "abordable": "Abordable", "intermédiaire": "Intermédiaire", "belle bouteille": "Belle bouteille" };
   const STATUS = { "à l'apogée": "peak", "prête": "ready", "à boire vite": "soon", "trop jeune": "young", "fenêtre dépassée": "past" };
 
   function render() {
@@ -44,23 +45,29 @@
       $("#answer").innerHTML = `<p class="notice">${esc(data.message || data.missing || "Rien de convaincant dans cette cave pour ce menu.")}</p>`; return;
     }
     await VC.Studio?.loadActive(items);
-    const getUrl = await signed(data.picks.map((p) => { const it = items.find((x) => x.id === p.item_id); return it && mainImagePath(it); }).filter(Boolean));
+    const courses = data.courses && data.courses.length ? data.courses : [{ course: null, picks: data.picks }];
+    const all = courses.flatMap((c) => c.picks);
+    const getUrl = await signed(all.map((p) => { const it = items.find((x) => x.id === p.item_id); return it && mainImagePath(it); }).filter(Boolean));
+    const card = (p, i) => {
+      const it = items.find((x) => x.id === p.item_id);
+      if (!it) return "";
+      const url = getUrl(mainImagePath(it));
+      const n = stock.filter((s) => s.item_id === it.id && (!loc || s.location_id === loc)).reduce((a, s) => a + s.quantity, 0);
+      const st = p.status === "prête" ? "Prête à boire" : p.status.charAt(0).toUpperCase() + p.status.slice(1);
+      return `<div class="card pick-card">
+        <div class="match">${VC.itemVisual(it, () => url)}
+        <div><span class="eyebrow">${i === 0 ? "Meilleur accord" : `Option ${i + 1}`}${p.tier ? ` · ${esc(TIER[p.tier] || p.tier)}` : ""}</span>
+          <h3 style="margin:0">${esc(it.name)}${it.vintage ? ` <span class="faint">${it.vintage}</span>` : ""}</h3>
+          <p class="muted" style="margin:2px 0 8px">${esc([it.producer, it.appellation || it.region].filter(Boolean).join(" · "))}</p>
+          <div class="tags">${p.price != null ? `<span class="tag price">${esc(VC.money(p.price, p.currency || "CHF"))}</span>` : ""}<span class="tag ${STATUS[p.status] || ""}">${esc(st)}</span><span class="tag qty">${n} bt.</span></div></div></div>
+        <p style="margin:12px 0 4px">${esc(p.why || "")}</p>
+        ${p.serve ? `<p class="muted" style="margin:0 0 12px">${I.thermo.replace("<svg", '<svg width="15" height="15" style="vertical-align:-2px;margin-right:4px"')}${esc(p.serve)}</p>` : ""}
+        <div class="row">${VC.canEdit(it.collection_id) ? `<button class="btn" data-out="${it.id}">${I.glass}Sortir cette bouteille</button>` : ""}<a class="btn quiet" href="/app/fiche.html?id=${it.id}">Voir la fiche</a></div></div>`;
+    };
     $("#answer").innerHTML = `${data.intro ? `<p class="lead-s">${esc(data.intro)}</p>` : ""}
-      <div class="picks">${data.picks.map((p, i) => {
-        const it = items.find((x) => x.id === p.item_id);
-        if (!it) return "";
-        const url = getUrl(mainImagePath(it));
-        const n = stock.filter((s) => s.item_id === it.id && (!loc || s.location_id === loc)).reduce((a, s) => a + s.quantity, 0);
-        return `<div class="card pick-card">
-          <div class="match">${VC.itemVisual(it, () => url)}
-          <div><span class="eyebrow">${i === 0 ? "Notre choix" : "Autre option"}${p.course ? ` · ${esc(p.course)}` : ""}</span>
-            <h3 style="margin:0">${esc(it.name)}${it.vintage ? ` <span class="faint">${it.vintage}</span>` : ""}</h3>
-            <p class="muted" style="margin:2px 0 8px">${esc([it.producer, it.appellation || it.region].filter(Boolean).join(" · "))}</p>
-            <div class="tags"><span class="tag ${STATUS[p.status] || ""}">${esc(p.status === "prête" ? "Prête à boire" : p.status.charAt(0).toUpperCase() + p.status.slice(1))}</span><span class="tag qty">${n} bt.</span></div></div></div>
-          <p style="margin:12px 0 4px">${esc(p.why || "")}</p>
-          ${p.serve ? `<p class="muted" style="margin:0 0 12px">${I.thermo.replace("<svg", '<svg width="15" height="15" style="vertical-align:-2px;margin-right:4px"')}${esc(p.serve)}</p>` : ""}
-          <div class="row">${VC.canEdit(it.collection_id) ? `<button class="btn" data-out="${it.id}">${I.glass}Sortir cette bouteille</button>` : ""}<a class="btn quiet" href="/app/fiche.html?id=${it.id}">Voir la fiche</a></div></div>`;
-      }).join("")}</div>
+      ${courses.map((c) => `<section class="course">${c.course && courses.length > 1 || c.course ? `<h2 class="course-title">${esc(c.course)}</h2>` : ""}
+        ${c.picks.length < 3 ? `<p class="hint" style="margin:0 0 8px">Seulement ${c.picks.length} bouteille${c.picks.length > 1 ? "s" : ""} de la cave ${c.picks.length > 1 ? "conviennent" : "convient"} vraiment à ce plat.</p>` : ""}
+        <div class="picks">${c.picks.map(card).join("")}</div></section>`).join("")}
       ${data.missing ? `<p class="notice info" style="margin-top:12px">${esc(data.missing)}</p>` : ""}`;
   }
 
