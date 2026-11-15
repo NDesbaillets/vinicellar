@@ -1,0 +1,399 @@
+<title>Vinicellar · maquettes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=WindSong:wght@500&display=swap">
+<style>
+/* Maquettes cliquables, largeur iPhone. Jetons de l'étape 4, clair uniquement. */
+:root {
+  color-scheme: light;
+  --bg: #F7F5EF; --card: #FFFFFF; --sunk: #ECEEE5; --line: #DDE2D4;
+  --ink: #262C25; --ink-2: #535D50; --ink-3: #66705F;
+  --wine: #713D47; --wine-2: #5C3039; --wine-soft: #F0E5E7;
+  --gold: #A9824C; --olive: #67735F; --visual-bg: #FFFFFF;
+  --st-young: #4C5F86; --st-young-bg: #E5E9F2; --st-ready: #2F6E4F; --st-ready-bg: #E3F0E8;
+  --st-peak: #713D47; --st-peak-bg: #F0E5E7; --st-soon: #7E560C; --st-soon-bg: #F8EED8;
+  --display: Fraunces, Georgia, serif; --ui: Inter, -apple-system, "Helvetica Neue", Arial, sans-serif; --script: WindSong, "Snell Roundhand", cursive;
+  --fs-1: .75rem; --fs-2: .875rem; --fs-3: 1rem; --fs-4: 1.25rem; --fs-5: 1.5rem; --fs-6: 2rem; --fs-7: 2.5rem;
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
+  --r-s: 8px; --r-m: 14px; --r-pill: 999px;
+  --sh-1: 0 1px 2px rgba(38,44,37,.06), 0 1px 1px rgba(38,44,37,.04);
+  --sh-2: 0 6px 20px rgba(38,44,37,.10), 0 2px 4px rgba(38,44,37,.05);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 var(--fs-3)/1.5 var(--ui); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--wine); outline-offset: 2px; }
+.d { font-family: var(--display); font-weight: 500; font-optical-sizing: auto; font-variant-numeric: lining-nums; }
+.gut { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* sélecteur de maquette (hors app) */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: #262C25; }
+.proto { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: #262C25; color: #F7F5EF; }
+.proto-in { max-width: 430px; margin: 0 auto; padding-block: var(--s-2); display: grid; gap: 6px; }
+.proto-row { display: grid; grid-template-columns: 44px repeat(3, 1fr); gap: 4px; align-items: center; }
+.proto-row span { font-size: var(--fs-1); color: #B8BFB0; text-transform: uppercase; letter-spacing: .08em; }
+.proto a { text-decoration: none; color: #DDE2D4; text-align: center; font-size: var(--fs-1); line-height: 1.2; padding: 6px 2px; border-radius: 6px; background: rgba(255,255,255,.07); min-height: 36px; display: grid; place-content: center; }
+.proto a b { display: block; color: #FFFFFF; font-size: var(--fs-2); }
+.proto a[aria-current="true"] { background: #F7F5EF; color: #262C25; }
+.proto a[aria-current="true"] b { color: #713D47; }
+.proto p { margin: 0; font-size: var(--fs-1); color: #DDE2D4; line-height: 1.4; }
+
+.screen { max-width: 430px; margin: 0 auto; padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); min-height: 100vh; }
+
+/* en-tête d'app et barre d'onglets */
+.apphead { display: flex; align-items: center; justify-content: space-between; padding-block: var(--s-2) 0; }
+.brand { font-family: var(--script); font-size: 2rem; color: var(--wine); line-height: 1.2; }
+.avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--sunk); display: grid; place-items: center; font: 600 var(--fs-2) var(--ui); color: var(--ink-2); border: 0; }
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 15; background: rgba(255,255,255,.94); backdrop-filter: blur(12px); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.tabs-in { max-width: 430px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
+.tab { background: none; border: 0; padding: 8px 0 6px; display: grid; justify-items: center; gap: 2px; font-size: 11px; color: var(--ink-3); min-height: 52px; }
+.tab svg { width: 24px; height: 24px; }
+.tab[aria-current="true"] { color: var(--wine); font-weight: 600; }
+.tab.add .pill { width: 34px; height: 26px; border-radius: var(--r-pill); background: var(--wine); color: #FFFFFF; display: grid; place-items: center; }
+.tab.add .pill svg { width: 18px; height: 18px; }
+
+/* commun */
+.seg { display: flex; gap: 2px; background: var(--sunk); border-radius: var(--r-s); padding: 2px; overflow-x: auto; scrollbar-width: none; }
+.seg button { flex: 1 0 auto; border: 0; background: none; padding: 8px 12px; border-radius: 6px; font-size: var(--fs-2); color: var(--ink-2); min-height: 36px; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: var(--sh-1); }
+.btn { min-height: 48px; border: 0; border-radius: var(--r-pill); background: var(--wine); color: #FFFFFF; font-weight: 600; padding: 0 var(--s-5); display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2); }
+.btn.sec { background: var(--card); color: var(--wine); box-shadow: inset 0 0 0 1px var(--wine); }
+.btn.sm { min-height: 36px; padding: 0 var(--s-3); font-size: var(--fs-2); }
+.btn svg { width: 18px; height: 18px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font: 600 var(--fs-1)/1 var(--ui); padding: 5px 9px; border-radius: var(--r-pill); white-space: nowrap; }
+.chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.st-young { color: var(--st-young); background: var(--st-young-bg); } .st-ready { color: var(--st-ready); background: var(--st-ready-bg); }
+.st-peak { color: var(--st-peak); background: var(--st-peak-bg); } .st-soon { color: var(--st-soon); background: var(--st-soon-bg); }
+.eyebrow { font: 600 var(--fs-1)/1.2 var(--ui); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); margin: 0; }
+.h2 { font-size: var(--fs-5); margin: 0; line-height: 1.15; }
+.thumb { position: relative; background: var(--visual-bg); display: grid; place-items: end center; overflow: hidden; }
+.thumb svg.bottle { height: 90%; width: auto; }
+.flag { position: absolute; top: 8px; left: 8px; width: 22px; height: 22px; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 1.5px var(--card), var(--sh-1); }
+.flag svg { width: 100%; height: 100%; display: block; }
+.stars { color: var(--gold); letter-spacing: 1px; }
+.search { display: grid; grid-template-columns: 1fr auto auto; gap: var(--s-2); }
+.search input { min-width: 0; height: 40px; border: 0; background: var(--sunk); border-radius: var(--r-s); padding: 0 var(--s-3); font: inherit; font-size: var(--fs-2); color: var(--ink); }
+.icon-btn { width: 40px; height: 40px; border-radius: var(--r-s); border: 0; background: var(--sunk); display: grid; place-items: center; color: var(--ink-2); }
+.icon-btn svg { width: 20px; height: 20px; }
+.stack { display: grid; gap: var(--s-4); }
+
+/* cartes de grille */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
+.card { background: var(--card); border-radius: var(--r-m); box-shadow: var(--sh-1); overflow: hidden; display: grid; grid-template-rows: auto 1fr; text-align: left; border: 0; padding: 0; position: relative; }
+.card .thumb { height: 164px; }
+.card-b { padding: var(--s-3); display: grid; gap: 6px; align-content: start; min-width: 0; }
+.card-n { font-size: var(--fs-4); line-height: 1.1; margin: 0; text-wrap: balance; }
+.card-m { font-size: var(--fs-1); color: var(--ink-2); }
+.card-f { display: flex; justify-content: space-between; align-items: center; gap: var(--s-2); margin-top: 2px; }
+.qty { font: 600 var(--fs-2) var(--ui); font-variant-numeric: tabular-nums; color: var(--ink); }
+.qty small { font-weight: 400; color: var(--ink-3); }
+.out { border: 0; background: var(--wine-soft); color: var(--wine); font: 600 var(--fs-1) var(--ui); border-radius: var(--r-pill); padding: 0 12px; min-height: 32px; position: relative; }
+.out::after { content: ""; position: absolute; inset: -6px -4px; }
+
+/* rangée horizontale */
+.hrow { display: flex; gap: var(--s-3); overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); padding-inline: max(16px, env(safe-area-inset-left, 0px)); padding-bottom: 4px; }
+.mini { flex: 0 0 132px; scroll-snap-align: start; background: var(--card); border-radius: var(--r-m); box-shadow: var(--sh-1); overflow: hidden; border: 0; padding: 0; text-align: left; display: grid; }
+.mini .thumb { height: 128px; }
+.mini .flag { width: 18px; height: 18px; }
+.mini-b { padding: var(--s-2) var(--s-3) var(--s-3); display: grid; gap: 4px; }
+.mini-n { font-size: var(--fs-3); line-height: 1.15; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* mur (C3) */
+.wall { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2); }
+.brick { background: var(--card); border-radius: var(--r-m); border: 0; padding: 0; overflow: hidden; display: grid; text-align: center; box-shadow: var(--sh-1); }
+.brick .thumb { height: 128px; }
+.brick .flag { width: 16px; height: 16px; top: 6px; left: 6px; }
+.brick .dot { position: absolute; top: 8px; right: 8px; width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 2px var(--card); }
+.brick .badge { position: absolute; bottom: 6px; right: 6px; font: 600 11px/1 var(--ui); background: var(--ink); color: #FFFFFF; border-radius: var(--r-pill); padding: 3px 6px; font-variant-numeric: tabular-nums; }
+.brick-n { font: 500 var(--fs-1)/1.25 var(--ui); padding: 6px 6px 8px; color: var(--ink); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.legend { display: flex; flex-wrap: wrap; gap: var(--s-3); font-size: var(--fs-1); color: var(--ink-2); }
+.legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; }
+.sec-h { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-2); }
+.sec-h .n { font-size: var(--fs-2); color: var(--ink-3); }
+
+/* fiche, commun */
+.back { display: flex; align-items: center; justify-content: space-between; padding-block: var(--s-2); }
+.back button { border: 0; background: none; color: var(--wine); font-weight: 500; display: inline-flex; align-items: center; gap: 2px; min-height: 44px; padding: 0; }
+.back svg { width: 22px; height: 22px; }
+.facts { display: grid; grid-template-columns: auto 1fr; margin: 0; font-size: var(--fs-2); }
+.facts dt { color: var(--ink-3); padding: 9px var(--s-4) 9px 0; border-bottom: 1px solid var(--line); }
+.facts dd { margin: 0; padding: 9px 0; border-bottom: 1px solid var(--line); min-width: 0; }
+.facts dt:last-of-type, .facts dd:last-of-type { border-bottom: 0; }
+.panel { background: var(--card); border-radius: var(--r-m); box-shadow: var(--sh-1); padding: var(--s-4); display: grid; gap: var(--s-3); }
+.panel.tight { padding-block: var(--s-1); }
+.cellar { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: var(--s-2); font-size: var(--fs-2); }
+.cellar > span:first-child { color: var(--ink-2); }
+.cellar .q { min-width: 1.5em; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.step { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); font: 500 1.25rem/1 var(--ui); }
+.stock-head { display: flex; align-items: baseline; justify-content: space-between; }
+.stock-n { font-size: var(--fs-5); line-height: 1; }
+.stock-n small { font: 500 var(--fs-2) var(--ui); color: var(--ink-2); margin-left: 4px; }
+.tl { display: grid; gap: var(--s-2); }
+.tl-bar { position: relative; height: 10px; border-radius: var(--r-pill); background: var(--sunk); }
+.tl-bar span { position: absolute; top: 0; bottom: 0; border-radius: var(--r-pill); }
+.tl-drink { background: var(--st-ready-bg); box-shadow: inset 0 0 0 1px rgba(47,110,79,.35); }
+.tl-peak { background: var(--wine); }
+.tl-now { top: -5px !important; bottom: auto !important; width: 2px; height: 20px; background: var(--ink); }
+.tl-ax { display: flex; justify-content: space-between; font-size: var(--fs-1); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.tl-legend { display: flex; flex-wrap: wrap; gap: var(--s-3); font-size: var(--fs-1); color: var(--ink-2); }
+.tl-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.tasting { font-size: var(--fs-2); display: grid; gap: 2px; }
+.tasting .meta { font-size: var(--fs-1); color: var(--ink-3); }
+.tasting p { margin: 0; }
+.more { border: 0; background: none; color: var(--wine); font-weight: 600; font-size: var(--fs-2); min-height: 44px; padding: 0; text-align: left; display: flex; align-items: center; gap: 4px; }
+.more svg { width: 18px; height: 18px; transition: transform .2s; }
+.more[aria-expanded="true"] svg { transform: rotate(180deg); }
+.full { display: grid; gap: var(--s-4); font-size: var(--fs-2); }
+.full h4 { margin: 0 0 4px; font: 600 var(--fs-1)/1.2 var(--ui); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); }
+.full p { margin: 0; max-width: 62ch; }
+.scores { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
+.scores div { background: var(--sunk); border-radius: var(--r-s); padding: var(--s-3); display: grid; gap: 2px; }
+.scores b { font: 500 var(--fs-5)/1 var(--display); }
+.scores span { font-size: var(--fs-1); color: var(--ink-2); }
+.fold { position: relative; height: 0; }
+.fold span { position: absolute; left: 0; right: 0; top: -14px; border-top: 2px dashed #C48C6A; font: 600 10px/1 var(--ui); color: #9A5B3A; text-align: right; padding: 0 8px 3px; border-top: 0; border-bottom: 2px dashed #C48C6A; letter-spacing: .04em; text-transform: uppercase; pointer-events: none; z-index: 2; }
+
+/* F1 */
+.f1-hero { display: grid; grid-template-columns: 128px 1fr; gap: var(--s-4); align-items: end; background: var(--card); border-radius: var(--r-m); box-shadow: var(--sh-2); padding: var(--s-4); }
+.f1-hero .thumb { height: 196px; border-radius: var(--r-s); }
+.f1-hero .flag { width: 26px; height: 26px; }
+.who { display: grid; gap: 4px; min-width: 0; }
+.who .p { font-size: var(--fs-2); color: var(--ink-2); }
+.who h1 { font-size: var(--fs-6); line-height: 1.04; margin: 0; text-wrap: balance; }
+.who .v { font-size: var(--fs-5); color: var(--wine); line-height: 1.1; }
+.who .o { font-size: var(--fs-2); color: var(--ink-2); }
+.who .r { display: flex; align-items: center; gap: var(--s-2); font-size: var(--fs-2); }
+.who .r b { font-weight: 600; }
+.who .r small { color: var(--ink-3); font-size: var(--fs-1); }
+.tapnote { font-size: var(--fs-1); color: var(--ink-3); text-align: center; margin: 0; }
+
+/* F2 */
+.f2-stage { background: var(--card); margin-inline: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); padding-top: var(--s-2); display: grid; justify-items: center; gap: var(--s-2); padding-bottom: var(--s-4); border-bottom: 1px solid var(--line); }
+.f2-stage .thumb { width: 100%; height: 300px; }
+.f2-stage .flag { width: 30px; height: 30px; left: max(16px, env(safe-area-inset-left, 0px)); top: 4px; }
+.f2-stage .who { justify-items: center; text-align: center; padding-inline: var(--s-4); }
+.f2-stage .who h1 { font-size: var(--fs-6); }
+.f2-bar { position: fixed; left: 0; right: 0; bottom: calc(53px + env(safe-area-inset-bottom, 0px)); z-index: 14; background: rgba(255,255,255,.96); backdrop-filter: blur(12px); border-top: 1px solid var(--line); }
+.f2-bar-in { max-width: 430px; margin: 0 auto; display: grid; grid-template-columns: auto auto auto 1fr; gap: var(--s-2); align-items: center; padding-block: var(--s-2); }
+.f2-bar .n { font: 500 var(--fs-5)/1 var(--display); min-width: 1.4em; text-align: center; font-variant-numeric: lining-nums; }
+.f2-bar .lbl { font-size: var(--fs-1); color: var(--ink-3); line-height: 1.1; }
+.f2-bar .btn { justify-self: end; }
+.screen.f2 { padding-bottom: calc(170px + env(safe-area-inset-bottom, 0px)); }
+
+/* F3 */
+.f3-top { background: var(--card); border-radius: var(--r-m); box-shadow: var(--sh-2); padding: var(--s-3); display: grid; grid-template-columns: 96px 1fr; gap: var(--s-3); align-items: center; }
+.f3-top .thumb { height: 150px; border-radius: var(--r-s); }
+.f3-top .flag { width: 20px; height: 20px; top: 6px; left: 6px; }
+.f3-top .who h1 { font-size: var(--fs-5); }
+.f3-top .who .v { font-size: var(--fs-4); }
+.f3-stock { display: grid; grid-template-columns: auto 1fr auto; gap: var(--s-3); align-items: center; }
+.f3-stock .mini-step { display: flex; align-items: center; gap: var(--s-1); }
+.f3-stock .step { width: 40px; height: 40px; }
+
+/* feuille Sortir */
+.scrim { position: fixed; inset: 0; background: rgba(38,44,37,.35); z-index: 40; display: grid; align-items: end; }
+.sheet { background: var(--card); border-radius: var(--r-m) var(--r-m) 0 0; box-shadow: var(--sh-2); width: 100%; max-width: 430px; margin: 0 auto; padding-block: var(--s-2) calc(var(--s-5) + env(safe-area-inset-bottom, 0px)); display: grid; gap: var(--s-4); }
+.grab { width: 36px; height: 5px; border-radius: 3px; background: var(--line); justify-self: center; }
+.sheet-head { display: grid; grid-template-columns: 44px 1fr; gap: var(--s-3); align-items: center; }
+.sheet-head .thumb { height: 64px; border-radius: var(--r-s); }
+.sheet-head .flag { display: none; }
+.sheet h3 { margin: 0; font-size: var(--fs-4); line-height: 1.15; }
+.sheet .sub { font-size: var(--fs-2); color: var(--ink-2); }
+.rate { display: flex; gap: 4px; }
+.rate button { border: 0; background: none; font-size: 2rem; line-height: 1; color: var(--line); width: 44px; height: 44px; padding: 0; }
+.rate button.on { color: var(--gold); }
+.sheet textarea { width: 100%; min-height: 72px; border: 0; background: var(--sunk); border-radius: var(--r-s); padding: var(--s-3); font: inherit; font-size: var(--fs-2); resize: vertical; color: var(--ink); }
+.sheet .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2); }
+.sheet label { font-size: var(--fs-1); color: var(--ink-3); display: grid; gap: 4px; }
+.sheet .fake { background: var(--sunk); border-radius: var(--r-s); min-height: 40px; display: flex; align-items: center; padding: 0 var(--s-3); font-size: var(--fs-2); color: var(--ink); }
+.toast { position: fixed; left: 50%; bottom: calc(80px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: #FFFFFF; font-size: var(--fs-2); padding: 10px 16px; border-radius: var(--r-pill); z-index: 50; box-shadow: var(--sh-2); white-space: nowrap; }
+@media (prefers-reduced-motion: no-preference) { .sheet { animation: up .22s ease-out; } @keyframes up { from { transform: translateY(40px); opacity: .6; } } }
+</style>
+
+<div class="proto"><div class="proto-in gut">
+  <div class="proto-row"><span>Cave</span><a href="#c1" data-r="c1"><b>C1</b>Rangée + grille</a><a href="#c2" data-r="c2"><b>C2</b>Par statut</a><a href="#c3" data-r="c3"><b>C3</b>Mur</a></div>
+  <div class="proto-row"><span>Fiche</span><a href="#f1" data-r="f1"><b>F1</b>Défilante</a><a href="#f2" data-r="f2"><b>F2</b>Scène</a><a href="#f3" data-r="f3"><b>F3</b>Onglets</a></div>
+  <p id="pnote"></p>
+</div></div>
+
+<main id="app"></main>
+
+<nav class="tabs" aria-label="Navigation"><div class="tabs-in">
+  <button class="tab" data-t="cave" aria-current="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 4l9 6.5V20H3z"/><path d="M7 20v-5h10v5M7 15h10"/></svg>Cave</button>
+  <button class="tab" data-t="som"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10l-1 7a4 4 0 0 1-8 0z"/><path d="M12 14v6M8.5 21h7"/></svg>Sommelier</button>
+  <button class="tab add" data-t="add"><span class="pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>Ajouter</button>
+  <button class="tab" data-t="carnet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/></svg>Carnet</button>
+</div></nav>
+
+<script>
+(function () {
+  const Y = 2026;
+  const W = [
+    { id: 1, n: "Merlot Balavaud", p: "Jean-René Germanier", v: 2020, o: "Valais · Vétroz", f: "ch", b: "bdx", g: "#2E3B2A", st: "peak", q: { L: 2, Z: 1 }, r: 4.5, from: 2023, to: 2034, pf: 2025, pt: 2032, grapes: "Merlot", app: "Valais AOC", serve: "16–17 °C, carafe 1 h", vol: "75 cl", prov: "Reçu de Viviane, anniversaire 2024" },
+    { id: 2, n: "Dézaley Grand Cru Médinette", p: "Louis Bovard", v: 2018, o: "Vaud · Lavaux", f: "ch", b: "flute", g: "#C9BC7E", st: "peak", q: { L: 6, Z: 0 }, r: 4, from: 2020, to: 2030, pf: 2024, pt: 2028, grapes: "Chasselas", app: "Dézaley Grand Cru AOC", serve: "10–11 °C", vol: "75 cl", prov: "Domaine, 28 CHF, 2021" },
+    { id: 3, n: "Chablis 1er Cru Montée de Tonnerre", p: "Raveneau", v: 2019, o: "Bourgogne · Chablis", f: "fr", b: "flute", g: "#B9A86A", st: "soon", q: { L: 1, Z: 0 }, r: 0, from: 2022, to: 2027, pf: 2023, pt: 2026, grapes: "Chardonnay", app: "Chablis Premier Cru AOC", serve: "11–12 °C", vol: "75 cl", prov: "Caviste, 140 CHF, 2022" },
+    { id: 4, n: "Château Talbot", p: "Château Talbot", v: 2010, o: "Bordeaux · Saint-Julien", f: "fr", b: "bdx", g: "#24301F", st: "soon", q: { L: 0, Z: 1 }, r: 4, from: 2018, to: 2027, pf: 2020, pt: 2026, grapes: "Cabernet sauvignon, merlot", app: "Saint-Julien AOC", serve: "17–18 °C, carafe 1 h", vol: "75 cl", prov: "Vente aux enchères, 85 CHF, 2019" },
+    { id: 5, n: "Barolo Cannubi", p: "Brezza", v: 2016, o: "Piémont · Barolo", f: "it", b: "burg", g: "#3A2A22", st: "ready", q: { L: 4, Z: 0 }, r: 0, from: 2024, to: 2040, pf: 2028, pt: 2036, grapes: "Nebbiolo", app: "Barolo DOCG", serve: "17–18 °C, carafe 2 h", vol: "75 cl", prov: "Caviste, 62 CHF, 2023" },
+    { id: 6, n: "Cornalin", p: "Marie-Thérèse Chappaz", v: 2021, o: "Valais · Fully", f: "ch", b: "bdx", g: "#2B2F26", st: "ready", q: { L: 1, Z: 1 }, r: 0, from: 2024, to: 2032, pf: 2027, pt: 2030, grapes: "Cornalin", app: "Valais AOC", serve: "16 °C", vol: "75 cl", prov: "Domaine, 39 CHF, 2023" },
+    { id: 7, n: "Aalto", p: "Bodegas Aalto", v: 2021, o: "Castille · Ribera del Duero", f: "es", b: "burg", g: "#2C221C", st: "young", q: { L: 2, Z: 0 }, r: 0, from: 2027, to: 2040, pf: 2030, pt: 2036, grapes: "Tempranillo", app: "Ribera del Duero DO", serve: "17–18 °C, carafe 2 h", vol: "75 cl", prov: "Caviste, 58 CHF, 2024" },
+    { id: 8, n: "Petite Arvine", p: "Gérald Besse", v: 2023, o: "Valais · Martigny", f: "ch", b: "flute", g: "#CDBF86", st: "young", q: { L: 3, Z: 0 }, r: 0, from: 2027, to: 2035, pf: 2029, pt: 2033, grapes: "Petite arvine", app: "Valais AOC", serve: "10–11 °C", vol: "75 cl", prov: "Domaine, 32 CHF, 2025" },
+  ];
+  const ST = { young: "Trop jeune", ready: "Prête", peak: "À l'apogée", soon: "À boire vite" };
+  const STC = { young: "#4C5F86", ready: "#2F6E4F", peak: "#713D47", soon: "#7E560C" };
+  const CAVES = { L: "Lausanne", Z: "Chalet, Zermatt" };
+  const FLAGS = {
+    ch: '<svg viewBox="0 0 32 32"><rect width="32" height="32" fill="#D52B1E"/><path d="M13 7h6v6h6v6h-6v6h-6v-6H7v-6h6z" fill="#FFFFFF"/></svg>',
+    es: '<svg viewBox="0 0 32 32"><rect width="32" height="32" fill="#AA151B"/><rect y="8" width="32" height="16" fill="#F1BF00"/></svg>',
+    fr: '<svg viewBox="0 0 32 32"><rect width="32" height="32" fill="#FFFFFF"/><rect width="11" height="32" fill="#002654"/><rect x="21" width="11" height="32" fill="#CE1126"/></svg>',
+    it: '<svg viewBox="0 0 32 32"><rect width="32" height="32" fill="#FFFFFF"/><rect width="11" height="32" fill="#009246"/><rect x="21" width="11" height="32" fill="#CE2B37"/></svg>',
+  };
+  const SHAPES = {
+    bdx: { body: "M30 8h12v40c0 6 14 10 14 22v120c0 4-3 6-6 6H22c-3 0-6-2-6-6V70c0-12 14-16 14-22z", cap: 24, label: [92, 58] },
+    burg: { body: "M31 8h10v34c0 14 22 22 22 46v102c0 4-3 6-6 6H15c-3 0-6-2-6-6V88c0-24 22-32 22-46z", cap: 24, label: [104, 52] },
+    flute: { body: "M32 8h8v44c0 16 16 24 16 44v94c0 4-3 6-6 6H22c-3 0-6-2-6-6V96c0-20 16-28 16-44z", cap: 34, label: [110, 48] },
+  };
+  let gid = 0;
+  const bottle = (w) => { const s = SHAPES[w.b], id = "sh" + gid++; return `<svg class="bottle" viewBox="0 0 72 202" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" x2="1"><stop offset="0" stop-color="#000000" stop-opacity=".25"/><stop offset=".35" stop-color="#FFFFFF" stop-opacity=".2"/><stop offset=".6" stop-color="#000000" stop-opacity="0"/><stop offset="1" stop-color="#000000" stop-opacity=".3"/></linearGradient></defs><path d="${s.body}" fill="${w.g}"/><rect x="29" y="4" width="14" height="${s.cap}" rx="2" fill="${w.b === "flute" ? "#C9B56E" : "#5C3039"}"/><rect x="12" y="${s.label[0]}" width="48" height="${s.label[1]}" rx="2" fill="#F4EFE3"/><rect x="20" y="${s.label[0] + 12}" width="32" height="3" rx="1.5" fill="#713D47" opacity=".7"/><rect x="24" y="${s.label[0] + 20}" width="24" height="2" rx="1" fill="#535D50" opacity=".5"/><path d="${s.body}" fill="url(#${id})"/></svg>`; };
+  const thumb = (w, cls = "") => `<div class="thumb ${cls}">${bottle(w)}<span class="flag">${FLAGS[w.f]}</span></div>`;
+  const chip = (w) => `<span class="chip st-${w.st}">${ST[w.st]}</span>`;
+  const tot = (w) => w.q.L + w.q.Z;
+  const starTxt = (r) => "★★★★★".slice(0, Math.floor(r)) + "☆☆☆☆☆".slice(0, 5 - Math.floor(r));
+  const IC = {
+    cam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+    filt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M7 12h10M10 17h4"/></svg>',
+    list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 7h12M8 12h12M8 17h12M4 7h.01M4 12h.01M4 17h.01"/></svg>',
+    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+    down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
+  };
+  const NOTES = {
+    c1: "C1 · La rangée « À ouvrir en priorité » défile en tête, puis toute la cave en grille. Chaque carte a son bouton Sortir. Touche une bouteille pour ouvrir sa fiche.",
+    c2: "C2 · Pas de rangée séparée : la grille entière est rangée par statut de garde, du plus urgent au plus jeune. La priorité devient la structure.",
+    c3: "C3 · Mur de bouteilles en 3 colonnes : on reconnaît le vin à sa bouteille, pastille de statut et nombre en coin. Plus de vins à l'écran, moins de texte. Sortir depuis la fiche.",
+    f1: "F1 · Tout sur une page qui défile : en-tête, En cave, tableau, garde, dégustations, puis la fiche complète dépliée sur place. La ligne pointillée marque le bas de l'écran d'un iPhone 13.",
+    f2: "F2 · La bouteille en scène, centrée, comme Vivino. Le stock et « Sortir » restent dans une barre fixe au-dessus des onglets, donc toujours à portée de pouce.",
+    f3: "F3 · En-tête compact et stock en haut, puis trois onglets (Essentiel · Garde et notes · Fiche complète) : pas de long défilement, mais un geste de plus pour voir la garde.",
+  };
+  let route = "c1", cave = "all", lastCave = "c1";
+  const app = document.getElementById("app");
+  const inCave = (w) => cave === "all" ? tot(w) > 0 : w.q[cave] > 0;
+  const qtyOf = (w) => cave === "all" ? tot(w) : w.q[cave];
+
+  const caveHead = (extra = "") => `
+    <div class="apphead"><span class="brand">Vinicellar</span><button class="avatar" aria-label="Compte">ND</button></div>
+    <div class="seg" role="group" aria-label="Cave">${[["all", "Toutes"], ["L", "Lausanne"], ["Z", "Zermatt"]].map(([k, l]) => `<button data-cave="${k}" aria-pressed="${cave === k}">${l}</button>`).join("")}</div>
+    <div class="search"><input type="search" id="q" placeholder="Rechercher un vin, un domaine…" aria-label="Rechercher"><button class="icon-btn" aria-label="Filtres">${IC.filt}</button><button class="icon-btn" aria-label="Afficher en liste">${IC.list}</button></div>
+    ${extra}`;
+  const photoBtn = `<button class="btn sec" style="width:100%">${IC.cam}Sortir par photo</button>`;
+  const card = (w) => `<div class="card"><div data-open="${w.id}" role="button" tabindex="0" aria-label="${w.n} ${w.v}">${thumb(w)}</div><div class="card-b"><h3 class="card-n d" data-open="${w.id}">${w.n}</h3><div class="card-m">${w.v} · ${w.p}</div>${chip(w)}<div class="card-f"><span class="qty">${qtyOf(w)} <small>bt.</small></span><button class="out" data-out="${w.id}">Sortir</button></div></div></div>`;
+
+  function C1() {
+    const pri = W.filter((w) => inCave(w) && (w.st === "soon" || w.st === "peak")).sort((a, b) => (a.st === "soon" ? 0 : 1) - (b.st === "soon" ? 0 : 1));
+    const all = W.filter(inCave);
+    return `<div class="screen gut stack">${caveHead()}
+      <div class="stack" style="gap:var(--s-3)"><div class="sec-h"><h2 class="h2 d">À ouvrir en priorité</h2><span class="n">${pri.length}</span></div>
+      <div class="hrow">${pri.map((w) => `<button class="mini" data-open="${w.id}">${thumb(w)}<div class="mini-b"><span class="mini-n d">${w.n}</span><span class="card-m">${w.v}</span>${chip(w)}</div></button>`).join("")}</div></div>
+      ${photoBtn}
+      <div class="sec-h"><h2 class="h2 d">Toute la cave</h2><span class="n">${all.reduce((s, w) => s + qtyOf(w), 0)} bouteilles</span></div>
+      <div class="grid2">${all.map(card).join("")}</div></div>`;
+  }
+  function C2() {
+    const order = ["soon", "peak", "ready", "young"];
+    return `<div class="screen gut stack">${caveHead(photoBtn)}
+      ${order.map((s) => { const ws = W.filter((w) => inCave(w) && w.st === s); if (!ws.length) return ""; return `<section class="stack" style="gap:var(--s-3)"><div class="sec-h"><h2 class="h2 d" style="color:${STC[s]}">${ST[s]}</h2><span class="n">${ws.reduce((a, w) => a + qtyOf(w), 0)} bt.</span></div><div class="grid2">${ws.map(card).join("")}</div></section>`; }).join("")}</div>`;
+  }
+  function C3() {
+    const all = W.filter(inCave).sort((a, b) => ["soon", "peak", "ready", "young"].indexOf(a.st) - ["soon", "peak", "ready", "young"].indexOf(b.st));
+    return `<div class="screen gut stack">${caveHead(photoBtn)}
+      <div class="legend">${Object.keys(ST).map((k) => `<span><i style="background:${STC[k]}"></i>${ST[k]}</span>`).join("")}</div>
+      <div class="wall">${all.map((w) => `<button class="brick" data-open="${w.id}" aria-label="${w.n} ${w.v}, ${ST[w.st]}, ${qtyOf(w)} bouteilles">${thumb(w).replace('</div>', `<span class="dot" style="background:${STC[w.st]}"></span><span class="badge">${qtyOf(w)}</span></div>`)}<span class="brick-n">${w.n} <span style="color:var(--ink-3)">${w.v}</span></span></button>`).join("")}</div></div>`;
+  }
+
+  const cur = () => W.find((w) => w.id === (window.__wid || 1));
+  const timeline = (w) => { const a = Math.min(w.from, Y) - 1, b = w.to + 2, pc = (y) => ((y - a) / (b - a) * 100).toFixed(1) + "%"; const mid = Math.round((a + b) / 2);
+    return `<div class="tl" aria-label="Buvable ${w.from} à ${w.to}, apogée ${w.pf} à ${w.pt}, nous sommes en ${Y}"><div class="tl-bar"><span class="tl-drink" style="left:${pc(w.from)};right:calc(100% - ${pc(w.to)})"></span><span class="tl-peak" style="left:${pc(w.pf)};right:calc(100% - ${pc(w.pt)})"></span><span class="tl-now" style="left:${pc(Y)}"></span></div><div class="tl-ax"><span>${a}</span><span>${mid}</span><span>${b}</span></div><div class="tl-legend"><span><i style="background:var(--st-ready-bg);box-shadow:inset 0 0 0 1px var(--st-ready)"></i>Buvable ${w.from}–${w.to}</span><span><i style="background:var(--wine)"></i>Apogée ${w.pf}–${w.pt}</span><span>Trait : ${Y}</span></div></div>`; };
+  const facts = (w) => `<dl class="facts"><dt>Région</dt><dd>${w.app}</dd><dt>Cépages</dt><dd>${w.grapes}</dd><dt>Garde</dt><dd>${chip(w)}&nbsp; ${w.from}–${w.to}</dd><dt>Service</dt><dd>${w.serve}</dd><dt>Contenance</dt><dd>${w.vol}</dd><dt>Provenance</dt><dd>${w.prov}</dd></dl>`;
+  const who = (w) => `<div class="who"><span class="p">${w.p}</span><h1 class="d">${w.n}</h1><span class="v d">${w.v}</span><span class="o">${w.o}</span><div class="r">${w.r ? `<span class="stars" aria-hidden="true">${starTxt(w.r)}</span><b>${String(w.r).replace(".", ",")}</b><small>ma note</small>` : `<small>Pas encore noté</small>`}</div></div>`;
+  const stockPanel = (w) => `<div class="panel"><div class="stock-head"><span class="eyebrow">En cave</span><span class="stock-n d">${tot(w)}<small>bouteille${tot(w) > 1 ? "s" : ""}</small></span></div>${Object.keys(CAVES).filter((k) => w.q[k] > 0 || Object.values(w.q).filter(Boolean).length > 1).map((k) => `<div class="cellar"><span>${CAVES[k]}</span><button class="step" data-step="-1" data-c="${k}" aria-label="Retirer une bouteille, ${CAVES[k]}">−</button><span class="q">${w.q[k]}</span><button class="step" data-step="1" data-c="${k}" aria-label="Ajouter une bouteille, ${CAVES[k]}">+</button></div>`).join("")}<button class="btn" data-out="${w.id}">Sortir une bouteille</button></div>`;
+  const tastings = (w) => w.r ? `<div class="panel"><span class="eyebrow">Mes dégustations</span><div class="tasting"><span class="meta">14.09.2026 · <span class="stars">${starTxt(w.r)}</span> · avec un carré d'agneau</span><p>Fruit mûr, tanins fondus, belle fraîcheur en finale.</p></div></div>` : "";
+  const fullBody = (w) => `<div class="full"><div class="scores"><div><b>${w.r ? String(w.r).replace(".", ",") : "–"}</b><span>Ma note</span></div><div><b>4,2</b><span>Moyenne en ligne · 1 240 avis</span></div></div><div><h4>Description</h4><p>Exemple de texte : nez de cerise noire et d'épices douces, bouche ample, tanins fins, finale fraîche.</p></div><div><h4>Vinification</h4><p>Élevage 18 mois en barriques, dont un tiers neuves.</p></div><div><h4>Terroir</h4><p>Coteaux calcaires, exposition sud.</p></div><div><h4>Accords</h4><p>Agneau rôti, gibier à plume, fromages à pâte dure.</p></div><div><h4>Sources</h4><p>Site du domaine, guide des vins.</p></div></div>`;
+  const back = `<div class="back"><button data-back>${IC.back}Cave</button><button class="avatar" aria-label="Compte">ND</button></div>`;
+
+  function F1() { const w = cur(); return `<div class="screen gut stack" style="gap:var(--s-3)">${back}
+    <div class="f1-hero" data-photos>${thumb(w)}${who(w)}</div><p class="tapnote">Toucher la bouteille ouvre les photos et l'aperçu.</p>
+    ${stockPanel(w)}<div class="panel tight">${facts(w)}</div>
+    <div class="panel"><span class="eyebrow">Garde</span>${timeline(w)}</div>${tastings(w)}
+    <div class="panel"><button class="more" aria-expanded="false" data-more>Voir la fiche complète ${IC.down}</button><div hidden data-full>${fullBody(w)}</div></div></div>`; }
+  function F2() { const w = cur(); return `<div class="screen f2 gut stack" style="gap:var(--s-3)">${back}
+    <div class="f2-stage" data-photos>${thumb(w)}${who(w)}</div>
+    <div class="panel tight">${facts(w)}</div><div class="panel"><span class="eyebrow">Garde</span>${timeline(w)}</div>${tastings(w)}
+    <div class="panel"><span class="eyebrow">Par cave</span>${Object.keys(CAVES).map((k) => `<div class="cellar"><span>${CAVES[k]}</span><button class="step" data-step="-1" data-c="${k}" aria-label="Retirer, ${CAVES[k]}">−</button><span class="q">${w.q[k]}</span><button class="step" data-step="1" data-c="${k}" aria-label="Ajouter, ${CAVES[k]}">+</button></div>`).join("")}</div>
+    <div class="panel"><button class="more" aria-expanded="false" data-more>Voir la fiche complète ${IC.down}</button><div hidden data-full>${fullBody(w)}</div></div></div>
+    <div class="f2-bar"><div class="f2-bar-in gut"><span class="n">${tot(w)}</span><span class="lbl">en<br>cave</span><span></span><button class="btn" data-out="${w.id}">Sortir une bouteille</button></div></div>`; }
+  let f3tab = "ess";
+  function F3() { const w = cur(); const body = f3tab === "ess" ? `<div class="panel tight">${facts(w)}</div>` : f3tab === "garde" ? `<div class="panel"><span class="eyebrow">Garde</span>${timeline(w)}</div>${tastings(w) || `<div class="panel"><span class="eyebrow">Mes dégustations</span><p class="tapnote" style="text-align:left">Aucune pour l'instant.</p></div>`}` : `<div class="panel">${fullBody(w)}</div>`;
+    return `<div class="screen gut stack" style="gap:var(--s-3)">${back}
+    <div class="f3-top" data-photos>${thumb(w)}${who(w)}</div>
+    <div class="panel"><div class="f3-stock"><span class="stock-n d">${tot(w)}<small>en cave</small></span><span></span><button class="btn sm" data-out="${w.id}">Sortir</button></div>${Object.values(w.q).filter(Boolean).length > 1 ? Object.keys(CAVES).map((k) => `<div class="cellar"><span>${CAVES[k]}</span><button class="step" data-step="-1" data-c="${k}" aria-label="Retirer, ${CAVES[k]}">−</button><span class="q">${w.q[k]}</span><button class="step" data-step="1" data-c="${k}" aria-label="Ajouter, ${CAVES[k]}">+</button></div>`).join("") : ""}</div>
+    <div class="seg" role="tablist">${[["ess", "Essentiel"], ["garde", "Garde et notes"], ["full", "Fiche complète"]].map(([k, l]) => `<button role="tab" data-f3="${k}" aria-pressed="${f3tab === k}" aria-selected="${f3tab === k}">${l}</button>`).join("")}</div>${body}</div>`; }
+
+  const R = { c1: C1, c2: C2, c3: C3, f1: F1, f2: F2, f3: F3 };
+  function render() {
+    app.innerHTML = R[route]();
+    document.getElementById("pnote").textContent = NOTES[route];
+    document.querySelectorAll(".proto a").forEach((a) => a.setAttribute("aria-current", a.dataset.r === route ? "true" : "false"));
+    placeFold();
+  }
+  // Ligne du bas d'écran (844 px moins la barre d'état et les onglets) : seulement sur les fiches.
+  function placeFold() {
+    const f = app.querySelector(".screen"); if (!f || route[0] !== "f") return;
+    const top = document.querySelector(".proto").offsetHeight;
+    const limit = 844 - 47 - 34 - 53 + top - (route === "f2" ? 64 : 0);
+    const mark = document.createElement("div"); mark.className = "fold"; mark.innerHTML = "<span>bas de l'écran · iPhone 13</span>";
+    mark.style.cssText = `position:absolute;left:0;right:0;top:${limit}px;height:0;`;
+    document.body.style.position = "relative"; document.querySelectorAll("body > .fold").forEach((x) => x.remove()); document.body.appendChild(mark);
+  }
+  function go(r) { if (!R[r]) r = "c1"; route = r; if (r[0] === "c") lastCave = r; render(); window.scrollTo(0, 0); }
+  window.addEventListener("hashchange", () => go(location.hash.slice(1)));
+
+  function toast(t) { const el = document.createElement("div"); el.className = "toast"; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2200); }
+  function sortir(id) {
+    const w = W.find((x) => x.id === +id); let kind = "Bue", stars = 0;
+    const s = document.createElement("div"); s.className = "scrim";
+    const caves = Object.keys(CAVES).filter((k) => w.q[k] > 0);
+    s.innerHTML = `<div class="sheet gut" role="dialog" aria-label="Sortir une bouteille"><span class="grab"></span>
+      <div class="sheet-head">${thumb(w)}<div><h3 class="d">${w.n} ${w.v}</h3><span class="sub">${caves.length > 1 ? "" : CAVES[caves[0]] + " · "}${tot(w)} en cave</span></div></div>
+      <div class="seg" role="group"><button data-k="Bue" aria-pressed="true">Bue</button><button data-k="Offerte" aria-pressed="false">Offerte</button></div>
+      ${caves.length > 1 ? `<div class="seg" role="group" aria-label="Depuis">${caves.map((k, i) => `<button data-from="${k}" aria-pressed="${i === 0}">${CAVES[k]}</button>`).join("")}</div>` : ""}
+      <div data-rate-wrap><div class="eyebrow" style="margin-bottom:6px">Ma note</div><div class="rate">${[1, 2, 3, 4, 5].map((i) => `<button data-s="${i}" aria-label="${i} étoile${i > 1 ? "s" : ""}">★</button>`).join("")}</div></div>
+      <textarea id="sortir-note" placeholder="Note de dégustation, avec quoi, avec qui… (facultatif)"></textarea>
+      <div class="row2"><label>Date<span class="fake">15.11.2026</span></label><label data-to hidden>Offerte à<span class="fake" style="color:var(--ink-3)">Nom</span></label></div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:var(--s-2)"><button class="btn sec" data-x>Annuler</button><button class="btn" data-ok>Enregistrer</button></div></div>`;
+    document.body.appendChild(s);
+    s.addEventListener("click", (e) => {
+      const t = e.target.closest("button");
+      if (e.target === s || (t && t.hasAttribute("data-x"))) return s.remove();
+      if (!t) return;
+      if (t.dataset.k) { kind = t.dataset.k; s.querySelectorAll("[data-k]").forEach((b) => b.setAttribute("aria-pressed", b === t)); s.querySelector("[data-to]").hidden = kind !== "Offerte"; s.querySelector("[data-rate-wrap]").hidden = kind === "Offerte"; }
+      if (t.dataset.from) s.querySelectorAll("[data-from]").forEach((b) => b.setAttribute("aria-pressed", b === t));
+      if (t.dataset.s) { stars = +t.dataset.s; s.querySelectorAll("[data-s]").forEach((b) => b.classList.toggle("on", +b.dataset.s <= stars)); }
+      if (t.hasAttribute("data-ok")) { const from = s.querySelector('[data-from][aria-pressed="true"]')?.dataset.from || caves[0]; w.q[from]--; s.remove(); toast(`${kind === "Bue" ? "Bouteille bue" : "Bouteille offerte"} · reste ${tot(w)}`); render(); }
+    });
+  }
+
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-open],[data-out],[data-cave],[data-back],[data-more],[data-step],[data-f3],[data-photos],.tab,.avatar");
+    if (!t || t.closest(".scrim")) return;
+    if (t.dataset.out) { e.stopPropagation(); return sortir(t.dataset.out); }
+    if (t.dataset.open) { window.__wid = +t.dataset.open; location.hash = route[0] === "f" ? route : "f1"; if (route[0] === "f") render(); return; }
+    if (t.dataset.cave) { cave = t.dataset.cave; return render(); }
+    if (t.hasAttribute("data-back")) { location.hash = lastCave; return; }
+    if (t.hasAttribute("data-more")) { const open = t.getAttribute("aria-expanded") !== "true"; t.setAttribute("aria-expanded", open); t.nextElementSibling.hidden = !open; placeFold(); return; }
+    if (t.dataset.step) { const w = cur(); w.q[t.dataset.c] = Math.max(0, w.q[t.dataset.c] + +t.dataset.step); render(); return toast(+t.dataset.step > 0 ? "Bouteille ajoutée" : "Stock corrigé, sans trace dans le carnet"); }
+    if (t.dataset.f3) { f3tab = t.dataset.f3; return render(); }
+    if (t.hasAttribute("data-photos")) return toast("Ouvre la galerie : photos, aperçu, bouteille entière");
+    if (t.classList.contains("tab") || t.classList.contains("avatar")) return toast("Hors du périmètre de ces maquettes");
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.dataset && e.target.dataset.open) e.target.click(); if (e.key === "Escape") document.querySelector(".scrim")?.remove(); });
+  go((location.hash || "#c1").slice(1));
+})();
+</script>
