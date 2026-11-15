@@ -21,27 +21,8 @@
   const getVisualBg = () => { try { const v = localStorage.getItem("vc.visual-bg"); return VISUAL_BG.includes(v) ? v : "white"; } catch { return "white"; } };
   const setVisualBg = (v) => { try { localStorage.setItem("vc.visual-bg", v); } catch { /* stockage indisponible */ } document.documentElement.dataset.visualBg = v; };
   document.documentElement.dataset.visualBg = getVisualBg();
-  let theme = "system";
-  try { theme = localStorage.getItem("vc.theme") || "system"; } catch { /* stockage indisponible */ }
-  if (!["system", "light", "dark"].includes(theme)) theme = "system";
-  const applyTheme = () => {
-    if (theme === "system") delete document.documentElement.dataset.theme;
-    else document.documentElement.dataset.theme = theme;
-    document.querySelectorAll("[data-theme-toggle]").forEach((b) => {
-      const label = { system: "Système", light: "Clair", dark: "Sombre" }[theme];
-      b.setAttribute("aria-label", `Thème : ${label}. Changer de thème`);
-      b.title = `Thème : ${label}`;
-      b.textContent = { system: "◐", light: "☀", dark: "☾" }[theme];
-    });
-  };
-  applyTheme();
-  document.addEventListener("DOMContentLoaded", applyTheme, { once: true });
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest("[data-theme-toggle]")) return;
-    theme = { system: "light", light: "dark", dark: "system" }[theme];
-    try { localStorage.setItem("vc.theme", theme); } catch { /* préférence pour cette session */ }
-    applyTheme();
-  });
+  // Mode sombre retiré (refonte, étape 4) : on efface une ancienne préférence.
+  try { localStorage.removeItem("vc.theme"); } catch { /* stockage indisponible */ }
 
   // ------------------------------------------------------------------ icônes (traits 1.6, 24×24)
   const P = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
@@ -181,11 +162,11 @@
   function windowStatus(it) {
     const { drink_from: f, drink_to: t, peak_from: pf, peak_to: pt } = it;
     if (!f && !t) return null;
-    if (t && year > t) return { key: "past", label: "Fenêtre dépassée", rank: 0 };
+    if (t && year > t) return { key: "past", label: "Dépassée", rank: 0 };
     if (t && year >= t - 1) return { key: "soon", label: "À boire vite", rank: 1 };
     if (pf && pt && year >= pf && year <= pt) return { key: "peak", label: "À l'apogée", rank: 2 };
-    if (f && year < f) return { key: "young", label: `Garder (dès ${f})`, rank: 4 };
-    return { key: "ready", label: "Prêt à boire", rank: 3 };
+    if (f && year < f) return { key: "young", label: "Trop jeune", from: f, rank: 4 };
+    return { key: "ready", label: "Prête", rank: 3 };
   }
 
   // Bouteille dessinée quand aucune image n'est disponible.
@@ -268,7 +249,7 @@
           ${DESKTOP.map((id) => NAV.find((n) => n.id === id)).map((n) => `<a href="${n.href}"${n.id === active ? ' aria-current="page"' : ""}>${n.id === "out" ? "Sortir une bouteille" : n.label}</a>`).join("")}
           <a href="/app/compte.html"${active === "account" ? ' aria-current="page"' : ""}>Compte</a>
           <a class="btn" href="/app/ajouter.html">${I.plus}Ajouter</a>
-        </nav><button class="icon-btn theme-toggle" data-theme-toggle type="button" aria-label="Changer de thème">◐</button><a class="me" href="/app/compte.html" aria-label="Mon compte">${I.user}</a></div>`;
+        </nav><a class="me" href="/app/compte.html" aria-label="Mon compte">${I.user}</a></div>`;
     }
     const tab = $("#tabbar");
     if (tab) {
@@ -278,7 +259,6 @@
         ? `<a class="tab-add" href="${n.href}"${n.id === active ? ' aria-current="page"' : ""}><span class="plus">${I.plus}</span><span class="sr">${n.label}</span></a>`
         : `<a href="${n.href}"${n.id === active ? ' aria-current="page"' : ""}>${I[n.icon]}<span>${n.label}</span></a>`).join("");
     }
-    applyTheme();
   }
 
   // ------------------------------------------------------------------ session
