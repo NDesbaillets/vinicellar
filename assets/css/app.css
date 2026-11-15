@@ -874,3 +874,11 @@ b.f-n { font-size: var(--fs-4); }
 .carnet-nav a { flex: 1 0 auto; display: grid; place-items: center; min-height: 40px; padding: 0 12px; border-radius: 6px; font: 500 var(--fs-2) var(--font-ui); color: var(--ink-2); text-decoration: none; white-space: nowrap; }
 .carnet-nav a[aria-current="page"] { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: var(--sh-1); }
 .bilan-h { font-size: var(--fs-4); margin: var(--s-5) 0 var(--s-3); }
+
+/* abeille de la marque (assets/js/bee.js) */
+.bee-layer { position: absolute; left: 0; top: -6px; overflow: visible; pointer-events: none; }
+.bee-spark { opacity: 0; }
+.bee-spark.pop { animation: bee-pop 1.4s ease-out forwards; }
+@keyframes bee-pop { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
+.bee-trail.fade { animation: bee-fade 1.6s ease-in 1.2s forwards; }
+@keyframes bee-fade { to { opacity: 0; } }
