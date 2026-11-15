@@ -1,5 +1,5 @@
-// Abeille de la marque : à l'ouverture, elle fait le tour du pied du verre, souligne « Vinicellar » d'un trait pointillé,
-// fait une boucle et se pose à droite du mot. Une fois par session ; au survol de la marque sur ordinateur, elle repart.
+// Abeille de la marque : à l'ouverture, elle entre par la droite du bandeau, le traverse en ondulant, fait le tour du pied
+// du verre, souligne « Vinicellar » d'un trait pointillé, fait une boucle et se pose à droite du mot. Une fois par session ; au survol de la marque sur ordinateur, elle repart.
 // Mouvements réduits : l'abeille est posée d'emblée, sans trajet.
 (function () {
   const NS = "http://www.w3.org/2000/svg";
@@ -10,29 +10,35 @@
   const seen = () => { try { return sessionStorage.getItem("vc.bee") === "1"; } catch { return false; } };
   const mark = () => { try { sessionStorage.setItem("vc.bee", "1"); } catch { /* stockage indisponible */ } };
   const el = (tag, attrs = {}, parent) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); parent && parent.append(n); return n; };
-  const ease = (t) => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const ease = (t) => -(Math.cos(Math.PI * t) - 1) / 2;   // départ et arrivée en douceur, sans long temps mort
 
   function attach(brand) {
     if (!brand || brand.dataset.bee) return;
     const glass = brand.querySelector("svg.logo"), word = brand.querySelector("span");
     if (!glass || !word) return;
     brand.dataset.bee = "1";
-    brand.style.position = "relative";
+    const bar = brand.closest(".topbar") || brand.parentElement;
+    if (getComputedStyle(bar).position === "static") bar.style.position = "relative";
     const layer = el("svg", { class: "bee-layer", "aria-hidden": "true" });
-    brand.append(layer);
+    bar.append(layer);
     let running = false;
 
     // Géométrie dans le repère de la marque.
     function geometry() {
-      const b = brand.getBoundingClientRect(), g = glass.getBoundingClientRect(), t = word.getBoundingClientRect();
+      const b = bar.getBoundingClientRect(), g = glass.getBoundingClientRect(), t = word.getBoundingClientRect();
       const G = { x: g.left - b.left, y: g.top - b.top, w: g.width, h: g.height };
       const T = { x: t.left - b.left, y: t.top - b.top, w: t.width, h: t.height };
       const s = Math.max(14, G.h * .62);                       // taille de l'abeille
       const rest = { x: T.x + T.w + s * .75, y: T.y + T.h * .2 };
       const cy = G.y + G.h * .7, cx = G.x + G.w / 2, rx = G.w * 1.25, ry = G.h * .16;
-      const base = T.y + T.h * .98;
+      const base = T.y + T.h * .98, W = b.width, H = b.height, top = Math.max(4, T.y - 4);
+      // Traversée du bandeau, de la droite vers le mot, en ondulant entre le haut et le bas de la barre.
+      const A = Math.min(W - 40, T.x + T.w + s * 2), span = W - A, mid = G.y + G.h / 2;
       const d = [
-        `M ${cx - rx - 10} ${cy - 6}`,
+        `M ${W - s * .4} ${mid - G.h * .15}`,
+        span > 60 ? `C ${A + span * .8} ${H - 6}, ${A + span * .55} ${top}, ${A + span * .4} ${mid}` : `L ${A + span * .4} ${mid}`,
+        span > 60 ? `S ${A + span * .05} ${H - 8}, ${A} ${mid - G.h * .2}` : `L ${A} ${mid - G.h * .2}`,
+        `C ${T.x + T.w * .6} ${top - 6}, ${T.x + T.w * .1} ${top - 2}, ${cx - rx - 10} ${cy - 6}`,         // par-dessus le mot, jusqu'au verre
         `C ${cx - rx - 2} ${cy + ry * 1.6}, ${cx + rx} ${cy + ry * 1.8}, ${cx + rx + 2} ${cy}`,                 // devant le pied du verre
         `C ${cx + rx + 4} ${cy - ry * 1.4}, ${cx - rx * .4} ${cy - ry * 1.6}, ${cx - rx * .2} ${cy - ry * .2}`,  // derrière, petite boucle
         `C ${cx} ${cy + ry * 2.2}, ${T.x + T.w * .1} ${base + 3}, ${T.x + T.w * .3} ${base + 2}`,               // vers le dessous du mot
@@ -40,7 +46,7 @@
         `C ${T.x + T.w + s * .9} ${base - 6}, ${T.x + T.w + s * .2} ${T.y + T.h * .45}, ${T.x + T.w + s * .25} ${T.y + T.h * .62}`,
         `C ${T.x + T.w + s * .35} ${T.y + T.h * .95}, ${T.x + T.w + s * 1.15} ${T.y + T.h * .6}, ${rest.x} ${rest.y}`, // boucle, puis posée
       ].join(" ");
-      return { G, T, s, rest, d, w: b.width, h: b.height };
+      return { G, T, s, rest, d, w: W, h: H };
     }
 
     function sparks(parent, x, y, k, rot = 0) {
@@ -58,8 +64,8 @@
     }
 
     function frame(geo) {
-      layer.setAttribute("width", Math.ceil(geo.w + geo.s * 2)); layer.setAttribute("height", Math.ceil(geo.h + 24));
-      layer.setAttribute("viewBox", `0 -6 ${Math.ceil(geo.w + geo.s * 2)} ${Math.ceil(geo.h + 24)}`);
+      layer.setAttribute("width", Math.ceil(geo.w)); layer.setAttribute("height", Math.ceil(geo.h));
+      layer.setAttribute("viewBox", `0 0 ${Math.ceil(geo.w)} ${Math.ceil(geo.h)}`);
       layer.innerHTML = "";
     }
 
@@ -77,10 +83,12 @@
       const reveal = el("path", { d: geo.d, fill: "none", stroke: "#fff", "stroke-width": 6, "stroke-linecap": "round" }, mask);
       const trail = el("path", { d: geo.d, fill: "none", stroke: INK, "stroke-width": 1.3, "stroke-dasharray": "3.5 3.5", "stroke-linecap": "round", opacity: .55, mask: `url(#${id})`, class: "bee-trail" }, layer);
       const L = trail.getTotalLength();
+      // Longueur parcourue quand l'abeille arrive au verre (pour les étincelles dorées).
+      const probe = el("path", { d: geo.d.split(" C ").slice(0, 4).join(" C "), fill: "none" }, defs), L0 = probe.getTotalLength() || L * .5;
       reveal.setAttribute("stroke-dasharray", `${L} ${L}`); reveal.setAttribute("stroke-dashoffset", L);
       const s1 = sparks(layer, geo.G.x + geo.G.w * .95, geo.G.y + 1, geo.s / 16, 0);
       const bee = beeNode(layer, geo.s);
-      const T = 3600, t0 = performance.now();
+      const T = Math.min(7000, 2400 + L * 7), t0 = performance.now();
       let last = trail.getPointAtLength(0), face = -1;
       function step(now) {
         const u = Math.min(1, (now - t0) / T), e = ease(u), p = trail.getPointAtLength(e * L);
@@ -91,7 +99,7 @@
         const bob = Math.sin(now / 70) * .8;
         bee.outer.setAttribute("transform", `translate(${p.x} ${p.y + bob})`);
         bee.inner.setAttribute("transform", `scale(${face > 0 ? -1 : 1} 1) rotate(${face > 0 ? -tilt : tilt})`);
-        s1.style.opacity = u > .2 && u < .42 ? String(Math.sin((u - .2) / .22 * Math.PI)) : "0";
+        const k = e * L / L0; s1.style.opacity = k > .9 && k < 1.12 ? String(Math.sin((k - .9) / .22 * Math.PI)) : "0";
         last = p;
         if (u < 1) return requestAnimationFrame(step);
         // Posée : face au mot, deux étincelles, puis le trait s'efface.
@@ -108,7 +116,7 @@
     if (reduce() || seen()) still(); else { mark(); document.fonts ? document.fonts.ready.then(() => setTimeout(start, 250)) : setTimeout(start, 400); }
     brand.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse" && !reduce()) fly(); });
     // Le mot change de largeur quand la police manuscrite arrive : l'abeille posée suit.
-    if ("ResizeObserver" in window) new ResizeObserver(() => { if (!running) still(); }).observe(word);
+    if ("ResizeObserver" in window) { const ro = new ResizeObserver(() => { if (!running) still(); }); ro.observe(word); ro.observe(bar); }
     else addEventListener("resize", () => { if (!running) still(); });
   }
 
