@@ -43,7 +43,7 @@
     document.querySelectorAll(".stars-slot").forEach((s) => s.dataset.r && s.append(stars(+s.dataset.r, null, { read: true })));
   }
 
-  main.innerHTML = `<div class="page-head"><div><span class="eyebrow">Vins passés par la cave</span><h1>Carnet</h1></div></div>${VC.carnetNav("historique")}
+  main.innerHTML = `<div class="page-head"><div><span class="eyebrow">Carnet</span><h1>Vins passés</h1></div></div>${VC.carnetNav("historique")}
     <p class="muted">${past.length} vin${past.length > 1 ? "s" : ""} sans bouteille en stock. « Racheter » les ajoute à votre liste d'envies.</p>
     <div class="toolbar" style="grid-template-columns:1fr"><label class="search"><span class="sr">Rechercher</span>${I.search}<input type="search" id="q" placeholder="Domaine, cuvée, cépage…"></label></div>
     <div class="list" id="list"></div>`;

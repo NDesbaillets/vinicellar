@@ -25,10 +25,11 @@ function setup({ role = 'owner', storedTheme = null } = {}) {
     addEventListener: (type, fn) => { handlers[type] = fn; }
   };
   const window = { VC_CONFIG: { supabaseUrl: 'https://example.test' }, supabase: { createClient: () => sb }, addEventListener() {}, matchMedia: () => ({ matches: false }) };
-  const localStorage = { getItem: () => storedTheme, setItem() {} };
+  const removed = [];
+  const localStorage = { getItem: (k) => (k === 'vc.theme' ? storedTheme : null), setItem() {}, removeItem: (k) => removed.push(k) };
   const context = { window, document, navigator: { userAgent: '' }, location: { hash: '', pathname: '/app/', protocol: 'https:', hostname: 'example.test' }, localStorage, matchMedia: window.matchMedia, Date: class extends Date { static now() { return now; } }, URL, setTimeout, clearTimeout, crypto: require('node:crypto').webcrypto };
   vm.runInNewContext(source, context);
-  return { VC: window.VC, document, handlers, requests, advance: ms => { now += ms; } };
+  return { VC: window.VC, document, handlers, requests, removed, advance: ms => { now += ms; } };
 }
 
 test('images signées : déduplication, expiration et séparation des buckets', async () => {
@@ -76,10 +77,20 @@ test('owner et member conservent l’édition ; viewer et collection inconnue re
   }
 });
 
-test('préférence de thème valide appliquée ; valeur inconnue ramenée au système', () => {
-  assert.equal(setup({ storedTheme: 'dark' }).document.documentElement.dataset.theme, 'dark');
-  assert.equal(setup({ storedTheme: 'light' }).document.documentElement.dataset.theme, 'light');
-  assert.equal(setup({ storedTheme: 'invalid' }).document.documentElement.dataset.theme, undefined);
+test('mode sombre retiré : aucune préférence de thème appliquée, ancienne valeur effacée', () => {
+  const { document, removed } = setup({ storedTheme: 'dark' });
+  assert.equal(document.documentElement.dataset.theme, undefined);
+  assert.ok(removed.includes('vc.theme'));
+});
+
+test('tableau de la fiche : choix par défaut, choix du compte, lignes inconnues ignorées', () => {
+  const { VC } = setup();
+  assert.deepEqual([...VC.ficheRows(null)], ['region', 'grapes', 'garde', 'service', 'volume', 'provenance']);
+  assert.deepEqual([...VC.ficheRows({ fiche_rows: ['garde', 'nimporte', 'region'] })], ['garde', 'region']);
+  const it = { appellation: 'Dézaley Grand Cru', region: 'Lavaux', country: 'Suisse', provenance: 'gift', received_from: 'Viviane', received_occasion: 'anniversaire' };
+  assert.equal(VC.FICHE_ROWS.provenance.v(it), 'Reçu de Viviane, anniversaire');
+  assert.match(VC.flag(it), /aria-label="Suisse"/);
+  assert.equal(VC.flag({ country: '' }), '');
 });
 
 test('Studio : URL candidates et approuvées isolées, courtes et renouvelées',async()=>{

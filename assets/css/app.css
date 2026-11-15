@@ -76,14 +76,15 @@ small, .muted { color: var(--ink-2); }
 
 .tabbar {
   position: fixed; inset: auto 0 0 0; z-index: 30; height: calc(var(--tab-h) + env(safe-area-inset-bottom));
-  padding-bottom: env(safe-area-inset-bottom); display: grid; grid-template-columns: repeat(5, 1fr);
+  padding-bottom: env(safe-area-inset-bottom); display: grid; grid-template-columns: repeat(4, 1fr);
   background: color-mix(in srgb, var(--card) 92%, transparent); backdrop-filter: blur(14px); border-top: 1px solid var(--line);
 }
 .tabbar a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; text-decoration: none; color: var(--ink-3); font-size: var(--fs-1); font-weight: 500; }
 .tabbar a svg { width: 23px; height: 23px; }
 .tabbar a[aria-current="page"] { color: var(--wine); }
-.tabbar .tab-add span.plus { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; background: var(--wine); color: #fff; box-shadow: var(--sh-1); margin-top: -18px; }
-.tabbar .tab-add span.plus svg { width: 24px; height: 24px; }
+.tabbar .tab-add span.plus { width: 44px; height: 28px; border-radius: var(--r-pill); display: grid; place-items: center; background: var(--wine); color: #fff; }
+.tabbar .tab-add span.plus svg { width: 20px; height: 20px; }
+.tabbar .tab-add { color: var(--wine); }
 @media (min-width: 860px) { .tabbar { display: none; } }
 body.app { padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom) + 24px); }
 @media (min-width: 860px) { body.app { padding-bottom: 48px; } }
@@ -867,3 +868,9 @@ b.f-n { font-size: var(--fs-4); }
 .c-row .flag { width: 14px; height: 14px; top: 4px; left: 4px; }
 .c-row-b { display: grid; gap: 3px; min-width: 0; }
 .c-row h3 { font-size: var(--fs-4); line-height: 1.1; -webkit-line-clamp: 1; }
+
+/* ================================================================ navigation et Carnet (refonte, lot 4) */
+.carnet-nav { margin: var(--s-4) 0 var(--s-2); }
+.carnet-nav a { flex: 1 0 auto; display: grid; place-items: center; min-height: 40px; padding: 0 12px; border-radius: 6px; font: 500 var(--fs-2) var(--font-ui); color: var(--ink-2); text-decoration: none; white-space: nowrap; }
+.carnet-nav a[aria-current="page"] { background: var(--card); color: var(--ink); font-weight: 600; box-shadow: var(--sh-1); }
+.bilan-h { font-size: var(--fs-4); margin: var(--s-5) 0 var(--s-3); }

@@ -42,7 +42,7 @@
   function draw() {
     const l = list();
     const mine = entries.filter((e) => e.wishlist_id === current);
-    main.innerHTML = `<div class="page-head"><div><span class="eyebrow">Vins à acheter</span><h1>Carnet</h1></div></div>${VC.carnetNav("envies")}
+    main.innerHTML = `<div class="page-head"><div><span class="eyebrow">Carnet</span><h1>Envies</h1></div></div>${VC.carnetNav("envies")}
       <div class="chips" id="lists">${lists.map((x) => `<button class="chip" data-l="${x.id}" aria-pressed="${x.id === current}">${esc(listLabel(x))}<span class="n">${entries.filter((e) => e.wishlist_id === x.id).length}</span></button>`).join("")}
         <button class="chip" data-new>${I.plus.replace("<svg", '<svg width="14" height="14" style="vertical-align:-2px"')} Nouvelle liste</button></div>
       ${l ? `<div class="row" style="margin:6px 0 14px"><h2 style="margin:0">${esc(l.name)}</h2><span class="spacer"></span>

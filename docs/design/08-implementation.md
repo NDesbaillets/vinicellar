@@ -81,3 +81,20 @@ Branche `refonte`, publiée sur `main` après validation.
 - Sortir depuis une carte, ouverture de la fiche et retour ;
 - redirection de `cave.html`, recherche et filtres ;
 - tous les tests du lot 2 repassés ; aucune erreur.
+
+## Lot 4 · Navigation (15.11.2026)
+
+**Barre du bas**, 4 onglets : Cave · Sommelier · Ajouter · Carnet.
+- L'onglet Sortir disparaît : « Sortir par photo » part de la Cave, et la page Sortir s'y rattache.
+- Ajouter est une pastille bordeaux avec son libellé.
+- Sur ordinateur, l'en-tête montre Cave · Sommelier · Carnet · Compte · Ajouter.
+
+**Carnet** : un sélecteur en haut de chaque section, dans l'ordre Dégustations · Vins passés · Envies · Bilan. Chaque section a son propre titre.
+
+**Bilan** : nouveau bloc « En cave aujourd'hui » (bouteilles, à déguster maintenant, valeur estimée), repris de l'ancien accueil.
+
+**Studio retiré** : `app/studio.html` (qui redirige maintenant vers l'accueil), `studio.js`, `studio-page.js`, son test et sa documentation. Les appels restants sont protégés (`VC.Studio?.`) et ne font rien.
+
+**Tests** :
+- `tests/core.test.cjs` : test du thème remplacé par celui du mode sombre retiré, ajout d'un test du tableau de la fiche et du drapeau. 7 sur 7.
+- Navigation testée sur iPhone 13 simulé et sur ordinateur : onglet actif sur chaque page, les quatre sections du Carnet, redirections. Aucune erreur.

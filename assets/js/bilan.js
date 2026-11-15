@@ -40,6 +40,18 @@
   }
   const topList = (title, arr) => `<div class="card"><h3>${title}</h3>${arr.length ? `<ol class="rank">${arr.map(([k, n]) => `<li><span>${esc(k)}</span><b>${n}</b></li>`).join("")}</ol>` : `<p class="muted" style="margin:0">Pas encore de données.</p>`}</div>`;
 
+  // En cave aujourd'hui : bouteilles, à déguster maintenant, valeur estimée (déplacé ici depuis l'accueil de la cave).
+  let cellarNow = "";
+  async function loadCellar() {
+    const { data } = await sb.from("stock").select("quantity, items(market_price, market_currency, drink_from, drink_to, peak_from, peak_to, category)").gt("quantity", 0);
+    const list = data || [];
+    const n = list.reduce((a, r) => a + r.quantity, 0);
+    const ready = list.filter((r) => { const w = r.items && VC.windowStatus(r.items); return w && w.rank <= 3; }).reduce((a, r) => a + r.quantity, 0);
+    const value = list.reduce((a, r) => a + (r.items && r.items.market_price && (r.items.market_currency || "CHF") === cur ? r.items.market_price * r.quantity : 0), 0);
+    cellarNow = `<div class="stat"><b>${n}</b><span>bouteille${n > 1 ? "s" : ""} en cave</span></div><div class="stat"><b>${ready}</b><span>à déguster maintenant</span></div><div class="stat"><b>${value ? money(Math.round(value), cur) : "—"}</b><span>valeur estimée${value ? "" : " non renseignée"}</span></div>`;
+    if ($("#cellar-now")) $("#cellar-now").innerHTML = cellarNow;
+  }
+
   function draw() {
     const from = start();
     const inP = (rows || []).filter((r) => r.tasted_on >= from);
@@ -53,7 +65,9 @@
     const max = Math.max(1, ...ms.map((m) => m.n));
     const peak = ms.reduce((a, m) => (m.n > a.n ? m : a), ms[0]);
 
-    main.innerHTML = `<div class="page-head"><div><span class="eyebrow">Consommation</span><h1>Carnet</h1></div></div>${VC.carnetNav("bilan")}
+    main.innerHTML = `<div class="page-head"><div><span class="eyebrow">Carnet</span><h1>Bilan</h1></div></div>${VC.carnetNav("bilan")}
+      <h2 class="bilan-h">En cave aujourd'hui</h2><div class="stats" id="cellar-now"><div class="stat"><b>…</b><span>bouteilles en cave</span></div></div>
+      <h2 class="bilan-h">Consommation</h2>
       <div class="chips" id="period">${Object.entries(PERIODS).map(([k, l]) => `<button class="chip" data-p="${k}" aria-pressed="${k === period}">${l}</button>`).join("")}</div>
       <div class="stats">
         <div class="stat"><b>${drunk.length}</b><span>bouteille${drunk.length > 1 ? "s" : ""} bue${drunk.length > 1 ? "s" : ""}</span></div>
@@ -82,6 +96,7 @@
         ${topList("Les plus bus", top(drunk, (r) => [r.items?.producer, r.items?.name, r.items?.vintage].filter(Boolean).join(" · "), 5))}
         ${topList("Offertes à", top(gifted, (r) => r.recipient, 5))}
       </div>`;
+    if (cellarNow) $("#cellar-now").innerHTML = cellarNow;
   }
 
   main.addEventListener("click", (e) => { const b = e.target.closest("[data-p]"); if (b) { period = b.dataset.p; draw(); } });
@@ -98,4 +113,5 @@
   main.addEventListener("focusin", show);
   main.addEventListener("pointerleave", () => { const t = $("#tip"); if (t) t.hidden = true; });
   draw();
+  loadCellar();
 })();

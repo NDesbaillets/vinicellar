@@ -252,23 +252,23 @@
 
   // ------------------------------------------------------------------ navigation
   const NAV = [
-    { id: "cellar", href: "/app/", label: "Caves", icon: "cellar" },
+    { id: "cellar", href: "/app/", label: "Cave", icon: "cellar" },
     { id: "sommelier", href: "/app/sommelier.html", label: "Sommelier", icon: "plate" },
     { id: "add", href: "/app/ajouter.html", label: "Ajouter", icon: "plus" },
-    { id: "out", href: "/app/sortir.html", label: "Sortir", icon: "glass" },
     { id: "carnet", href: "/app/journal.html", label: "Carnet", icon: "journal" }
   ];
-  const DESKTOP = ["cellar", "sommelier", "carnet", "out"];
-  // Sous-navigation du carnet : journal, bilan, historique, envies.
-  const CARNET = [["journal", "/app/journal.html", "Journal"], ["bilan", "/app/bilan.html", "Bilan"], ["historique", "/app/historique.html", "Historique"], ["envies", "/app/envies.html", "Envies"]];
-  const carnetNav = (active) => `<nav class="chips subnav" aria-label="Carnet">${CARNET.map(([id, href, l]) => `<a class="chip" href="${href}" aria-pressed="${id === active}"${id === active ? ' aria-current="page"' : ""}>${l}</a>`).join("")}</nav>`;
+  // Navigation (refonte, lot 4) : Cave · Sommelier · Ajouter · Carnet ; le Compte en haut à droite. « Sortir par photo » part de la Cave.
+  const DESKTOP = ["cellar", "sommelier", "carnet"];
+  // Sections du Carnet, dans un sélecteur en haut de chaque page.
+  const CARNET = [["journal", "/app/journal.html", "Dégustations"], ["historique", "/app/historique.html", "Vins passés"], ["envies", "/app/envies.html", "Envies"], ["bilan", "/app/bilan.html", "Bilan"]];
+  const carnetNav = (active) => `<nav class="seg carnet-nav" aria-label="Sections du Carnet">${CARNET.map(([id, href, l]) => `<a href="${href}"${id === active ? ' aria-current="page"' : ""}>${l}</a>`).join("")}</nav>`;
   function renderNav(active) {
     const top = $("#topbar");
     if (top) {
       top.className = "topbar";
       top.innerHTML = `<div class="wrap"><a class="brand" href="/app/">${I.logo}<span>Vinicellar</span></a>
         <nav class="nav" aria-label="Navigation principale">
-          ${DESKTOP.map((id) => NAV.find((n) => n.id === id)).map((n) => `<a href="${n.href}"${n.id === active ? ' aria-current="page"' : ""}>${n.id === "out" ? "Sortir une bouteille" : n.label}</a>`).join("")}
+          ${DESKTOP.map((id) => NAV.find((n) => n.id === id)).map((n) => `<a href="${n.href}"${n.id === active ? ' aria-current="page"' : ""}>${n.label}</a>`).join("")}
           <a href="/app/compte.html"${active === "account" ? ' aria-current="page"' : ""}>Compte</a>
           <a class="btn" href="/app/ajouter.html">${I.plus}Ajouter</a>
         </nav><a class="me" href="/app/compte.html" aria-label="Mon compte">${I.user}</a></div>`;
@@ -278,7 +278,7 @@
       tab.className = "tabbar";
       tab.setAttribute("aria-label", "Navigation");
       tab.innerHTML = NAV.map((n) => n.id === "add"
-        ? `<a class="tab-add" href="${n.href}"${n.id === active ? ' aria-current="page"' : ""}><span class="plus">${I.plus}</span><span class="sr">${n.label}</span></a>`
+        ? `<a class="tab-add" href="${n.href}"${n.id === active ? ' aria-current="page"' : ""}><span class="plus">${I.plus}</span><span>${n.label}</span></a>`
         : `<a href="${n.href}"${n.id === active ? ' aria-current="page"' : ""}>${I[n.icon]}<span>${n.label}</span></a>`).join("");
     }
   }

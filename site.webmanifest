@@ -19,7 +19,7 @@
   ],
   "shortcuts": [
     { "name": "Ajouter une bouteille", "short_name": "Ajouter", "url": "/app/ajouter.html", "icons": [{ "src": "/assets/img/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Sortir une bouteille", "short_name": "Sortir", "url": "/app/sortir.html", "icons": [{ "src": "/assets/img/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Que boire ce soir ?", "short_name": "Sommelier", "url": "/app/sommelier.html", "icons": [{ "src": "/assets/img/icon-192.png", "sizes": "192x192" }] }
+    { "name": "Sortir par photo", "short_name": "Sortir", "url": "/app/sortir.html", "icons": [{ "src": "/assets/img/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Sommelier", "short_name": "Sommelier", "url": "/app/sommelier.html", "icons": [{ "src": "/assets/img/icon-192.png", "sizes": "192x192" }] }
   ]
 }

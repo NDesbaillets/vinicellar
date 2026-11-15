@@ -3,7 +3,7 @@
 (async function () {
   const VC = window.VC;
   const { sb, $, esc, I, bottleSvg, signed, mainImagePath, windowStatus, toast } = VC;
-  await VC.boot("out");
+  await VC.boot("cellar");
   const main = $("#main");
   let loc = new URLSearchParams(location.search).get("loc") || VC.getLoc() || "all";
   if (loc === "all") loc = "";

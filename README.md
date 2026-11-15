@@ -78,7 +78,7 @@ Les pages chargent CSS et JS avec `?v=20261105-lavaux`. Après modification, cha
 
 La modernisation conserve HTML/CSS/JavaScript natifs, les tables existantes et les permissions par collection. Aucune migration ou modification de fonction Supabase n'est incluse.
 
-- Direction photographique et éditoriale : panorama authentique de Lavaux dans la cave connectée, indicateurs discrets, onglets de catégories et bouteilles sans cartes fermées. Palette Terroir contemporain ; Fraunces et Inter conservées. Thème système/clair/sombre mémorisé sur l'appareil.
+- Direction photographique et éditoriale : panorama authentique de Lavaux dans la cave connectée, indicateurs discrets, onglets de catégories et bouteilles sans cartes fermées. Palette Terroir contemporain ; Fraunces et Inter conservées. Le mode sombre a été retiré lors de la refonte de novembre 2026.
 - Catalogue photographique : deux colonnes sur mobile, trois à cinq sur écran large ; vue liste compacte mémorisée. Les filtres, tris, liens de fiche et sorties rapides restent disponibles.
 - Les étiquettes et photos restent identifiées comme telles. Le CSS ne transforme pas un fond opaque en transparence et ne crée aucune bouteille Studio.
 - Photographie authentique du Lavaux : attribution visible et détails dans [credits.html](credits.html) et [CREDITS.md](assets/img/lavaux/CREDITS.md).
@@ -97,10 +97,12 @@ Ouvrir `/review/compare.html` ou `/review/mobile.html` sur ce serveur. Les sourc
 
 Résultats, limites de vérification et captures : [docs/phase-a-review.md](docs/phase-a-review.md).
 
-L’activation de Studio, l’application de ses migrations, les fournisseurs d’image et toute mise en production requièrent une autorisation distincte.
+## Refonte de l'interface (novembre 2026)
 
-## Studio Vinicellar · phase B
+Démarche, décisions et maquettes : [docs/design/](docs/design/) ; journal des lots : [docs/design/08-implementation.md](docs/design/08-implementation.md).
 
-Implémentation sur `feat/vinicellar-studio`, désactivée par défaut (`studioEnabled:false`). Deux sorties indépendantes, moteur photographique local, candidats privés et activation après approbation explicite. Aucun service IA payant. La proposition SQL n'est pas appliquée ; aucune activation ou mise en production n'est incluse.
+- Navigation à 4 onglets : Cave (accueil), Sommelier, Ajouter, Carnet (Dégustations · Vins passés · Envies · Bilan) ; le Compte en haut à droite.
+- Clair uniquement ; jetons de couleur, de typographie, d'espacement, de rayon et d'ombre en tête de `assets/css/app.css`.
+- Studio est retiré de l'interface. Les sources des fonctions `supabase/functions/studio-start` et `studio-review` restent dans le dépôt, non utilisées.
 
-Architecture, limites, tests, prérequis et procédure d'activation soumise à autorisation : [docs/studio-review.md](docs/studio-review.md). Pour l'aperçu actuel, installer les dépendances du worker puis lancer `python3 scripts/preview-ui.py` ; les images de QA sont calculées localement à partir de fixtures synthétiques. Les pages de l'app utilisent le suffixe de cache `20261105-studio`.
+Tests : `node --test tests/core.test.cjs`.
