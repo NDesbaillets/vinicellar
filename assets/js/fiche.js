@@ -11,6 +11,27 @@
 
   let it, places, stock, tastings, getUrl;
 
+  // Retour : vers la page d'où l'on vient (Carnet, Sommelier, Sortir), sinon vers la Cave. Mémorisé par fiche pour
+  // survivre à un rechargement ; un retour par l'historique garde la position et les filtres de la page d'origine.
+  const ORIGINS = { "/app/journal.html": "Dégustations", "/app/historique.html": "Vins passés", "/app/envies.html": "Envies", "/app/bilan.html": "Bilan",
+    "/app/sommelier.html": "Sommelier", "/app/sortir.html": "Sortir" };
+  const back = (() => {
+    const key = "vc.back." + id, cave = { href: `/app/?loc=${encodeURIComponent(VC.getLoc() || "all")}`, label: "Cave" };
+    let ref = null;
+    try { const r = new URL(document.referrer); if (r.origin === location.origin) ref = r; } catch { /* pas de page d'origine */ }
+    try {
+      if (ref && ORIGINS[ref.pathname]) { const b = { href: ref.pathname + ref.search, label: ORIGINS[ref.pathname], history: true }; sessionStorage.setItem(key, JSON.stringify(b)); return b; }
+      if (ref && (ref.pathname === "/app/" || ref.pathname === "/app/index.html")) { sessionStorage.removeItem(key); return cave; }
+      const saved = JSON.parse(sessionStorage.getItem(key) || "null");
+      if (saved && ORIGINS[saved.href.split("?")[0]]) return { ...saved, history: false };
+    } catch { /* stockage indisponible */ }
+    return cave;
+  })();
+  main.addEventListener("click", (e) => {
+    const a = e.target.closest(".f-back");
+    if (a && back.history && history.length > 1) { e.preventDefault(); history.back(); }
+  });
+
   async function load() {
     const [a, b, c, d] = await Promise.all([
       sb.from("items").select("*").eq("id", id).single(),
@@ -221,7 +242,7 @@
     const origin = [VC.regionOf(it) || it.region, VC.countryOf(it)].filter(Boolean).join(" · ");
     const r = it.my_rating;
     main.innerHTML = `<div class="f-page">
-      <div class="f-top"><a class="f-back" href="/app/?loc=${encodeURIComponent(VC.getLoc() || "all")}">${I.back}Cave</a><a class="me" href="/app/compte.html" aria-label="Mon compte">${I.user}</a></div>
+      <div class="f-top"><a class="f-back" href="${esc(back.href)}">${I.back}${back.label}</a><a class="me" href="/app/compte.html" aria-label="Mon compte">${I.user}</a></div>
       <header class="card f-head">${headThumb()}
         <div class="f-who"><span class="f-kind">${esc([it.producer, kind].filter(Boolean).join(" · "))}</span>
           <h1>${esc(it.name)}</h1>${it.vintage ? `<span class="f-vintage">${it.vintage}</span>` : ""}
