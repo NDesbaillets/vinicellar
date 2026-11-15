@@ -1,10 +1,11 @@
-// Fiche d'une bouteille : visuel, stock par lieu, « j'ouvre une bouteille », garde, description, accords,
-// notes, prix, dégustations, mise à jour par l'IA, modification et suppression.
+// Fiche d'une bouteille (refonte, F1 compactée) : en-tête façon fiche de cave, stock par cave, tableau choisi dans le Compte,
+// frise de garde, dernières dégustations, puis la fiche complète dépliée sur place. Photos et aperçu : dans une feuille.
 (async function () {
   const VC = window.VC;
-  const { sb, $, $$, esc, I, CATEGORY, STYLE, KIND, money, date, today, year, range, safeUrl, host, windowStatus, bottleSvg, signed, stars, toast, fail } = VC;
+  const { sb, $, $$, esc, I, CATEGORY, STYLE, KIND, money, date, today, year, range, safeUrl, host, windowStatus, bottleSvg, signed, stars, toast, fail, flag } = VC;
   const ctx = await VC.boot("cellar");
   const main = $("#main");
+  document.body.classList.add("is-fiche");
   const id = new URLSearchParams(location.search).get("id");
   if (!id) return location.replace("/app/");
 
@@ -112,20 +113,18 @@
     };
   }
 
+  // En cave : total et « Sortir » sur une ligne, puis une ligne par cave (une seule si le vin n'est que dans une cave).
   function stockCard() {
-    const rows = stock.filter((s) => s.quantity > 0 || places.some((p) => p.id === s.location_id));
-    const n = total();
-    return `<div class="card"><div class="row"><h3 style="margin:0">En cave</h3><span class="spacer"></span><span class="tag ${n ? "qty" : "zero"}">${n} bouteille${n > 1 ? "s" : ""}</span></div>
-      <ul class="stock-list" style="margin-top:12px">${rows.length ? rows.map((s) => {
-        const p = places.find((x) => x.id === s.location_id) || {};
-        return `<li><div class="where"><b>${esc(p.name || "Lieu supprimé")}</b><small>${esc([KIND[p.kind], s.bin && "Emplacement " + s.bin].filter(Boolean).join(" · "))}</small></div>
-          ${ro() ? `<output style="font-weight:700">${s.quantity}</output>` : `<div class="stepper"><button class="icon-btn" data-adj="-1" data-loc="${s.location_id}" aria-label="Retirer une bouteille (correction)">−</button>
-          <output>${s.quantity}</output><button class="icon-btn" data-adj="1" data-loc="${s.location_id}" aria-label="Ajouter une bouteille">+</button></div>`}</li>`;
-      }).join("") : `<li><span class="muted">Plus aucune bouteille en cave.</span></li>`}</ul>
-      ${ro() ? `<p class="muted" style="margin:12px 0 0">Cave partagée en lecture seule.</p>` : `<div style="display:grid;gap:8px;margin-top:14px">
-        <button class="btn big block" id="drink"${n ? "" : " disabled"}>${I.glass}Sortir une bouteille</button>
-        <div class="row"><button class="btn quiet" id="add-stock">${I.plus}Ajouter des bouteilles</button>${withStock().length && places.length > 1 ? `<button class="btn quiet" id="move">${I.move}Déplacer</button>` : ""}<button class="btn quiet" id="wish">${I.plus}Liste d'envies</button></div>
-      </div>`}</div>`;
+    const n = total(), rows = withStock();
+    if (!n) return `<section class="f-stock card"><div class="f-stock-top"><b class="f-n">Plus en cave</b>${ro() ? "" : `<button class="btn ghost" id="add-stock">${I.plus}Remettre des bouteilles</button>`}</div>
+      ${ro() ? "" : `<div class="f-links"><button class="btn quiet" id="wish">${I.plus}Ajouter aux envies</button></div>`}</section>`;
+    const line = (s) => { const p = places.find((x) => x.id === s.location_id) || {};
+      return `<div class="f-cave"><span><b>${esc(p.name || "Lieu supprimé")}</b>${s.bin ? `<small>${esc(s.bin)}</small>` : ""}</span>
+        ${ro() ? `<output>${s.quantity}</output>` : `<button class="step" data-adj="-1" data-loc="${s.location_id}" aria-label="Retirer une bouteille, ${esc(p.name || "")} (correction sans trace)"${s.quantity ? "" : " disabled"}>−</button><output>${s.quantity}</output><button class="step" data-adj="1" data-loc="${s.location_id}" aria-label="Ajouter une bouteille, ${esc(p.name || "")}">+</button>`}</div>`; };
+    return `<section class="f-stock card" aria-label="En cave">
+      <div class="f-stock-top"><span class="f-n"><b>${n}</b> en cave</span>${ro() ? "" : `<button class="btn" id="drink">${I.glass}Sortir une bouteille</button>`}</div>
+      ${rows.map(line).join("")}
+      ${ro() ? `<p class="faint f-ro">Cave partagée en lecture seule.</p>` : `<div class="f-links"><button class="btn quiet" id="add-stock">${I.plus}Autre cave</button>${places.length > 1 ? `<button class="btn quiet" id="move">${I.move}Déplacer</button>` : ""}<button class="btn quiet" id="wish">${I.plus}Envies</button></div>`}</section>`;
   }
 
   function scoreText() {
@@ -134,142 +133,153 @@
     return it.avg_score_scale ? `${s}/${it.avg_score_scale}` : s;
   }
 
-  function facts() {
-    const f = [];
-    const add = (k, v, small) => v && f.push(`<div class="fact"><dt>${k}</dt><dd>${v}${small ? `<small>${small}</small>` : ""}</dd></div>`);
-    if (VC.isWine(it)) add("Cépages", esc((it.grapes || []).join(", ")));
-    add("Degré", it.abv ? `${String(it.abv).replace(".", ",")} % vol.` : "");
-    add("Contenance", it.volume_cl ? `${it.volume_cl} cl` : "");
-    add("Service", it.serving_temp_min || it.serving_temp_max ? range(it.serving_temp_min, it.serving_temp_max, " °C") : "");
-    add("Note moyenne", esc(scoreText()), esc(it.avg_score_source || ""));
-    add("Prix du marché", it.market_price ? money(it.market_price, it.market_currency) : "", esc(it.price_source || ""));
-    add("Prix d'achat", it.purchase_price ? money(it.purchase_price, it.purchase_currency) : "", esc([it.purchase_year, it.purchase_place].filter(Boolean).join(" · ")));
-    if (it.purchase_price && it.market_price && it.purchase_currency === it.market_currency) {
-      const d = Math.round((it.market_price / it.purchase_price - 1) * 100);
-      add("Plus-value", `${d > 0 ? "+" : ""}${d} %`);
-    }
-    return f.length ? `<dl class="facts">${f.join("")}</dl>` : "";
+  // Tableau des informations essentielles : les lignes choisies dans le Compte, sans les lignes vides.
+  function table() {
+    const rows = VC.ficheRows(ctx.profile).map((k) => [VC.FICHE_ROWS[k].label, VC.FICHE_ROWS[k].v(it, { stock })]).filter(([, v]) => v !== "" && v != null);
+    return rows.length ? `<section class="card f-table"><dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl></section>` : "";
   }
 
-  function ageing() {
+  // Frise de garde à l'échelle : buvable, apogée, année en cours.
+  function garde() {
     if (!VC.isWine(it)) return "";
     const { vintage: v, drink_from: df, drink_to: dt, peak_from: pf, peak_to: pt, aging_potential_years: ap } = it;
-    if (!df && !dt && !pf && !ap) return "";
+    const to = dt || (v && ap ? v + ap : null);
+    if (!df && !to && !pf) return "";
     const w = windowStatus(it);
-    const parts = [];
-    if (v) parts.push(`Garde actuelle <b>${Math.max(0, year - v)} an${year - v > 1 ? "s" : ""}</b>`);
-    if (ap) parts.push(`Garde recommandée <b>${ap} ans</b>${v ? ` (jusqu'en ${v + ap})` : ""}`);
-    if (pf || pt) parts.push(`Apogée <b>${range(pf, pt)}</b>`);
-    if (df || dt) parts.push(`Fenêtre idéale <b>${range(df, dt)}</b>`);
-    const start = Math.min(...[v, df, pf, year].filter(Boolean)) ;
-    const end = Math.max(...[dt, pt, v && ap ? v + ap : null, year + 1].filter(Boolean)) + 1;
-    return `<div class="card ageing"><div class="row" style="margin-bottom:10px"><h3 style="margin:0">${I.clock.replace("<svg", '<svg width="18" height="18" style="vertical-align:-3px;margin-right:6px"')}Garde</h3><span class="spacer"></span>${w ? `<span class="tag ${w.key}">${w.label}</span>` : ""}</div>
-      <div class="ageing-line">${parts.map((p) => `<span>${p}</span>`).join("")}</div>
-      <div class="timeline" data-start="${start}" data-end="${end}"><div class="track"></div>${df || dt ? `<div class="win" data-a="${df || start}" data-b="${dt || end}"></div>` : ""}${pf ? `<div class="peak" data-a="${pf}" data-b="${pt || pf + 1}"></div>` : ""}<div class="now" data-a="${year + .5}"></div></div>
-      <div class="timeline-scale"><span>${start}</span><span>${end}</span></div>
-      <div class="legend"><span><i style="background:color-mix(in srgb, var(--ok) 55%, transparent)"></i>Fenêtre idéale</span><span><i style="background:var(--wine)"></i>Apogée</span>${it.window_source ? `<span class="faint">Source : ${esc(it.window_source)}</span>` : ""}</div></div>`;
+    const a = Math.min(...[df, pf, year].filter(Boolean)) - 1, b = Math.max(...[to, pt, year + 1].filter(Boolean)) + 1, span = Math.max(1, b - a);
+    const pc = (x) => `${(((x - a) / span) * 100).toFixed(1)}%`;
+    const bar = (x0, x1, cls) => `<span class="${cls}" style="left:${pc(x0)};width:calc(${pc(x1)} - ${pc(x0)})"></span>`;
+    const mid = Math.round((a + b) / 2);
+    const label = [df || to ? `buvable ${range(df || a + 1, to || b - 1)}` : "", pf ? `apogée ${range(pf, pt)}` : "", `nous sommes en ${year}`].filter(Boolean).join(", ");
+    return `<section class="card f-garde"><div class="f-sec-h"><h2 class="eyebrow">Garde</h2>${w ? `<span class="tag ${w.key}">${w.label}</span>` : ""}</div>
+      <div class="tl" role="img" aria-label="Garde : ${label}"><div class="tl-bar">${df || to ? bar(df || a + .5, (to || b - .5) + 1, "tl-drink") : ""}${pf ? bar(pf, (pt || pf) + 1, "tl-peak") : ""}<span class="tl-now" style="left:${pc(year + .5)}"></span></div>
+      <div class="tl-ax"><span>${a}</span><span>${mid}</span><span>${b}</span></div></div>
+      <div class="tl-legend">${df || to ? `<span><i class="k-drink"></i>Buvable ${range(df, to)}</span>` : ""}${pf ? `<span><i class="k-peak"></i>Apogée ${range(pf, pt)}</span>` : ""}${it.window_source ? `<span class="faint">Source : ${esc(it.window_source)}</span>` : ""}</div></section>`;
   }
 
-  function placeTimeline() {
-    const tl = $(".timeline");
-    if (!tl) return;
-    const s = +tl.dataset.start, e = +tl.dataset.end, span = Math.max(1, e - s);
-    const pct = (x) => `${Math.min(100, Math.max(0, ((x - s) / span) * 100))}%`;
-    $$("[data-a]", tl).forEach((el) => {
-      el.style.left = pct(+el.dataset.a);
-      if (el.dataset.b) el.style.width = `calc(${pct(+el.dataset.b)} - ${pct(+el.dataset.a)})`;
-    });
+  const tastingRow = (t) => `<div class="f-tasting">
+      <div class="f-tasting-h"><b>${date(t.tasted_on)}</b>${t.rating ? `<span class="stars-slot" data-r="${t.rating}"></span><span>${String(t.rating).replace(".", ",")}/5</span>` : ""}<span class="tag ${t.reason === "gifted" ? "peak" : t.reason === "other" ? "none" : "ready"}">${VC.REASON[t.reason] || "Bue"}${t.recipient ? " à " + esc(t.recipient) : ""}</span>
+        ${ro() ? "" : `<button class="btn quiet f-undo" data-undo="${t.id}" aria-label="Supprimer cette sortie et remettre la bouteille en cave">${I.trash}</button>`}</div>
+      ${t.pairing ? `<p class="f-pair">${esc(t.pairing)}</p>` : ""}${t.notes ? `<p>${esc(t.notes)}</p>` : ""}</div>`;
+
+  // Mes dégustations : les 3 dernières, toujours visibles ; le reste dans la fiche complète.
+  function tastingsRecent() {
+    if (!tastings.length) return "";
+    return `<section class="card f-tastings"><div class="f-sec-h"><h2 class="eyebrow">Mes dégustations</h2><span class="faint">${tastings.length}</span></div>${tastings.slice(0, 3).map(tastingRow).join("")}</section>`;
   }
 
   function prose() {
     const block = (h, t) => t ? `<h3>${h}</h3><p>${esc(t)}</p>` : "";
     const wine = VC.isWine(it);
-    const html = block(wine ? "Le vin" : "Le produit", it.description) + block(wine ? "Vinification" : "Élaboration", it.vinification) +
+    return block(wine ? "Le vin" : "Le produit", it.description) + block(wine ? "Vinification" : "Élaboration", it.vinification) +
       block(wine ? "Terroir et climat" : "Origine", it.terroir) + block(wine ? "Le millésime, la cuvée" : "Particularités", it.vintage_notes);
-    return html ? `<div class="card prose">${html}</div>` : "";
   }
 
-  function pairings() {
-    return (it.pairings || []).length ? `<div class="card"><h3>${I.plate.replace("<svg", '<svg width="18" height="18" style="vertical-align:-3px;margin-right:6px"')}Accords</h3><ul class="pairings">${it.pairings.map((p) => `<li>${esc(p)}</li>`).join("")}</ul></div>` : "";
-  }
-
-  function details() {
-    const d = Object.entries(it.details || {});
-    return d.length ? `<div class="card"><h3>Détails</h3><dl class="kv">${d.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl></div>` : "";
-  }
-
-  function tastingList() {
-    return `<div class="card"><div class="row"><h3 style="margin:0">Sorties et dégustations</h3><span class="spacer"></span><span class="faint">${tastings.length || ""}</span></div>
-      <div style="margin-top:12px">${tastings.length ? tastings.map((t) => `<div class="tasting">
-        <div class="tasting-head"><b>${date(t.tasted_on)}</b><span class="stars-slot" data-r="${t.rating ?? ""}"></span><span class="tag ${t.reason === "drunk" ? "ready" : t.reason === "gifted" ? "peak" : ""}">${VC.REASON[t.reason] || "Bue"}${t.recipient ? " à " + esc(t.recipient) : ""}</span><span class="faint">${esc([t.location_id && placeName(t.location_id), t.occasion].filter(Boolean).join(" · "))}</span>
-        <span class="spacer"></span>${ro() ? "" : `<button class="btn quiet" data-undo="${t.id}" title="Supprimer et remettre la bouteille en cave">${I.trash}</button>`}</div>
-        ${t.pairing ? `<p class="pair">${I.plate.replace("<svg", '<svg width="15" height="15" style="vertical-align:-2px;margin-right:4px"')}${esc(t.pairing)}</p>` : ""}
-        ${t.notes ? `<p>${esc(t.notes)}</p>` : ""}</div>`).join("") : `<p class="muted" style="margin:0">Aucune sortie pour l'instant. « Sortir une bouteille » la retire du stock : bue, offerte ou autre.</p>`}</div></div>`;
+  function prices() {
+    const f = [];
+    const add = (k, v, small) => v && f.push(`<dt>${k}</dt><dd>${v}${small ? ` <small class="faint">${small}</small>` : ""}</dd>`);
+    add("Valeur actuelle", it.market_price ? money(it.market_price, it.market_currency) : "", esc(it.price_source || ""));
+    add("Prix d'achat", it.purchase_price ? money(it.purchase_price, it.purchase_currency) : "", esc([it.purchase_year, it.purchase_place].filter(Boolean).join(" · ")));
+    if (it.purchase_price && it.market_price && it.purchase_currency === it.market_currency) { const d = Math.round((it.market_price / it.purchase_price - 1) * 100); add("Plus-value", `${d > 0 ? "+" : ""}${d} %`); }
+    if (VC.isWine(it)) add("Cépages", esc((it.grapes || []).join(", ")));
+    add("Degré", it.abv ? `${String(it.abv).replace(".", ",")} % vol.` : "");
+    return f.length ? `<dl class="f-kv">${f.join("")}</dl>` : "";
   }
 
   function sources() {
     const list = (Array.isArray(it.sources) ? it.sources : []).map((s) => ({ ...s, url: safeUrl(s.url) })).filter((s) => s.url).slice(0, 8);
-    return `<div class="sources">${it.ai_enriched_at ? `Fiche complétée automatiquement le ${date(it.ai_enriched_at.slice(0, 10))}, à vérifier. ` : ""}
-      ${list.length ? "Sources : " + list.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(host(s.url))}</a>`).join(", ") : ""}</div>`;
+    if (!it.ai_enriched_at && !list.length) return "";
+    return `<p class="sources">${it.ai_enriched_at ? `Fiche complétée automatiquement le ${date(it.ai_enriched_at.slice(0, 10))}, à vérifier. ` : ""}
+      ${list.length ? "Sources : " + list.map((s) => `<a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(host(s.url))}</a>`).join(", ") : ""}</p>`;
+  }
+
+  // Fiche complète, dépliée sur place : notes côte à côte, récit, accords, prix, détails, toutes les sorties, actions.
+  function complete() {
+    const d = Object.entries(it.details || {});
+    return `<div class="f-full" id="full" hidden>
+      <div class="f-scores"><div><span id="my-rating"></span><small>Ma note</small></div><div><b>${it.avg_score != null ? esc(scoreText()) : "–"}</b><small>Moyenne en ligne${it.avg_score_source ? ` · ${esc(it.avg_score_source)}` : ""}</small></div></div>
+      ${prose()}
+      ${(it.pairings || []).length ? `<h3>Accords</h3><ul class="pairings">${it.pairings.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : ""}
+      ${prices() ? `<h3>Prix et caractéristiques</h3>${prices()}` : ""}
+      ${d.length ? `<h3>Détails</h3><dl class="f-kv">${d.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl>` : ""}
+      ${it.notes ? `<h3>Mes remarques</h3><p style="white-space:pre-line">${esc(it.notes)}</p>` : ""}
+      ${tastings.length > 3 ? `<h3>Toutes les sorties</h3>${tastings.slice(3).map(tastingRow).join("")}` : ""}
+      ${sources()}
+      ${ro() ? "" : `<div class="f-actions"><button class="btn ghost" id="edit">${I.edit}Modifier la fiche</button><button class="btn ghost" id="refresh">${I.sparkle}Actualiser avec l'IA</button><button class="btn danger" id="delete">${I.trash}Supprimer</button></div>`}
+    </div>`;
+  }
+
+  // Vignette de l'en-tête : l'aperçu (ou la meilleure photo) ; toucher ouvre la galerie.
+  function headThumb() {
+    const path = VC.mainImagePath(it), u = path && getUrl(path);
+    return `<div class="f-thumb${VC.Visual?.isVisual(path) ? " is-visual" : ""}">${u ? `<img src="${esc(u)}" alt="" decoding="async">` : bottleSvg(it)}${flag(it)}
+      <button class="photo-btn" id="photos" aria-label="Photos et aperçu de la bouteille">${I.camera}</button></div>`;
   }
 
   function render() {
     const kind = it.category === "wine" ? (STYLE[it.style] ? `Vin ${STYLE[it.style].toLowerCase()}` : "Vin") : CATEGORY[it.category];
-    const prodUrl = safeUrl(it.producer_url);
-    main.innerHTML = `<p style="margin:16px 0 0"><a class="btn quiet" href="/app/cave.html?loc=${encodeURIComponent(VC.getLoc() || "all")}">${I.back}Retour à la cave</a></p>
-      <div class="sheet">
-        <aside class="sheet-aside"><div class="visual" id="visual"></div><div class="visual-switch" id="vswitch"></div>${ro() ? "" : `<div class="row" id="vtools" style="margin-top:8px"></div>`}<div id="stock" style="margin-top:16px">${stockCard()}</div></aside>
-        <div style="display:grid;gap:16px;min-width:0">
-          <div class="sheet-title"><span class="eyebrow">${esc(kind)}</span>
-            <h1>${esc(it.name)}${it.vintage ? ` <span class="faint">${it.vintage}</span>` : ""}</h1>
-            ${it.producer ? `<p class="producer">${prodUrl ? `<a href="${esc(prodUrl)}" target="_blank" rel="noopener noreferrer">${esc(it.producer)}</a>` : esc(it.producer)}${prodUrl ? ` <span class="faint">· ${esc(host(prodUrl))}</span>` : ""}</p>` : ""}
-            <div class="origin">${[it.appellation, it.region, it.country].filter(Boolean).map((x) => `<span>${esc(x)}</span>`).join("")}</div>
-            <div class="row"><span class="muted">Ma note</span><span id="my-rating"></span>${it.avg_score != null ? `<span class="faint">· moyenne ${esc(scoreText())}</span>` : ""}</div>
-          </div>
-          ${VC.Studio?.enabled() && !ro() ? `<section class="card"><div class="row"><div><h3>Studio Vinicellar</h3><p class="muted">Restaurer l'étiquette et préparer une bouteille entière sur fond transparent.</p></div><a class="btn ghost" href="/app/studio.html?id=${encodeURIComponent(id)}">${I.sparkle}Ouvrir Studio</a></div></section>` : ""}
-          ${facts()}${ageing()}${prose()}${pairings()}${details()}
-          ${it.notes ? `<div class="card"><h3>Mes remarques</h3><p style="margin:0;white-space:pre-line">${esc(it.notes)}</p></div>` : ""}
-          ${tastingList()}
-          ${sources()}
-          ${ro() ? "" : `<div class="row"><button class="btn ghost" id="edit">${I.edit}Modifier la fiche</button><button class="btn ghost" id="refresh">${I.sparkle}Actualiser avec l'IA</button><span class="spacer"></span><button class="btn danger" id="delete">${I.trash}Supprimer</button></div>`}
-        </div>
-      </div>`;
-    visual();
-    placeTimeline();
+    const origin = [VC.regionOf(it) || it.region, VC.countryOf(it)].filter(Boolean).join(" · ");
+    const r = it.my_rating;
+    main.innerHTML = `<div class="f-page">
+      <div class="f-top"><a class="f-back" href="/app/cave.html?loc=${encodeURIComponent(VC.getLoc() || "all")}">${I.back}Cave</a><a class="me" href="/app/compte.html" aria-label="Mon compte">${I.user}</a></div>
+      <header class="card f-head">${headThumb()}
+        <div class="f-who"><span class="f-kind">${esc([it.producer, kind].filter(Boolean).join(" · "))}</span>
+          <h1>${esc(it.name)}</h1>${it.vintage ? `<span class="f-vintage">${it.vintage}</span>` : ""}
+          ${origin ? `<span class="f-origin">${esc(origin)}</span>` : ""}
+          <span class="f-rate">${r ? `<span class="stars-slot" data-r="${r}"></span><b>${String(r).replace(".", ",")}</b><small>ma note</small>` : `<small>Pas encore noté</small>`}</span></div>
+      </header>
+      <div id="stock">${stockCard()}</div>
+      ${table()}${garde()}${tastingsRecent()}
+      <section class="card f-more-wrap"><button class="f-more" id="more" aria-expanded="false" aria-controls="full">Voir la fiche complète ${I.chevron || "▾"}</button>${complete()}</section>
+    </div>`;
     $("#my-rating").append(stars(it.my_rating, async (v) => {
       const { error } = await sb.from("items").update({ my_rating: v }).eq("id", id);
       if (error) return fail(error);
       it.my_rating = v; toast(v ? "Note enregistrée." : "Note effacée.");
     }, { label: "Ma note", read: ro() }));
     $$(".stars-slot").forEach((s) => s.dataset.r && s.append(stars(+s.dataset.r, null, { read: true })));
+    if (open) { $("#full").hidden = false; $("#more").setAttribute("aria-expanded", "true"); }
     bind();
+  }
+  let open = false;
+
+  // Galerie : toutes les photos, le choix de la vignette, l'aperçu et l'ajout de photos (ancien bloc visuel de la fiche).
+  function openGallery() {
+    const d = VC.sheet(`<div class="gal"><h2>Photos et aperçu</h2><div class="visual" id="visual"></div><div class="visual-switch" id="vswitch"></div>${ro() ? "" : `<div class="row" id="vtools" style="margin-top:8px"></div>`}
+      <div class="row end" style="margin-top:12px"><button class="btn quiet" data-close>Fermer</button></div></div>`);
+    d.classList.add("wide");
+    visual();
   }
 
   // ---------------------------------------------------------------- actions
-  async function refresh() { if (await load()) render(); }
+  async function refresh() { if (await load()) { render(); if ($("dialog #visual")) visual(); } }
 
   function bind() {
     $("#stock").addEventListener("click", async (e) => {
       const b = e.target.closest("[data-adj]");
       if (!b) return;
       b.disabled = true;
-      const { error } = await sb.rpc("adjust_stock", { p_item: id, p_location: b.dataset.loc, p_delta: +b.dataset.adj });
+      const delta = +b.dataset.adj, loc = b.dataset.loc;
+      const { error } = await sb.rpc("adjust_stock", { p_item: id, p_location: loc, p_delta: delta });
       if (error) return fail(error);
-      refresh();
+      await refresh();
+      toast(delta > 0 ? "Bouteille ajoutée." : "Stock corrigé, sans trace dans le carnet.", { label: "Annuler", run: async () => {
+        const { error: ue } = await sb.rpc("adjust_stock", { p_item: id, p_location: loc, p_delta: -delta });
+        if (ue) return fail(ue);
+        refresh();
+      } });
     });
     $("#drink")?.addEventListener("click", openDrink);
     $("#add-stock")?.addEventListener("click", openAddStock);
     $("#move")?.addEventListener("click", openMove);
     $("#wish")?.addEventListener("click", addToWishlist);
+    $("#photos")?.addEventListener("click", openGallery);
     $("#edit")?.addEventListener("click", openEdit);
     $("#refresh")?.addEventListener("click", aiRefresh);
     $("#delete")?.addEventListener("click", remove);
-    main.addEventListener("click", async (e) => {
-      const b = e.target.closest("[data-undo]");
-      if (!b || !confirm("Supprimer cette dégustation ? La bouteille sera remise dans sa cave.")) return;
-      const { error } = await sb.rpc("undo_tasting", { p_tasting: b.dataset.undo });
-      if (error) return fail(error);
-      toast("Dégustation supprimée, bouteille remise en cave."); refresh();
+    $("#more").addEventListener("click", () => {
+      open = !open; $("#full").hidden = !open; $("#more").setAttribute("aria-expanded", String(open));
+      if (open) $("#full").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest" });
     });
   }
 
@@ -294,7 +304,8 @@
   const locOptions = (list, sel) => list.map((p) => `<option value="${p.id}"${p.id === sel ? " selected" : ""}>${esc(p.name)}</option>`).join("");
 
   function openDrink() {
-    VC.takeOut({ item: it, stock, places, loc: VC.getLoc(), onDone: refresh });
+    const path = VC.mainImagePath(it);
+    VC.takeOut({ item: it, stock, places, loc: VC.getLoc(), onDone: refresh, url: path && getUrl(path) });
   }
 
   function openAddStock() {
@@ -402,5 +413,13 @@
     location.replace(`/app/cave.html?loc=${encodeURIComponent(VC.getLoc() || "all")}`);
   }
 
+  // Une seule fois : la page garde le même <main> d'un rendu à l'autre.
+  main.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-undo]");
+    if (!b || !confirm("Supprimer cette sortie ? La bouteille sera remise dans sa cave.")) return;
+    const { error } = await sb.rpc("undo_tasting", { p_tasting: b.dataset.undo });
+    if (error) return fail(error);
+    toast("Sortie supprimée, bouteille remise en cave."); refresh();
+  });
   if (await load()) render();
 })();

@@ -33,6 +33,7 @@
     journal: P('<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/>'),
     places: P('<path d="M12 21s-7-6.1-7-11.5A7 7 0 0 1 19 9.5C19 14.9 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>'),
     user: P('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
+    chevron: P('<path d="M6 9l6 6 6-6"/>'),
     camera: P('<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'),
     image: P('<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/>'),
     search: P('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'),
@@ -110,6 +111,27 @@
     const c = fold(it.country);
     if (!c) return null;
     return COUNTRY[c] || it.country.trim().replace(/^./, (m) => m.toUpperCase());
+  }
+  // Drapeau rond du pays d'origine : dessin pour les pays courants, emoji sinon.
+  const ISO = { France: "FR", Suisse: "CH", Italie: "IT", Espagne: "ES", Portugal: "PT", Allemagne: "DE", Autriche: "AT", "États-Unis": "US", Argentine: "AR",
+    Chili: "CL", "Afrique du Sud": "ZA", Australie: "AU", "Nouvelle-Zélande": "NZ", Japon: "JP", Écosse: "GB", Irlande: "IE", "Royaume-Uni": "GB", Grèce: "GR",
+    Liban: "LB", Hongrie: "HU", Belgique: "BE", Canada: "CA", Mexique: "MX", Uruguay: "UY", Géorgie: "GE", Slovénie: "SI", Croatie: "HR", Israël: "IL", Luxembourg: "LU" };
+  const vb = (h, v) => v ? `<rect width="32" height="32" fill="${h[0]}"/><rect x="11" width="10" height="32" fill="${h[1]}"/><rect x="21" width="11" height="32" fill="${h[2]}"/>`
+    : `<rect width="32" height="32" fill="${h[0]}"/><rect y="11" width="32" height="10" fill="${h[1]}"/><rect y="21" width="32" height="11" fill="${h[2]}"/>`;
+  const FLAG_SVG = {
+    CH: '<rect width="32" height="32" fill="#D52B1E"/><path d="M13 7h6v6h6v6h-6v6h-6v-6H7v-6h6z" fill="#FFFFFF"/>',
+    FR: vb(["#002654", "#FFFFFF", "#CE1126"], 1), IT: vb(["#009246", "#FFFFFF", "#CE2B37"], 1), BE: vb(["#1A1A1A", "#FDDA24", "#EF3340"], 1), IE: vb(["#169B62", "#FFFFFF", "#FF883E"], 1),
+    DE: vb(["#1A1A1A", "#DD0000", "#FFCE00"]), AT: vb(["#ED2939", "#FFFFFF", "#ED2939"]), HU: vb(["#CE2939", "#FFFFFF", "#477050"]), LU: vb(["#EF3340", "#FFFFFF", "#00A3E0"]),
+    ES: '<rect width="32" height="32" fill="#AA151B"/><rect y="8" width="32" height="16" fill="#F1BF00"/>',
+    PT: '<rect width="32" height="32" fill="#DA291C"/><rect width="13" height="32" fill="#046A38"/><circle cx="13" cy="16" r="5" fill="#FFE900"/>',
+    AR: vb(["#74ACDF", "#FFFFFF", "#74ACDF"]), GR: '<rect width="32" height="32" fill="#0D5EAF"/><path d="M0 7h32M0 14h32M0 21h32M0 28h32" stroke="#FFFFFF" stroke-width="3.5"/>',
+  };
+  function flag(it) {
+    const c = countryOf(it), code = c && ISO[c];
+    if (!code) return "";
+    const svg = FLAG_SVG[code];
+    const inner = svg ? `<svg viewBox="0 0 32 32" aria-hidden="true">${svg}</svg>` : `<span class="flag-emoji" aria-hidden="true">${String.fromCodePoint(...[...code].map((x) => 0x1F1E6 + x.charCodeAt(0) - 65))}</span>`;
+    return `<span class="flag" role="img" aria-label="${esc(c)}" title="${esc(c)}">${inner}</span>`;
   }
   function regionOf(it) {
     const c = countryOf(it);
@@ -281,6 +303,7 @@
       return new Promise(() => {});
     }
     if (!profile || !profile.onboarded_at) { location.replace("/bienvenue.html"); return new Promise(() => {}); }
+    if (profile.visual_bg && profile.visual_bg !== getVisualBg()) setVisualBg(profile.visual_bg);
     const { data: mem } = await sb.from("collection_members").select("collection_id, role").eq("user_id", user.id);
     roles = new Map((mem || []).map((m) => [m.collection_id, m.role]));
     sb.from("drafts").select("id", { count: "exact", head: true }).eq("status", "ready").then(({ count }) => {
@@ -388,6 +411,9 @@
       F("market_price", "Prix du marché", "number", { step: .05, min: 0 }),
       F("market_currency", "Devise", "select", { opts: Object.fromEntries(CURRENCIES.map((c) => [c, c])) }),
       F("price_source", "Source du prix"),
+      F("provenance", "Provenance", "select", { opts: { bought: "Acheté", gift: "Reçu en cadeau", other: "Autre" }, empty: "—" }),
+      F("received_from", "Reçu de", "text", { placeholder: "ex. Viviane" }),
+      F("received_occasion", "Occasion", "text", { placeholder: "ex. anniversaire 2024" }),
       F("purchase_price", "Mon prix d'achat", "number", { step: .05, min: 0 }),
       F("purchase_currency", "Devise", "select", { opts: Object.fromEntries(CURRENCIES.map((c) => [c, c])) }),
       F("purchase_year", "Année d'achat", "number", { min: 1900, max: 2100 }),
@@ -510,85 +536,92 @@
 
   // ------------------------------------------------------------------ sortir une bouteille : bue, offerte, autre
   // item : la fiche ; stock : ses lignes de stock ; places : caves ; loc : cave affichée (facultatif).
-  function takeOut({ item, stock, places, loc, onDone }) {
+  // Une seule feuille : Bue / Offerte / Autre, la cave si le vin est dans plusieurs, la note, le plat, un commentaire et la date.
+  // La sortie n'est enregistrée qu'à « Enregistrer » ; le message qui suit permet de l'annuler.
+  function takeOut({ item, stock, places, loc, onDone, url }) {
     if (!canEdit(item.collection_id)) { toast("Cave partagée en lecture seule."); return; }
     const rows = stock.filter((s) => s.quantity > 0);
-    const here = rows.filter((s) => s.location_id === loc);
-    const list = here.length ? here : rows;
-    if (!list.length) { toast("Plus aucune bouteille en stock."); return; }
+    if (!rows.length) { toast("Plus aucune bouteille en stock."); return; }
     const pname = (id) => (places.find((p) => p.id === id) || {}).name || "Cave";
-    const d = sheet(`<h2>${esc(item.name)}${item.vintage ? ` <span class="faint">${item.vintage}</span>` : ""}</h2>
-      ${list.length > 1
-        ? `<label>Depuis<select id="to-loc">${list.map((s) => `<option value="${s.location_id}">${esc(pname(s.location_id))} (${s.quantity})</option>`).join("")}</select></label>`
-        : `<p class="muted" style="margin:0">Depuis ${esc(pname(list[0].location_id))} · ${list[0].quantity} en stock</p>`}
-      <div class="choices">
-        <button type="button" class="choice" data-r="drunk">${I.glass}<b>Bue</b><small>On l'a ouverte</small></button>
-        <button type="button" class="choice" data-r="gifted">${I.gift}<b>Offerte</b><small>Cadeau, invitation</small></button>
-        <button type="button" class="choice" data-r="other">${I.dots}<b>Autre</b><small>Bouchonnée, cassée, vendue</small></button>
-      </div>
-      <form id="to-extra" hidden novalidate>
-        <label id="to-extra-label">À qui ?<input name="who" maxlength="120" autocomplete="off"></label>
-        <div class="row end" style="margin-top:14px"><button type="submit" class="btn">${I.check}Valider</button></div>
-      </form>
-      <div class="row end" style="margin-top:8px"><button type="button" class="btn quiet" data-close>Annuler</button></div>`);
-    const locId = () => (d.querySelector("#to-loc") || {}).value || list[0].location_id;
-    let reason = null;
-
-    async function record(r, extra) {
-      const { data: tid, error } = await sb.rpc("take_bottle", {
-        p_item: item.id, p_location: locId(), p_reason: r,
-        p_recipient: r === "gifted" ? extra || null : null, p_notes: r === "other" ? extra || null : null
-      });
-      if (error) { fail(error); return null; }
-      onDone && onDone();
-      return tid;
-    }
-    const undo = (tid) => async () => { await sb.rpc("undo_tasting", { p_tasting: tid }); toast("Sortie annulée."); onDone && onDone(); };
-
-    d.querySelector(".choices").addEventListener("click", async (e) => {
-      const b = e.target.closest(".choice");
-      if (!b) return;
-      reason = b.dataset.r;
-      d.querySelectorAll(".choice").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-      if (reason !== "drunk") {
-        const f = d.querySelector("#to-extra");
-        f.hidden = false;
-        d.querySelector("#to-extra-label").firstChild.textContent = reason === "gifted" ? "À qui ? (facultatif)" : "Que s'est-il passé ? (facultatif)";
-        f.who.placeholder = reason === "gifted" ? "ex. Famille Sciboz, dîner chez Paul" : "ex. Bouchonnée";
-        f.who.focus();
-        return;
+    const n = rows.reduce((a, s) => a + s.quantity, 0);
+    let reason = "drunk", from = (rows.find((s) => s.location_id === loc) || rows[0]).location_id, rating = null;
+    const d = sheet(`<div class="out-sheet"><h2 class="sr">Sortir une bouteille</h2>
+      <div class="out-head"><div class="out-thumb">${url ? `<img src="${esc(url)}" alt="">` : bottleSvg(item)}</div>
+        <div><b class="out-name">${esc(item.name)}${item.vintage ? ` ${item.vintage}` : ""}</b><span class="muted">${rows.length > 1 ? `${n} en cave` : `${esc(pname(from))} · ${n} en cave`}</span></div></div>
+      <div class="seg" role="group" aria-label="Que devient la bouteille ?">
+        <button type="button" data-r="drunk" aria-pressed="true">Bue</button><button type="button" data-r="gifted" aria-pressed="false">Offerte</button><button type="button" data-r="other" aria-pressed="false">Autre</button></div>
+      ${rows.length > 1 ? `<div class="seg" role="group" aria-label="Depuis quelle cave ?">${rows.map((s) => `<button type="button" data-from="${s.location_id}" aria-pressed="${s.location_id === from}">${esc(pname(s.location_id))} <small>${s.quantity}</small></button>`).join("")}</div>` : ""}
+      <div class="out-rate" data-show="drunk"><span class="field-label">Ma note</span><div id="to-stars"></div></div>
+      <label data-show="gifted" hidden>Offerte à<input name="who" maxlength="120" autocomplete="off" placeholder="ex. Famille Sciboz"></label>
+      <label data-show="other" hidden>Que s'est-il passé ?<input name="what" maxlength="300" autocomplete="off" placeholder="ex. Bouchonnée"></label>
+      <label data-show="drunk">Avec quel plat ?<input name="pairing" maxlength="300" placeholder="ex. Filets de perche"></label>
+      <label data-show="drunk gifted">Note (facultatif)<textarea name="notes" rows="2" placeholder="Nez, bouche, avec qui…"></textarea></label>
+      <label>Date<input type="date" name="on" value="${today()}" max="${today()}"></label>
+      <div class="out-actions"><button type="button" class="btn ghost" data-close>Annuler</button><button type="button" class="btn" id="to-save">${I.check}Enregistrer</button></div></div>`);
+    const q = (x) => d.querySelector(x);
+    q("#to-stars").append(stars(null, (v) => (rating = v), { label: "Note de dégustation" }));
+    d.querySelector(".seg").focus?.();
+    d.addEventListener("click", (e) => {
+      const r = e.target.closest("[data-r]"), f = e.target.closest("[data-from]");
+      if (r) {
+        reason = r.dataset.r;
+        d.querySelectorAll("[data-r]").forEach((x) => x.setAttribute("aria-pressed", String(x === r)));
+        d.querySelectorAll("[data-show]").forEach((x) => (x.hidden = !x.dataset.show.split(" ").includes(reason)));
       }
-      // Bue : retirée tout de suite, puis note de dégustation facultative.
-      d.querySelectorAll(".choice").forEach((x) => (x.disabled = true));
-      const tid = await record("drunk");
-      if (!tid) return d.close();
-      let rating = null;
-      d.querySelector(".dlg").innerHTML = `<h2>Santé !</h2><p class="muted">Bouteille retirée du stock. Une note pour vous en souvenir ?</p>
-        <div class="field-label">Ma note <small class="faint">(retoucher une étoile : demi-point)</small><div id="to-stars"></div></div>
-        <label style="margin-top:12px">Avec quel plat ?<input name="pairing" maxlength="300" placeholder="ex. Filets de perche"></label>
-        <label style="margin-top:12px">Commentaire<textarea name="notes" rows="3" placeholder="Nez, bouche, évolution…"></textarea></label>
-        <div class="row" style="margin-top:16px"><button type="button" class="btn quiet" id="to-undo">Annuler la sortie</button><span class="spacer"></span>
-        <button type="button" class="btn ghost" data-close>Plus tard</button><button type="button" class="btn" id="to-save">Enregistrer</button></div>`;
-      d.querySelector("#to-stars").append(stars(null, (v) => (rating = v), { label: "Note de dégustation" }));
-      d.querySelector("#to-undo").addEventListener("click", async () => { d.close(); await undo(tid)(); });
-      d.querySelector("#to-save").addEventListener("click", async () => {
-        const patch = { rating, pairing: d.querySelector("[name=pairing]").value.trim() || null, notes: d.querySelector("[name=notes]").value.trim() || null };
-        const { error } = await sb.from("tastings").update(patch).eq("id", tid);
-        if (error) return fail(error);
-        if (rating && !item.my_rating) await sb.from("items").update({ my_rating: rating }).eq("id", item.id);
-        d.close(); toast("Note enregistrée."); onDone && onDone();
-      });
+      if (f) { from = f.dataset.from; d.querySelectorAll("[data-from]").forEach((x) => x.setAttribute("aria-pressed", String(x === f))); }
     });
-
-    d.querySelector("#to-extra").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const who = e.target.who.value.trim();
-      e.target.querySelector("button").disabled = true;
-      const tid = await record(reason, who);
-      d.close();
-      if (tid) toast(reason === "gifted" ? "Bouteille offerte, retirée du stock." : "Bouteille retirée du stock.", { label: "Annuler", run: undo(tid) });
+    q("#to-save").addEventListener("click", async () => {
+      const btn = q("#to-save"); btn.disabled = true;
+      const val = (name) => (q(`[name=${name}]`)?.value || "").trim() || null;
+      const { data: tid, error } = await sb.rpc("take_bottle", { p_item: item.id, p_location: from, p_reason: reason,
+        p_recipient: reason === "gifted" ? val("who") : null, p_notes: reason === "other" ? val("what") : null });
+      if (error) { btn.disabled = false; return fail(error); }
+      const patch = { tasted_on: val("on") || today() };
+      if (reason === "drunk") Object.assign(patch, { rating, pairing: val("pairing"), notes: val("notes") });
+      if (reason === "gifted" && val("notes")) patch.notes = val("notes");
+      const up = await sb.from("tastings").update(patch).eq("id", tid);
+      if (up.error) fail(up.error);
+      if (reason === "drunk" && rating && !item.my_rating) await sb.from("items").update({ my_rating: rating }).eq("id", item.id);
+      d.close(); onDone && onDone();
+      const left = n - 1;
+      toast(`${reason === "drunk" ? "Bouteille bue" : reason === "gifted" ? "Bouteille offerte" : "Bouteille sortie"} · ${left ? `reste ${left}` : "plus en cave"}`, { label: "Annuler", run: async () => {
+        const { error: ue } = await sb.rpc("undo_tasting", { p_tasting: tid });
+        if (ue) return fail(ue);
+        toast("Sortie annulée, bouteille remise en cave."); onDone && onDone();
+      } });
     });
   }
+
+  // ------------------------------------------------------------------ tableau de la fiche
+  // Lignes possibles, dans l'ordre proposé ; chaque utilisateur choisit les siennes dans le Compte (profiles.fiche_rows).
+  const FICHE_DEFAULT = ["region", "grapes", "garde", "service", "volume", "provenance"];
+  const FICHE_ROWS = {
+    region: { label: "Région", v: (it) => { const ap = it.appellation, rg = regionOf(it) || it.region; return esc(ap && rg && fold(ap).includes(fold(rg)) ? ap : [ap, rg].filter(Boolean).join(" · ")); } },
+    country: { label: "Pays", v: (it) => esc(countryOf(it) || "") },
+    producer: { label: "Producteur", v: (it) => esc(it.producer || "") },
+    grapes: { label: "Cépages", v: (it) => esc((it.grapes || []).join(", ")) },
+    vintage: { label: "Millésime", v: (it) => it.vintage || "" },
+    garde: { label: "Garde", v: (it) => { const w = windowStatus(it); return w ? `<span class="tag ${w.key}">${w.label}</span>${it.drink_from || it.drink_to ? ` ${range(it.drink_from, it.drink_to)}` : ""}` : ""; } },
+    peak: { label: "Apogée", v: (it) => it.peak_from || it.peak_to ? range(it.peak_from, it.peak_to) : "" },
+    service: { label: "Service", v: (it) => it.serving_temp_min || it.serving_temp_max ? range(it.serving_temp_min, it.serving_temp_max, " °C") : "" },
+    abv: { label: "Degré", v: (it) => it.abv ? `${String(it.abv).replace(".", ",")} % vol.` : "" },
+    volume: { label: "Contenance", v: (it) => it.volume_cl ? `${it.volume_cl} cl` : "" },
+    pairings: { label: "Accords", v: (it) => esc((it.pairings || []).slice(0, 3).join(", ")) },
+    avg: { label: "Note moyenne", v: (it) => it.avg_score != null ? `${String(it.avg_score).replace(".", ",")}${it.avg_score_scale ? "/" + it.avg_score_scale : ""}` : "" },
+    mine: { label: "Ma note", v: (it) => it.my_rating ? `${String(it.my_rating).replace(".", ",")}/5` : "" },
+    provenance: { label: "Provenance", v: (it) => {
+      if (it.provenance === "gift" || (!it.provenance && it.received_from)) return esc(["Reçu" + (it.received_from ? " de " + it.received_from : " en cadeau"), it.received_occasion].filter(Boolean).join(", "));
+      const bits = [it.purchase_place, it.purchase_price ? money(it.purchase_price, it.purchase_currency) : null, it.purchase_year].filter(Boolean);
+      return esc(bits.length ? bits.join(", ") : it.provenance === "other" ? "Autre" : "");
+    } },
+    purchase_price: { label: "Prix d'achat", v: (it) => it.purchase_price ? money(it.purchase_price, it.purchase_currency) : "" },
+    market_price: { label: "Valeur actuelle", v: (it) => it.market_price ? money(it.market_price, it.market_currency) : "" },
+    purchase_place: { label: "Lieu d'achat", v: (it) => esc(it.purchase_place || "") },
+    purchase_year: { label: "Année d'achat", v: (it) => it.purchase_year || "" },
+    received_from: { label: "Reçu de", v: (it) => esc(it.received_from || "") },
+    bins: { label: "Emplacement", v: (it, x) => esc(((x && x.stock) || []).filter((s) => s.quantity > 0 && s.bin).map((s) => s.bin).join(", ")) },
+  };
+  const ficheRows = (profile) => (Array.isArray(profile?.fiche_rows) && profile.fiche_rows.length ? profile.fiche_rows : FICHE_DEFAULT).filter((k) => FICHE_ROWS[k]);
 
   // Listes d'envies d'une collection ; crée « À acheter » s'il n'y en a aucune.
   async function wishlistsFor(collectionId) {
@@ -657,6 +690,6 @@
     $, $$, esc, money, date, today, year, range, safeUrl, host, isWine, title,
     windowStatus, bottleSvg, signed, mainImagePath, imageInfo, itemVisual, editorial, renderNav, boot, toast, fail, stars,
     renderItemForm, readItemForm, identify, shrink,
-    carnetNav, wishlistsFor, canEdit, lookalikes, likeness, getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, installHint, getVisualBg, setVisualBg, standalone, REASON, REGIONS, countryOf, regionOf, regionList, regionSeal, fold, priceOf, PRICE_BANDS
+    flag, FICHE_ROWS, FICHE_DEFAULT, ficheRows, carnetNav, wishlistsFor, canEdit, lookalikes, likeness, getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, installHint, getVisualBg, setVisualBg, standalone, REASON, REGIONS, countryOf, regionOf, regionList, regionSeal, fold, priceOf, PRICE_BANDS
   };
 })();
