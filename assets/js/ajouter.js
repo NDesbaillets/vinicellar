@@ -19,7 +19,6 @@
   const ready = () => shots.length > 0;
   let drafts = [], thumbs = () => null, poll = null;
   let defaults = { loc: here, qty: 1 };
-  const saveKeys = new WeakMap();
   const STUCK_MS = 4 * 60 * 1000;       // une analyse ne dépasse pas ~3 min côté serveur
 
   const collOf = (loc) => (places.find((p) => p.id === loc) || places[0] || {}).collection_id;
@@ -366,15 +365,7 @@
       }
       const coll = wish ? wish.collection_id : collOf(loc);
       let id, locUse = loc;
-      if (VC.Studio?.enabled()) {
-        const strong = !target && !dup.dismissed && dup.cands.find(m => (m.item.vintage || null) === (data.vintage || null));
-        if (strong && !confirm("Une fiche du même millésime existe déjà. Créer quand même une nouvelle fiche ?")) { btn.disabled = false; return; }
-        if (target && !wish && collOf(loc) !== target.collection_id) locUse = (places.find(p => p.collection_id === target.collection_id) || {}).id || loc;
-        if (!saveKeys.has(f)) saveKeys.set(f, d?.id || crypto.randomUUID());
-        const {data: saved, error: se} = await sb.rpc("studio_save_item", {p_request:saveKeys.get(f), p_payload:{data,target:target?.id || null,location:locUse || null,wishlist:wish?.id || null,qty:wish ? parseInt(f.qty.value,10) || 0 : qty,bin:f.bin.value.trim() || null,photos:d?.photo_paths || [],bottle_path:d?.bottle_path || null,bottle_image_url:d?.result?.image_url || null,sources:d?.sources || [],ai_enriched_at:d?.result ? d.updated_at : null,draft_id:d?.id || null}});
-        if (se) throw se;
-        id = saved;
-      } else if (target) {
+      if (target) {
         // Même vin : les bouteilles rejoignent la fiche existante ; la photo y est ajoutée.
         id = target.id;
         if (!wish && collOf(loc) !== target.collection_id) locUse = (places.find((p) => p.collection_id === target.collection_id) || {}).id || loc;
@@ -403,15 +394,15 @@
         if (error) throw error;
         id = ins.id;
       }
-      if (!VC.Studio?.enabled() && qty > 0) {
+      if (qty > 0) {
         const { error: se } = await sb.rpc("adjust_stock", { p_item: id, p_location: locUse, p_delta: qty, p_bin: f.bin.value.trim() || null });
         if (se) throw se;
       }
-      if (!VC.Studio?.enabled() && wish) {
+      if (wish) {
         const { error: we } = await sb.from("wishlist_items").insert({ wishlist_id: wish.id, item_id: id, qty_wanted: parseInt(f.qty.value, 10) || null });
         if (we && !/duplicate|unique/.test(we.message)) throw we;
       }
-      if (d && !VC.Studio?.enabled()) await removeDraft(d);
+      if (d) await removeDraft(d);
       if (!wish) defaults.loc = loc;
       const full = d && d.fullPath;
       if (full && VC.Visual && !visual) {                    // aperçu pas prêt à temps : il se fait après coup
@@ -422,7 +413,6 @@
       }
       toast(wish ? `Ajouté à « ${wish.name} ».` : target ? `${qty} bouteille${qty > 1 ? "s" : ""} ajoutée${qty > 1 ? "s" : ""} à la fiche existante.` : "Ajouté à votre cave.", { label: "Voir la fiche", run: () => (location.href = `/app/fiche.html?id=${id}`) });
       back();
-      VC.Studio?.offer(id);
     } catch (e) {
       btn.disabled = false;
       fail(e, "Enregistrement impossible.");

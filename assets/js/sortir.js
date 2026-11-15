@@ -13,7 +13,6 @@
     const [p, a, b] = await Promise.all([VC.loadPlaces(), sb.from("items").select("*"), sb.from("stock").select("*").gt("quantity", 0)]);
     places = p.filter((x) => VC.canEdit(x.collection_id)); items = (a.data || []).filter((it) => VC.canEdit(it.collection_id)); stock = b.data || [];
     if (loc && !places.some((x) => x.id === loc)) loc = "";
-    await VC.Studio?.loadActive(items);
     getUrl = await signed(items.map(mainImagePath));
   }
   const rowsOf = (id) => stock.filter((s) => s.item_id === id);

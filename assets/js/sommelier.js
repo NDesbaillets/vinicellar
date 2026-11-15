@@ -17,7 +17,7 @@
   const STATUS = { "à l'apogée": "peak", "prête": "ready", "à boire vite": "soon", "trop jeune": "young", "fenêtre dépassée": "past" };
 
   function render() {
-    main.innerHTML = `<div class="page-head"><div><span class="eyebrow">Accords mets et vins</span><h1>Sommelier</h1></div></div>
+    main.innerHTML = `<section class="c-band c-band-grape" aria-label="Grappe de raisin blanc"><img src="/assets/img/lavaux/raisin.jpg" alt="" width="1080" height="1616"><div class="c-band-in"><p>Accords mets et vins</p><h1>Sommelier</h1></div></section>
       <form class="card" id="ask" novalidate>
         <label>Qu'est-ce qu'on mange ?<textarea name="menu" rows="4" maxlength="2000" placeholder="ex. Entrée : tartare de féra. Plat : carré d'agneau, jus au thym, gratin dauphinois. Dessert : tarte au citron."></textarea></label>
         <div class="chips" style="margin-top:8px">${EXAMPLES.map((x) => `<button type="button" class="chip" data-ex="${esc(x)}">${esc(x)}</button>`).join("")}</div>
@@ -44,7 +44,6 @@
     if (!data.picks || !data.picks.length) {
       $("#answer").innerHTML = `<p class="notice">${esc(data.message || data.missing || "Rien de convaincant dans cette cave pour ce menu.")}</p>`; return;
     }
-    await VC.Studio?.loadActive(items);
     const courses = data.courses && data.courses.length ? data.courses : [{ course: null, picks: data.picks }];
     const all = courses.flatMap((c) => c.picks);
     const getUrl = await signed(all.map((p) => { const it = items.find((x) => x.id === p.item_id); return it && mainImagePath(it); }).filter(Boolean));

@@ -81,7 +81,7 @@ La modernisation conserve HTML/CSS/JavaScript natifs, les tables existantes et l
 - Direction photographique et éditoriale : panorama authentique de Lavaux dans la cave connectée, indicateurs discrets, onglets de catégories et bouteilles sans cartes fermées. Palette Terroir contemporain ; Fraunces et Inter conservées. Le mode sombre a été retiré lors de la refonte de novembre 2026.
 - Catalogue photographique : deux colonnes sur mobile, trois à cinq sur écran large ; vue liste compacte mémorisée. Les filtres, tris, liens de fiche et sorties rapides restent disponibles.
 - Les étiquettes et photos restent identifiées comme telles. Le CSS ne transforme pas un fond opaque en transparence et ne crée aucune bouteille Studio.
-- Photographie authentique du Lavaux : attribution visible et détails dans [credits.html](credits.html) et [CREDITS.md](assets/img/lavaux/CREDITS.md).
+- Photographies personnelles de Lavaux (tous droits réservés), présentées dans [credits.html](credits.html). Les anciennes photos sous licence et le prototype `previews/` ont été retirés.
 - Les anciennes photos remplacées sont conservées dans `photo_paths`. Retirer une photo de la galerie, supprimer une fiche ou supprimer un brouillon ne supprime plus les fichiers sources du stockage privé. Les fichiers détachés n'ont pas encore d'interface de restauration ; ne pas mettre en place de purge automatique.
 - Le cache des URL signées suit leur expiration et distingue les buckets.
 

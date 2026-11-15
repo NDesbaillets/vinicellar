@@ -92,12 +92,3 @@ test('tableau de la fiche : choix par défaut, choix du compte, lignes inconnues
   assert.match(VC.flag(it), /aria-label="Suisse"/);
   assert.equal(VC.flag({ country: '' }), '');
 });
-
-test('Studio : URL candidates et approuvées isolées, courtes et renouvelées',async()=>{
- const {VC,requests,advance}=setup();
- const refs=['studio-approved:a.png','studio-candidates:a.png','original.jpg'];
- const get=await VC.signed(refs);
- assert.equal(requests.length,3);assert.match(get(refs[0]),/studio-approved/);assert.match(get(refs[1]),/studio-candidates/);
- advance(271000);assert.equal(get(refs[0]),null);assert.equal(get(refs[1]),null);assert.ok(get(refs[2]));
- await VC.signed(refs);assert.equal(requests.length,5);
-});

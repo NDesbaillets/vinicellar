@@ -32,7 +32,6 @@
     if (coll) items = items.filter((it) => it.collection_id === coll);
     byItem = new Map();
     for (const s of stock) { if (!byItem.has(s.item_id)) byItem.set(s.item_id, []); byItem.get(s.item_id).push(s); }
-    await VC.Studio?.loadActive(items);
     getUrl = await signed(items.map(mainImagePath));
   }
   const qty = (it) => (byItem.get(it.id) || []).filter((s) => !loc || s.location_id === loc).reduce((a, s) => a + s.quantity, 0);
@@ -186,9 +185,10 @@
         <div class="c-thumb">${VC.itemVisual(it, getUrl)}${VC.flag(it)}</div>
         <div class="c-row-b"><h3>${esc(it.name)}</h3><span class="c-sub">${esc(sub)}</span>${w ? `<span class="tag ${w.key}">${w.label}</span>` : ""}</div>
         <span class="c-q${n ? "" : " zero"}">${n}</span></a>${out}</div>`;
-    return `<div class="c-card"><a href="/app/fiche.html?id=${it.id}" class="c-link" aria-label="${esc(it.name)}${it.vintage ? " " + it.vintage : ""}"></a>
+    return `<div class="c-card"><a href="/app/fiche.html?id=${it.id}" class="c-link" aria-label="${esc([it.name, it.vintage, it.producer].filter(Boolean).join(", "))}"></a>
       <div class="c-thumb">${VC.itemVisual(it, getUrl)}${VC.flag(it)}</div>
-      <div class="c-b"><h3>${esc(it.name)}</h3><span class="c-sub">${esc(sub)}</span>${w ? `<span class="tag ${w.key}">${w.label}</span>` : ""}
+      <div class="c-b"><h3>${esc(it.name)}</h3>
+        <div class="c-meta">${it.vintage ? `<span>${it.vintage}</span>` : ""}${w ? `<span class="tag ${w.key}">${w.label}</span>` : ""}</div>
         <div class="c-foot"><span class="c-q${n ? "" : " zero"}">${n} <small>bt.</small></span>${out}</div></div></div>`;
   }
 
@@ -239,9 +239,8 @@
     banners();
   }
   // Bandeau Lavaux court : le lieu habille l'accueil, sans rien cacher à lire.
-  const head = () => `<section class="c-band" aria-label="Lavaux"><img src="/assets/img/lavaux/lavaux-epesses.jpg" alt="" width="1280" height="696" fetchpriority="high">
-    <div class="c-band-in"><p>Bonjour${ctx.profile.first_name ? ` ${esc(ctx.profile.first_name)}` : ""}</p><h1>${esc(placeName())}</h1></div>
-    <a class="photo-credit" href="/credits.html#epesses">Lavaux, Épesses · Foto-Falk · CC BY-SA 4.0</a></section>`;
+  const head = () => `<section class="c-band" aria-label="Vignes en terrasses d'Épesses, Lavaux"><img src="/assets/img/lavaux/terrasses-epesses.jpg" alt="" width="1600" height="1069" fetchpriority="high">
+    <div class="c-band-in"><p>Bonjour${ctx.profile.first_name ? ` ${esc(ctx.profile.first_name)}` : ""}</p><h1>${esc(placeName())}</h1></div></section>`;
 
   // Invitations, demandes à valider, fiches prêtes, conseil d'installation (anciennement sur « Quelle cave ? »).
   async function banners() {

@@ -211,44 +211,34 @@
   // ------------------------------------------------------------------ images privées (URL signées)
   const signedCache = new Map();
   async function signed(paths, bucket = "labels") {
-    const parts = (p) => /^(studio-approved|studio-candidates):/.test(p || "") ? [p.slice(0,p.indexOf(":")),p.slice(p.indexOf(":")+1)] : [bucket,p];
-    const key = (p) => parts(p).join("/");
+    const key = (p) => `${bucket}/${p}`;
     const fresh = (p) => (signedCache.get(key(p))?.expires || 0) > Date.now();
     const need = [...new Set(paths.filter((p) => p && !fresh(p)))];
     if (need.length && sb) {
-      const buckets = [...new Set(need.map(p=>parts(p)[0]))];
-      await Promise.all(buckets.map(async b => {
-        const refs = need.filter(p=>parts(p)[0]===b), ttl = b.startsWith("studio-") ? 300 : 3600;
-        const { data } = await sb.storage.from(b).createSignedUrls(refs.map(p=>parts(p)[1]), ttl);
-        (data || []).forEach(r => r.signedUrl && signedCache.set(`${b}/${r.path}`, {url:r.signedUrl,expires:Date.now()+(b.startsWith("studio-") ? ttl-30 : 3300)*1000}));
-      }));
+      const { data } = await sb.storage.from(bucket).createSignedUrls(need, 3600);
+      (data || []).forEach((r) => r.signedUrl && signedCache.set(key(r.path), { url: r.signedUrl, expires: Date.now() + 3300 * 1000 }));
     }
     return (p) => fresh(p) ? signedCache.get(key(p)).url : null;
   }
-  // Vignette : bouteille Studio approuvée, couverture choisie, bouteille historique, puis étiquettes/photos.
-  const mainImagePath = (it) => window.VC?.Studio?.ref(window.VC.Studio.asset(it,"bottle")) || it.cover_path || it.bottle_path || window.VC?.Studio?.ref(window.VC.Studio.asset(it,"label")) || it.label_path || (it.photo_paths || [])[0] || null;
+  // Vignette : couverture choisie (souvent l'aperçu détouré), bouteille historique, puis étiquette et photos.
+  const mainImagePath = (it) => it.cover_path || it.bottle_path || it.label_path || (it.photo_paths || [])[0] || null;
 
-  // Ne pas présenter une étiquette ou une photo ordinaire comme un détourage Studio.
+  // Nature de l'image principale : aperçu détouré, bouteille, étiquette ou photo.
   function imageInfo(it) {
     const path = mainImagePath(it);
-    const studio = window.VC?.Studio, bottle = studio?.asset(it,"bottle"), label = studio?.asset(it,"label");
-    if (path && path === studio?.ref(bottle)) return {path,kind:"bottle",label:"Bouteille Studio",reconstructed:bottle.provenance==="bottle_reconstructed"};
-    if (path && path === studio?.ref(label)) return {path,kind:"label",label:"Étiquette restaurée"};
     if (path && path.includes("/visual-")) return { path, kind: "visual", label: "Visuel propre" };
     const kind = path && path === it.bottle_path ? "bottle" : path && [it.label_path, it.label_back_path].includes(path) ? "label" : "photo";
     return { path, kind, label: { bottle: "Bouteille", label: "Étiquette originale", photo: "Photo originale" }[kind] };
   }
   function itemVisual(it, getUrl) {
     const image = imageInfo(it), url = getUrl(image.path);
-    return `<div class="thumb image-${image.kind}">${url ? `<img src="${esc(url)}" alt="" loading="lazy" decoding="async"><span class="image-fallback" hidden>${bottleSvg(it)}<span>Image indisponible</span></span>` : bottleSvg(it)}${image.reconstructed ? '<span class="studio-badge">Reconstituée</span>' : ""}</div>`;
+    return `<div class="thumb image-${image.kind}">${url ? `<img src="${esc(url)}" alt="" loading="lazy" decoding="async"><span class="image-fallback" hidden>${bottleSvg(it)}<span>Image indisponible</span></span>` : bottleSvg(it)}</div>`;
   }
   document.addEventListener("error", (e) => {
     const img = e.target;
     if (img.tagName !== "IMG" || !img.nextElementSibling?.classList.contains("image-fallback")) return;
     img.hidden = true; img.nextElementSibling.hidden = false;
   }, true);
-  const lavauxCredit = () => `<a class="photo-credit" href="/credits.html">Lavaux · Photo Krzysztof Golik · CC BY-SA 4.0</a>`;
-  const editorial = (title, text) => `<section class="terroir-banner" aria-label="${esc(title)}"><img src="/assets/img/lavaux/lavaux-leman.jpg" alt="Vignes en terrasses de Lavaux, Léman et Alpes" width="1280" height="329" decoding="async"><div class="terroir-copy"><span class="eyebrow">Vinicellar</span><h2>${esc(title)}</h2><p>${esc(text)}</p></div>${lavauxCredit()}</section>`;
 
   // ------------------------------------------------------------------ navigation
   const NAV = [
@@ -688,7 +678,7 @@
   window.VC = {
     sb, cfg, I, CATEGORY, CATEGORY_SHORT, STYLE, KIND, CURRENCIES, AI_FIELDS,
     $, $$, esc, money, date, today, year, range, safeUrl, host, isWine, title,
-    windowStatus, bottleSvg, signed, mainImagePath, imageInfo, itemVisual, editorial, renderNav, boot, toast, fail, stars,
+    windowStatus, bottleSvg, signed, mainImagePath, imageInfo, itemVisual, renderNav, boot, toast, fail, stars,
     renderItemForm, readItemForm, identify, shrink,
     flag, FICHE_ROWS, FICHE_DEFAULT, ficheRows, carnetNav, wishlistsFor, canEdit, lookalikes, likeness, getLoc, setLoc, loadPlaces, placeLabel, sheet, takeOut, installHint, getVisualBg, setVisualBg, standalone, REASON, REGIONS, countryOf, regionOf, regionList, regionSeal, fold, priceOf, PRICE_BANDS
   };

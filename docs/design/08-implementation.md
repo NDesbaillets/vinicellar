@@ -98,3 +98,26 @@ Branche `refonte`, publiée sur `main` après validation.
 **Tests** :
 - `tests/core.test.cjs` : test du thème remplacé par celui du mode sombre retiré, ajout d'un test du tableau de la fiche et du drapeau. 7 sur 7.
 - Navigation testée sur iPhone 13 simulé et sur ordinateur : onglet actif sur chaque page, les quatre sections du Carnet, redirections. Aucune erreur.
+
+## Retouches (15.11.2026)
+
+**Studio supprimé du dépôt** : le worker, les fonctions `studio-start` et `studio-review`, la proposition SQL, le script et les fixtures d'aperçu. Les derniers appels côté client sont retirés, ainsi que le CSS. Rien n'avait été déployé : ni tables, ni buckets, ni fonctions.
+
+**Fonction `visual`** : toujours déployée mais plus appelée depuis le passage au détourage fal.ai. Elle est à supprimer dans le tableau de bord Supabase.
+
+**Photos** : les deux photos de Lavaux sous licence CC BY-SA et le prototype `previews/chai` sont remplacés par trois photos personnelles. Elles sont redimensionnées et leurs métadonnées EXIF retirées.
+- Accueil public : le lac et les Alpes.
+- Cave : les terrasses d'Épesses.
+- Sommelier : une grappe.
+
+La page `credits.html` devient « Photographies ».
+
+**Vignettes de la cave** : bouteille plus grande (212 px, 236 px sur grand écran), image entière sans recadrage. La zone de texte est réduite : nom sur 2 lignes en 16 px, millésime et statut sur une ligne, quantité et Sortir.
+
+**Marque** : le verre, le mot et l'abeille prennent le bordeaux du bouton Ajouter (`--logo: var(--wine)`).
+
+**Abeille** :
+- elle arrive par la gauche, fait le tour du pied du verre et souligne le mot ;
+- elle traverse le bandeau en vague avec deux loopings, placés avant le menu ;
+- elle passe derrière le menu, le bouton Ajouter et le compte, puis sort à droite ;
+- elle réapparaît aussitôt posée au bout du mot, avec trois étincelles.

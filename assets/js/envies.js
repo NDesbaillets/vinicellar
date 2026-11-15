@@ -17,7 +17,6 @@
     lists = a.data || []; entries = b.data || []; places = c; colls = d.data || [];
     if (!lists.length && colls.length) lists = await VC.wishlistsFor((places[0] || {}).collection_id || colls[0].id);
     if (!lists.some((l) => l.id === current)) current = lists[0] ? lists[0].id : null;
-    await VC.Studio?.loadActive(entries.map(e=>e.items).filter(Boolean));
     getUrl = await signed(entries.map((e) => e.items && mainImagePath(e.items)).filter(Boolean));
     draw();
   }
@@ -156,7 +155,6 @@
         load();
       } catch (err) { console.error(err); toast("Fiche non complétée : " + err.message); }
     }
-    VC.Studio?.offer(it.id);
   });
 
   try { await load(); } catch (e) { fail(e, "Impossible de charger les listes."); }
