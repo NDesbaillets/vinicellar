@@ -11,7 +11,7 @@
   --gold: #A9824C;      /* étoiles uniquement, jamais du texte */
   --gold-ink: #83632F;
   --olive: #67735F; --sage: #DDE2D4; --terracotta: #C48C6A; --accent-soft: #E8ECDF;
-  --logo: #8C0920;
+  --logo: var(--ink);   /* même couleur que le mot « Vinicellar » */
   --ok: #2F6E4F; --ok-soft: #E3F0E8;
   --warn: #7E560C; --warn-soft: #F8EED8;
   --bad: #A3302A; --bad-soft: #F8E3E1;
@@ -65,7 +65,7 @@ small, .muted { color: var(--ink-2); }
 .topbar { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: saturate(1.4) blur(12px); border-bottom: 1px solid var(--line); }
 .topbar .wrap { display: flex; align-items: center; gap: 16px; min-height: 60px; }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); font-family: var(--font-display); font-size: var(--fs-4); font-weight: 500; }
-.brand svg.logo { height: 30px; width: auto; color: var(--logo, #8C0920); flex: none; }
+.brand svg.logo { height: 30px; width: auto; color: var(--logo); flex: none; }
 .brand span { font: 500 1.5em/1 "WindSong", cursive; letter-spacing: 0; }
 .nav { margin-left: auto; display: none; gap: 4px; }
 .nav a { text-decoration: none; color: var(--ink-2); padding: 8px 12px; border-radius: var(--r-pill); font-weight: 500; font-size: var(--fs-2); }
