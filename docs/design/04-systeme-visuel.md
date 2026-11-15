@@ -56,11 +56,9 @@ Le calcul reste celui du Sommelier (`status()` dans `supabase/functions/sommelie
 
 - **Wordmark** : WindSong, inchangé.
 - **Interface** : Inter.
-- **Titres** (noms de vin, millésimes, nombres de bouteilles) : à choisir parmi trois directions qui remplacent Fraunces.
-  - **A · Cormorant Garamond** : classique, la plus proche des étiquettes et des cartes des vins.
-  - **B · Bodoni Moda** : luxe et contraste fort.
-  - **C · Jost** : géométrique et contemporaine.
-- Les titres ne descendent pas sous 20 px. Ils utilisent les chiffres alignés (`lining-nums`), car Cormorant a des chiffres elzéviriens par défaut.
+- **Titres** (noms de vin, millésimes, nombres de bouteilles) : **Fraunces, conservée** (décision du 15.11.2026). Cormorant Garamond, Bodoni Moda et Jost ont été comparées dans le spécimen puis écartées.
+- Fraunces est utilisée en graisse 500, avec l'axe optique automatique (`font-optical-sizing: auto`) et les chiffres alignés (`lining-nums`).
+- Inter reste seule sous 20 px.
 
 **Échelle** (rem sur une base de 16) :
 
@@ -101,7 +99,7 @@ Le calcul reste celui du Sommelier (`status()` dans `supabase/functions/sommelie
 9. **Feuille** (sheet) : rayon 14 en haut, `--sh-2`.
 10. **Contrôle segmenté** : sélecteur de cave et sections du Carnet.
 
-## Reste à décider
+## Décisions
 
-- La direction typographique (A, B ou C).
-- La validation des jetons ci-dessus.
+- Typographie des titres : Fraunces, conservée.
+- Jetons de couleur, d'espacement, de rayon et d'ombre : pas d'objection. Ils sont repris tels quels à l'étape 5.

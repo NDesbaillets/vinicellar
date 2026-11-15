@@ -150,10 +150,10 @@ section > h2.sec { font: 600 var(--fs-1)/1 var(--ui); text-transform: uppercase;
 <header class="top"><div class="top-in">
   <div class="brand" aria-label="Vinicellar">Vinicellar</div>
   <nav class="seg" aria-label="Direction typographique">
+    <a href="#actuel" data-dir="f"><b>Retenue</b>Fraunces</a>
     <a href="#a" data-dir="a"><b>A</b>Cormorant</a>
     <a href="#b" data-dir="b"><b>B</b>Bodoni</a>
     <a href="#c" data-dir="c"><b>C</b>Jost</a>
-    <a href="#actuel" data-dir="f"><b>Actuel</b>Fraunces</a>
   </nav>
   <p class="dir-note" id="dir-note"></p>
 </div></header>
@@ -265,7 +265,7 @@ section > h2.sec { font: 600 var(--fs-1)/1 var(--ui); text-transform: uppercase;
   </section>
 
   <div class="choose">
-    <p><b>À choisir sur ton iPhone :</b> la direction qui fait le plus « fiche de cave » dans le nom du vin, le millésime et le nombre de bouteilles. Inter reste pour l'interface, WindSong pour « Vinicellar ».</p>
+    <p><b>Décision :</b> Fraunces reste la typographie des titres. Inter pour l'interface, WindSong pour « Vinicellar ».</p>
   </div>
 </main>
 
@@ -275,11 +275,11 @@ section > h2.sec { font: 600 var(--fs-1)/1 var(--ui); text-transform: uppercase;
     a: "A · Cormorant Garamond. Garalde fine et classique, proche des étiquettes de Bourgogne et des cartes des vins. Élégante, un peu fragile en petit : réservée aux titres de 20 px et plus.",
     b: "B · Bodoni Moda. Didone à fort contraste, luxe et champagne. La plus marquée ; les déliés très fins demandent 20 px minimum.",
     c: "C · Jost. Géométrique moderne, proche des étiquettes de vignerons contemporains. Lisible à toutes les tailles, moins « chai ».",
-    f: "Actuel · Fraunces. Pour comparaison.",
+    f: "Retenue · Fraunces, conservée le 15.11.2026. Les trois autres restent visibles pour mémoire.",
   };
   const MAP = { a: "a", b: "b", c: "c", actuel: "f" };
   function apply() {
-    let k = (location.hash || "#a").slice(1); if (!MAP[k]) k = "a";
+    let k = (location.hash || "#actuel").slice(1); if (!MAP[k]) k = "actuel";
     const dir = MAP[k];
     document.body.dataset.dir = dir;
     document.getElementById("dir-note").textContent = NOTES[dir];
