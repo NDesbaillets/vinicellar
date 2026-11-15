@@ -1,0 +1,312 @@
+<title>Vinicellar · typographies</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=Jost:wght@400;500;600&family=WindSong:wght@500&display=swap">
+<style>
+/* Mise en page : une colonne de la largeur d'un iPhone, la fiche d'abord, puis la grille et les jetons. Clair uniquement (mode sombre retiré). */
+:root {
+  color-scheme: light;
+  /* Couleurs : palette actuelle, deux corrections de contraste (warn, statuts). */
+  --bg: #F7F5EF; --card: #FFFFFF; --sunk: #ECEEE5; --line: #DDE2D4;
+  --ink: #262C25; --ink-2: #535D50; --ink-3: #66705F;
+  --wine: #713D47; --wine-2: #5C3039; --wine-soft: #F0E5E7;
+  --gold: #A9824C; --gold-ink: #83632F; --olive: #67735F;
+  --visual-bg: #FFFFFF;
+  --st-young: #4C5F86; --st-young-bg: #E5E9F2;
+  --st-ready: #2F6E4F; --st-ready-bg: #E3F0E8;
+  --st-peak: #713D47; --st-peak-bg: #F0E5E7;
+  --st-soon: #7E560C; --st-soon-bg: #F8EED8;
+  --st-past: #9A3B2F; --st-past-bg: #F6E1DC;
+  --st-none: #5E6470; --st-none-bg: #ECEDEF;
+  /* Typographie : la direction choisie remplit --display ; Inter pour l'interface ; WindSong pour le mot « Vinicellar ». */
+  --display: "Cormorant Garamond", Georgia, serif;
+  --d-weight: 600; --d-scale: 1.14; --d-track: 0; --d-case: none;
+  --ui: Inter, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --script: WindSong, "Snell Roundhand", cursive;
+  /* Échelle : 12 / 14 / 16 / 20 / 24 / 32 / 40 ; espacement base 4 ; rayons 8 / 14 / pilule. */
+  --fs-1: .75rem; --fs-2: .875rem; --fs-3: 1rem; --fs-4: 1.25rem; --fs-5: 1.5rem; --fs-6: 2rem; --fs-7: 2.5rem;
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
+  --r-s: 8px; --r-m: 14px; --r-pill: 999px;
+  --sh-1: 0 1px 2px rgba(38,44,37,.06), 0 1px 1px rgba(38,44,37,.04);
+  --sh-2: 0 6px 20px rgba(38,44,37,.10), 0 2px 4px rgba(38,44,37,.05);
+}
+body[data-dir="b"] { --display: "Bodoni Moda", "Didot", Georgia, serif; --d-weight: 500; --d-scale: 1; --d-track: -.005em; }
+body[data-dir="c"] { --display: Jost, "Futura", "Avenir Next", sans-serif; --d-weight: 500; --d-scale: .98; --d-track: .005em; }
+body[data-dir="f"] { --display: Fraunces, Georgia, serif; --d-weight: 500; --d-scale: 1; --d-track: 0; }
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 var(--fs-3)/1.5 var(--ui); -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 430px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 var(--s-7); display: grid; gap: var(--s-6); }
+.d { font-family: var(--display); font-weight: var(--d-weight); letter-spacing: var(--d-track); font-variant-numeric: lining-nums; }
+
+/* barre du haut */
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.top-in { max-width: 430px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: var(--s-2) var(--s-3); display: grid; gap: var(--s-2); }
+.brand { font-family: var(--script); font-size: 2.1rem; line-height: 1.1; color: var(--wine); }
+.seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; background: var(--sunk); border-radius: var(--r-s); padding: 2px; }
+.seg a { text-decoration: none; color: var(--ink-2); text-align: center; padding: 6px 2px; border-radius: 6px; font-size: var(--fs-1); line-height: 1.25; min-height: 44px; display: grid; place-content: center; }
+.seg a b { display: block; font-size: var(--fs-2); color: var(--ink); font-weight: 600; }
+.seg a[aria-current="true"] { background: var(--card); box-shadow: var(--sh-1); }
+.seg a:focus-visible, button:focus-visible { outline: 2px solid var(--wine); outline-offset: 2px; }
+.dir-note { font-size: var(--fs-2); color: var(--ink-2); margin: 0; }
+
+.eyebrow { font-size: var(--fs-1); text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); font-weight: 600; margin: 0 0 var(--s-2); }
+section > h2.sec { font: 600 var(--fs-1)/1 var(--ui); text-transform: uppercase; letter-spacing: .1em; color: var(--ink-3); margin: 0 0 var(--s-3); }
+
+/* vignette de bouteille */
+.thumb { position: relative; background: var(--visual-bg); border-radius: var(--r-m); display: grid; place-items: end center; overflow: hidden; }
+.thumb svg.bottle { height: 92%; width: auto; }
+.flag { position: absolute; top: var(--s-2); left: var(--s-2); width: 22px; height: 22px; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 1.5px var(--card), var(--sh-1); }
+.flag svg { width: 100%; height: 100%; display: block; }
+
+/* fiche */
+.fiche { background: var(--card); border-radius: var(--r-m); box-shadow: var(--sh-2); overflow: hidden; }
+.hero { display: grid; grid-template-columns: 132px 1fr; gap: var(--s-4); padding: var(--s-4); align-items: end; }
+.hero .thumb { height: 200px; background: linear-gradient(#FFFFFF, #FAF9F5); }
+.hero .flag { width: 26px; height: 26px; }
+.hero-txt { min-width: 0; display: grid; gap: var(--s-1); padding-bottom: var(--s-1); }
+.producer { font-size: var(--fs-2); color: var(--ink-2); }
+.wname { font-size: calc(var(--fs-6) * var(--d-scale)); line-height: 1.04; margin: 0; text-wrap: balance; color: var(--ink); }
+.vint { font-size: calc(var(--fs-5) * var(--d-scale)); color: var(--wine); line-height: 1.1; font-variant-numeric: lining-nums; }
+.origin { font-size: var(--fs-2); color: var(--ink-2); }
+.mine { display: flex; align-items: center; gap: var(--s-2); margin-top: var(--s-1); }
+.mine .stars { color: var(--gold); letter-spacing: 1px; font-size: var(--fs-3); }
+.mine .n { font: 600 var(--fs-2)/1 var(--ui); color: var(--ink); }
+.mine .l { font-size: var(--fs-1); color: var(--ink-3); }
+
+.block { padding: var(--s-4); border-top: 1px solid var(--line); display: grid; gap: var(--s-3); }
+.stock-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
+.stock-n { font-size: calc(var(--fs-5) * var(--d-scale)); line-height: 1; }
+.stock-n small { font: 500 var(--fs-2) var(--ui); color: var(--ink-2); margin-left: var(--s-1); }
+.cellar { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: var(--s-2); font-size: var(--fs-2); }
+.cellar span:first-child { color: var(--ink-2); }
+.cellar .q { min-width: 1.5em; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.step { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line); background: var(--card); color: var(--ink); font: 500 1.25rem/1 var(--ui); cursor: pointer; }
+.btn { min-height: 48px; border: 0; border-radius: var(--r-pill); background: var(--wine); color: #FFFFFF; font: 600 var(--fs-3) var(--ui); cursor: pointer; padding: 0 var(--s-5); }
+.btn.ghost { background: transparent; color: var(--wine); border: 1px solid var(--wine); }
+
+.facts { display: grid; grid-template-columns: auto 1fr; margin: 0; font-size: var(--fs-2); }
+.facts dt { color: var(--ink-3); padding: 10px var(--s-4) 10px 0; border-bottom: 1px solid var(--line); }
+.facts dd { margin: 0; padding: 10px 0; border-bottom: 1px solid var(--line); color: var(--ink); min-width: 0; }
+.facts dt:last-of-type, .facts dd:last-of-type { border-bottom: 0; }
+
+.chip { display: inline-flex; align-items: center; gap: 6px; font: 600 var(--fs-1)/1 var(--ui); padding: 5px 9px; border-radius: var(--r-pill); white-space: nowrap; }
+.chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.st-young { color: var(--st-young); background: var(--st-young-bg); }
+.st-ready { color: var(--st-ready); background: var(--st-ready-bg); }
+.st-peak { color: var(--st-peak); background: var(--st-peak-bg); }
+.st-soon { color: var(--st-soon); background: var(--st-soon-bg); }
+.st-past { color: var(--st-past); background: var(--st-past-bg); }
+.st-none { color: var(--st-none); background: var(--st-none-bg); }
+
+/* frise de garde */
+.tl { display: grid; gap: var(--s-2); }
+.tl-bar { position: relative; height: 10px; border-radius: var(--r-pill); background: var(--sunk); }
+.tl-drink { position: absolute; top: 0; bottom: 0; border-radius: var(--r-pill); background: var(--st-ready-bg); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--st-ready) 35%, transparent); }
+.tl-peak { position: absolute; top: 0; bottom: 0; border-radius: var(--r-pill); background: var(--wine); }
+.tl-now { position: absolute; top: -5px; width: 2px; height: 20px; background: var(--ink); border-radius: 1px; }
+.tl-ax { display: flex; justify-content: space-between; font-size: var(--fs-1); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.tl-legend { display: flex; flex-wrap: wrap; gap: var(--s-3); font-size: var(--fs-1); color: var(--ink-2); }
+.tl-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+.tasting { display: grid; gap: var(--s-1); font-size: var(--fs-2); }
+.tasting .meta { color: var(--ink-3); font-size: var(--fs-1); }
+.tasting p { margin: 0; color: var(--ink); }
+.more { background: none; border: 0; color: var(--wine); font: 600 var(--fs-2) var(--ui); padding: var(--s-3) 0; min-height: 44px; text-align: left; cursor: pointer; }
+
+/* grille */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
+.card { background: var(--card); border-radius: var(--r-m); box-shadow: var(--sh-1); overflow: hidden; display: grid; }
+.card .thumb { height: 168px; border-radius: 0; }
+.card-b { padding: var(--s-3); display: grid; gap: 6px; min-width: 0; }
+.card-n { font-size: calc(var(--fs-4) * var(--d-scale)); line-height: 1.08; margin: 0; text-wrap: balance; }
+.card-m { font-size: var(--fs-1); color: var(--ink-2); display: flex; justify-content: space-between; gap: var(--s-2); }
+.card-m b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ligne de liste */
+.row { display: grid; grid-template-columns: 52px 1fr auto; gap: var(--s-3); align-items: center; background: var(--card); border-radius: var(--r-m); padding: var(--s-2) var(--s-3) var(--s-2) var(--s-2); box-shadow: var(--sh-1); }
+.row .thumb { height: 72px; border-radius: var(--r-s); }
+.row .flag { width: 14px; height: 14px; top: 4px; left: 4px; }
+.row-n { font-size: calc(var(--fs-4) * var(--d-scale)); line-height: 1.1; margin: 0; }
+.row-s { font-size: var(--fs-1); color: var(--ink-2); }
+.row-q { font: 600 var(--fs-3) var(--ui); font-variant-numeric: tabular-nums; }
+
+/* échelle et palette */
+.ladder { display: grid; gap: var(--s-3); background: var(--card); border-radius: var(--r-m); padding: var(--s-4); box-shadow: var(--sh-1); }
+.ladder div { display: grid; grid-template-columns: 44px 1fr; align-items: baseline; gap: var(--s-3); min-width: 0; }
+.ladder code { font: 500 var(--fs-1) ui-monospace, Menlo, monospace; color: var(--ink-3); }
+.ladder span { min-width: 0; overflow-wrap: anywhere; line-height: 1.15; }
+.sw { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--s-2); }
+.sw div { border-radius: var(--r-s); padding: var(--s-3); font-size: var(--fs-1); line-height: 1.35; min-height: 64px; display: grid; align-content: space-between; }
+.sw b { font-size: var(--fs-2); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.note { font-size: var(--fs-2); color: var(--ink-2); margin: 0; max-width: 62ch; }
+.choose { background: var(--wine-soft); border-radius: var(--r-m); padding: var(--s-4); display: grid; gap: var(--s-2); }
+.choose p { margin: 0; font-size: var(--fs-2); color: var(--wine-2); }
+@media (prefers-reduced-motion: no-preference) { .fiche, .card, .row { transition: font-family .2s; } }
+</style>
+
+<header class="top"><div class="top-in">
+  <div class="brand" aria-label="Vinicellar">Vinicellar</div>
+  <nav class="seg" aria-label="Direction typographique">
+    <a href="#a" data-dir="a"><b>A</b>Cormorant</a>
+    <a href="#b" data-dir="b"><b>B</b>Bodoni</a>
+    <a href="#c" data-dir="c"><b>C</b>Jost</a>
+    <a href="#actuel" data-dir="f"><b>Actuel</b>Fraunces</a>
+  </nav>
+  <p class="dir-note" id="dir-note"></p>
+</div></header>
+
+<main class="wrap">
+  <section aria-label="Fiche vin">
+    <h2 class="sec" style="margin-top:var(--s-5)">Fiche vin · exemple</h2>
+    <article class="fiche">
+      <div class="hero">
+        <div class="thumb" data-bottle="bdx" data-flag="ch"></div>
+        <div class="hero-txt">
+          <span class="producer">Jean-René Germanier</span>
+          <h1 class="wname d">Merlot Balavaud</h1>
+          <span class="vint d">2020</span>
+          <span class="origin">Valais · Vétroz</span>
+          <div class="mine"><span class="stars" aria-hidden="true">★★★★☆</span><span class="n">4,5</span><span class="l">ma note</span></div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="stock-head"><span class="eyebrow" style="margin:0">En cave</span><span class="stock-n d">3<small>bouteilles</small></span></div>
+        <div class="cellar"><span>Lausanne</span><button class="step" aria-label="Retirer une bouteille, Lausanne">−</button><span class="q">2</span><button class="step" aria-label="Ajouter une bouteille, Lausanne">+</button></div>
+        <div class="cellar"><span>Chalet, Zermatt</span><button class="step" aria-label="Retirer une bouteille, Zermatt">−</button><span class="q">1</span><button class="step" aria-label="Ajouter une bouteille, Zermatt">+</button></div>
+        <button class="btn" type="button">Sortir une bouteille</button>
+      </div>
+
+      <div class="block" style="padding-block:var(--s-2)">
+        <dl class="facts">
+          <dt>Région</dt><dd>Valais AOC</dd>
+          <dt>Cépages</dt><dd>Merlot</dd>
+          <dt>Garde</dt><dd><span class="chip st-peak">À l'apogée</span>&nbsp; 2025–2032</dd>
+          <dt>Service</dt><dd>16–17 °C, carafe 1 h</dd>
+          <dt>Contenance</dt><dd>75 cl</dd>
+          <dt>Provenance</dt><dd>Reçu de Viviane, anniversaire 2024</dd>
+        </dl>
+      </div>
+
+      <div class="block">
+        <span class="eyebrow" style="margin:0">Garde</span>
+        <div class="tl" aria-label="Buvable 2023 à 2034, apogée 2025 à 2032, nous sommes en 2026">
+          <div class="tl-bar">
+            <span class="tl-drink" style="left:7.1%;right:14.3%"></span>
+            <span class="tl-peak" style="left:21.4%;right:28.6%"></span>
+            <span class="tl-now" style="left:28.6%"></span>
+          </div>
+          <div class="tl-ax"><span>2022</span><span>2029</span><span>2036</span></div>
+          <div class="tl-legend"><span><i style="background:var(--st-ready-bg);box-shadow:inset 0 0 0 1px var(--st-ready)"></i>Buvable 2023–2034</span><span><i style="background:var(--wine)"></i>Apogée 2025–2032</span></div>
+        </div>
+      </div>
+
+      <div class="block">
+        <span class="eyebrow" style="margin:0">Mes dégustations</span>
+        <div class="tasting">
+          <span class="meta">14.09.2026 · ★★★★☆ · avec un carré d'agneau</span>
+          <p>Fruit noir mûr, tanins fondus, belle fraîcheur en finale. Carafé une heure, parfait.</p>
+        </div>
+        <button class="more" type="button">Voir la fiche complète</button>
+      </div>
+    </article>
+  </section>
+
+  <section aria-label="Grille de cave">
+    <h2 class="sec">Cave · grille</h2>
+    <div class="grid2">
+      <div class="card"><div class="thumb" data-bottle="bdx" data-flag="ch"></div><div class="card-b"><h3 class="card-n d">Merlot Balavaud</h3><span class="chip st-peak" style="justify-self:start">À l'apogée</span><div class="card-m"><span>2020 · Germanier</span><b>3</b></div></div></div>
+      <div class="card"><div class="thumb" data-bottle="burg" data-flag="es"></div><div class="card-b"><h3 class="card-n d">Aalto</h3><span class="chip st-young" style="justify-self:start">Trop jeune</span><div class="card-m"><span>2021 · Ribera del Duero</span><b>2</b></div></div></div>
+    </div>
+  </section>
+
+  <section aria-label="Liste de cave">
+    <h2 class="sec">Cave · liste</h2>
+    <div style="display:grid;gap:var(--s-2)">
+      <div class="row"><div class="thumb" data-bottle="flute" data-flag="fr"></div><div style="min-width:0"><h3 class="row-n d">Chablis 1er Cru Montée de Tonnerre</h3><div class="row-s">2019 · Raveneau · <span class="chip st-soon" style="padding:3px 7px">À boire vite</span></div></div><span class="row-q">1</span></div>
+      <div class="row"><div class="thumb" data-bottle="burg" data-flag="it"></div><div style="min-width:0"><h3 class="row-n d">Barolo Cannubi</h3><div class="row-s">2016 · Brezza · <span class="chip st-ready" style="padding:3px 7px">Prête</span></div></div><span class="row-q">4</span></div>
+    </div>
+  </section>
+
+  <section aria-label="Échelle typographique">
+    <h2 class="sec">Échelle typographique</h2>
+    <div class="ladder">
+      <div><code>40</code><span class="d" style="font-size:calc(var(--fs-7)*var(--d-scale))">Dézaley</span></div>
+      <div><code>32</code><span class="d" style="font-size:calc(var(--fs-6)*var(--d-scale))">Grand Cru 2018</span></div>
+      <div><code>24</code><span class="d" style="font-size:calc(var(--fs-5)*var(--d-scale))">À ouvrir en priorité</span></div>
+      <div><code>20</code><span class="d" style="font-size:calc(var(--fs-4)*var(--d-scale))">Petite Arvine, Fully</span></div>
+      <div><code>16</code><span>Inter 16 · texte courant, champs, boutons</span></div>
+      <div><code>14</code><span style="font-size:var(--fs-2)">Inter 14 · tableau, métadonnées, notes</span></div>
+      <div><code>12</code><span style="font-size:var(--fs-1);color:var(--ink-3)">Inter 12 · légendes, axes de la frise</span></div>
+    </div>
+  </section>
+
+  <section aria-label="Statuts de garde">
+    <h2 class="sec">Statut de garde</h2>
+    <div class="chips">
+      <span class="chip st-young">Trop jeune</span><span class="chip st-ready">Prête</span><span class="chip st-peak">À l'apogée</span><span class="chip st-soon">À boire vite</span><span class="chip st-past">Dépassée</span><span class="chip st-none">Garde inconnue</span>
+    </div>
+    <p class="note" style="margin-top:var(--s-3)">Texte et pastille toujours ensemble, jamais la couleur seule. Tous ces couples dépassent 4,5:1.</p>
+  </section>
+
+  <section aria-label="Couleurs">
+    <h2 class="sec">Couleurs (palette actuelle, contraste vérifié)</h2>
+    <div class="sw">
+      <div style="background:var(--wine);color:#FFFFFF"><b>Bordeaux</b>Action principale · blanc 8,5:1</div>
+      <div style="background:var(--olive);color:#FFFFFF"><b>Olive</b>Action secondaire · blanc 5,0:1</div>
+      <div style="background:var(--card);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)"><b>Encre</b>sur ivoire 13,1:1</div>
+      <div style="background:var(--sunk);color:var(--ink-2)"><b>Encre 2</b>sur fond creux 5,9:1</div>
+      <div style="background:var(--st-soon-bg);color:var(--st-soon)"><b>Attention</b>#7E560C · 5,7:1 (était 4,1)</div>
+      <div style="background:var(--bg);color:var(--gold-ink);box-shadow:inset 0 0 0 1px var(--line)"><b>Or</b>étoiles seulement ; texte en or foncé 5,1:1</div>
+    </div>
+  </section>
+
+  <div class="choose">
+    <p><b>À choisir sur ton iPhone :</b> la direction qui fait le plus « fiche de cave » dans le nom du vin, le millésime et le nombre de bouteilles. Inter reste pour l'interface, WindSong pour « Vinicellar ».</p>
+  </div>
+</main>
+
+<script>
+(function () {
+  const NOTES = {
+    a: "A · Cormorant Garamond. Garalde fine et classique, proche des étiquettes de Bourgogne et des cartes des vins. Élégante, un peu fragile en petit : réservée aux titres de 20 px et plus.",
+    b: "B · Bodoni Moda. Didone à fort contraste, luxe et champagne. La plus marquée ; les déliés très fins demandent 20 px minimum.",
+    c: "C · Jost. Géométrique moderne, proche des étiquettes de vignerons contemporains. Lisible à toutes les tailles, moins « chai ».",
+    f: "Actuel · Fraunces. Pour comparaison.",
+  };
+  const MAP = { a: "a", b: "b", c: "c", actuel: "f" };
+  function apply() {
+    let k = (location.hash || "#a").slice(1); if (!MAP[k]) k = "a";
+    const dir = MAP[k];
+    document.body.dataset.dir = dir;
+    document.getElementById("dir-note").textContent = NOTES[dir];
+    document.querySelectorAll(".seg a").forEach((a) => a.setAttribute("aria-current", a.dataset.dir === dir ? "true" : "false"));
+  }
+  window.addEventListener("hashchange", apply); apply();
+
+  const FLAGS = {
+    ch: '<svg viewBox="0 0 32 32"><rect width="32" height="32" fill="#D52B1E"/><path d="M13 7h6v6h6v6h-6v6h-6v-6H7v-6h6z" fill="#FFFFFF"/></svg>',
+    es: '<svg viewBox="0 0 32 32"><rect width="32" height="32" fill="#AA151B"/><rect y="8" width="32" height="16" fill="#F1BF00"/></svg>',
+    fr: '<svg viewBox="0 0 32 32"><rect width="32" height="32" fill="#FFFFFF"/><rect width="11" height="32" fill="#002654"/><rect x="21" width="11" height="32" fill="#CE1126"/></svg>',
+    it: '<svg viewBox="0 0 32 32"><rect width="32" height="32" fill="#FFFFFF"/><rect width="11" height="32" fill="#009246"/><rect x="21" width="11" height="32" fill="#CE2B37"/></svg>',
+  };
+  // Silhouettes simples à la place des aperçus réels (photos privées).
+  const SHAPES = {
+    bdx: { glass: "#2E3B2A", body: "M30 8h12v40c0 6 14 10 14 22v120c0 4-3 6-6 6H22c-3 0-6-2-6-6V70c0-12 14-16 14-22z", cap: "#5C3039", label: ["#F4EFE3", 92, 58] },
+    burg: { glass: "#3A2A22", body: "M31 8h10v34c0 14 22 22 22 46v102c0 4-3 6-6 6H15c-3 0-6-2-6-6V88c0-24 22-32 22-46z", cap: "#1E1E1E", label: ["#EDE6D6", 104, 52] },
+    flute: { glass: "#B9A86A", body: "M32 8h8v44c0 16 16 24 16 44v94c0 4-3 6-6 6H22c-3 0-6-2-6-6V96c0-20 16-28 16-44z", cap: "#C9B56E", label: ["#FBF8F0", 110, 48] },
+  };
+  let n = 0;
+  document.querySelectorAll("[data-bottle]").forEach((el) => {
+    const s = SHAPES[el.dataset.bottle], [lc, ly, lh] = s.label, gid = "sheen" + (n++);
+    el.insertAdjacentHTML("beforeend",
+      `<svg class="bottle" viewBox="0 0 72 202" aria-hidden="true"><defs><linearGradient id="${gid}" x1="0" x2="1"><stop offset="0" stop-color="#000000" stop-opacity=".25"/><stop offset=".35" stop-color="#FFFFFF" stop-opacity=".18"/><stop offset=".6" stop-color="#000000" stop-opacity="0"/><stop offset="1" stop-color="#000000" stop-opacity=".3"/></linearGradient></defs>
+       <path d="${s.body}" fill="${s.glass}"/><rect x="29" y="4" width="14" height="${el.dataset.bottle === "flute" ? 34 : 24}" rx="2" fill="${s.cap}"/>
+       <rect x="12" y="${ly}" width="48" height="${lh}" rx="2" fill="${lc}"/><rect x="20" y="${ly + 12}" width="32" height="3" rx="1.5" fill="#713D47" opacity=".7"/><rect x="24" y="${ly + 20}" width="24" height="2" rx="1" fill="#535D50" opacity=".5"/>
+       <path d="${s.body}" fill="url(#${gid})"/></svg><span class="flag">${FLAGS[el.dataset.flag]}</span>`);
+  });
+})();
+</script>
