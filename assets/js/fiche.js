@@ -221,7 +221,7 @@
     const origin = [VC.regionOf(it) || it.region, VC.countryOf(it)].filter(Boolean).join(" · ");
     const r = it.my_rating;
     main.innerHTML = `<div class="f-page">
-      <div class="f-top"><a class="f-back" href="/app/cave.html?loc=${encodeURIComponent(VC.getLoc() || "all")}">${I.back}Cave</a><a class="me" href="/app/compte.html" aria-label="Mon compte">${I.user}</a></div>
+      <div class="f-top"><a class="f-back" href="/app/?loc=${encodeURIComponent(VC.getLoc() || "all")}">${I.back}Cave</a><a class="me" href="/app/compte.html" aria-label="Mon compte">${I.user}</a></div>
       <header class="card f-head">${headThumb()}
         <div class="f-who"><span class="f-kind">${esc([it.producer, kind].filter(Boolean).join(" · "))}</span>
           <h1>${esc(it.name)}</h1>${it.vintage ? `<span class="f-vintage">${it.vintage}</span>` : ""}
@@ -410,7 +410,7 @@
     const { error } = await sb.from("items").delete().eq("id", id);
     if (error) return fail(error);
     // Les fichiers sources restent dans le bucket privé, même après suppression de la fiche.
-    location.replace(`/app/cave.html?loc=${encodeURIComponent(VC.getLoc() || "all")}`);
+    location.replace(`/app/?loc=${encodeURIComponent(VC.getLoc() || "all")}`);
   }
 
   // Une seule fois : la page garde le même <main> d'un rendu à l'autre.

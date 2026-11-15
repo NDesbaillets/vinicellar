@@ -146,7 +146,7 @@
       done++; if (done % 3 === 0 || done === todo.length) bar();
     }
     $("#progress").innerHTML = `<p class="notice ${failed ? "" : "info"}" style="margin-top:12px">${created} fiche${created > 1 ? "s" : ""} créée${created > 1 ? "s" : ""}, ${added} vin${added > 1 ? "s" : ""} déjà présent${added > 1 ? "s" : ""} complété${added > 1 ? "s" : ""} en stock${failed ? `, ${failed} échec${failed > 1 ? "s" : ""}` : ""}.
-      <a href="/app/cave.html?loc=all">Voir la cave</a></p>`;
+      <a href="/app/?loc=all">Voir la cave</a></p>`;
     toast("Import terminé.");
   }
 })();

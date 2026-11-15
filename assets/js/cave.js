@@ -1,7 +1,8 @@
-// Une cave : tableau de bord (bouteilles, rouges, blancs…, cépages), filtres, liste, sortie d'une bouteille en un geste.
+// Cave, accueil de l'app (refonte, lot 3 · C1) : sélecteur de cave, invitations et fiches prêtes, rangée « À ouvrir en priorité »,
+// « Sortir par photo », puis toute la cave en grille (ou liste), rangée par statut de garde, avec recherche et filtres.
 (async function () {
   const VC = window.VC;
-  const { sb, $, esc, I, CATEGORY_SHORT, STYLE, money, windowStatus, bottleSvg, signed, mainImagePath } = VC;
+  const { sb, $, esc, I, CATEGORY_SHORT, STYLE, money, windowStatus, bottleSvg, signed, mainImagePath, toast, fail } = VC;
   const ctx = await VC.boot("cellar");
   const main = $("#main");
   main.classList.add("cellar-page");
@@ -9,7 +10,7 @@
   let loc = params.get("loc") || VC.getLoc() || "all";
   if (loc === "all") loc = "";
 
-  let items = [], places = [], stock = [], byItem = new Map(), getUrl = () => null;
+  let items = [], allItems = [], places = [], stock = [], byItem = new Map(), getUrl = () => null, invites = [];
   let state = { win: "", cat: "", grape: "", country: "", region: "", price: "", q: "", sort: "urgent", empty: false };
   try { Object.assign(state, JSON.parse(localStorage.getItem("vc.cave.filters") || "{}"), { q: "", grape: "", country: "", region: "" }); } catch { /* stockage indisponible */ }
   const save = () => { try { localStorage.setItem("vc.cave.filters", JSON.stringify({ win: state.win, cat: state.cat, sort: state.sort })); } catch { /* idem */ } };
@@ -23,7 +24,7 @@
       sb.from("stock").select("item_id, location_id, quantity, bin")
     ]);
     if (a.error) throw a.error;
-    places = p; items = a.data || []; stock = b.data || [];
+    places = p; allItems = items = a.data || []; stock = b.data || [];
     if (loc && !places.some((x) => x.id === loc)) loc = "";
     VC.setLoc(loc || "all");
     // En vue d'une cave : seulement les fiches de sa collection.
@@ -50,23 +51,6 @@
   const grapeName = (g) => g.replace(/\(.*?\)/g, "").replace(/\d+\s*%/g, "").replace(/\s+/g, " ").trim();
   const canEditHere = () => (loc ? VC.canEdit((places.find((x) => x.id === loc) || {}).collection_id) : places.some((x) => VC.canEdit(x.collection_id)));
 
-  // Bandeau de chiffres sur une ligne (défilante) ; toucher un type filtre la liste.
-  function dashboard() {
-    const inStock = items.filter((it) => qty(it) > 0);
-    const total = inStock.reduce((a, it) => a + qty(it), 0);
-    const counts = KINDS.map((k) => ({ ...k, n: inStock.filter(k.test).reduce((a, it) => a + qty(it), 0) }));
-    const cur = ctx.profile.currency || "CHF";
-    const value = inStock.reduce((a, it) => a + (it.market_currency === cur && it.market_price ? it.market_price * qty(it) : 0), 0);
-    const ready = inStock.filter((it) => { const w = windowStatus(it); return w && w.rank <= 3; }).reduce((a, it) => a + qty(it), 0);
-    const urgent = inStock.filter((it) => { const w = windowStatus(it); return w && w.rank <= 1; }).reduce((a, it) => a + qty(it), 0);
-    const shown = counts.filter((c) => c.n > 0);
-    return `<section class="cellar-summary" aria-label="Vue d'ensemble"><div><b>${total}</b><span>bouteille${total > 1 ? "s" : ""} en cave</span></div><div><b>${ready}</b><span>à déguster maintenant</span></div><div><b>${urgent}</b><span>à ouvrir en priorité</span></div><div><b>${value ? money(Math.round(value), cur) : "—"}</b><span>valeur estimée${value ? ` en ${esc(cur)}` : " non renseignée"}</span></div></section>
-      <div class="kstrip" role="group" aria-label="Filtrer par type">
-        <button type="button" class="kstat" data-all-kinds aria-pressed="${!state.cat}"><span>Toute la cave</span><b>${total}</b></button>
-        ${shown.map((c) => `<button type="button" class="kstat" data-kind="${c.k}" aria-pressed="${state.cat === "kind:" + c.k}"><span><i style="background:${color(c.k)}"></i>${c.label}</span><b>${c.n}</b></button>`).join("")}
-      </div>`;
-  }
-
   // ---------------------------------------------------------------- filtres (feuille) et liste
   const WIN = { drink: "À boire maintenant", urgent: "À ouvrir vite", young: "À garder" };
   const priceLabel = (k) => { const b = VC.PRICE_BANDS.find((x) => x[0] === k); return b ? `${b[1]} ${ctx.profile.currency || "CHF"}` : k; };
@@ -87,7 +71,8 @@
     const n = active().length;
     return `<div class="find">
         <label class="search"><span class="sr">Rechercher</span>${I.search}<input type="search" id="q" placeholder="Rechercher" autocomplete="off" value="${esc(state.q)}"></label>
-        <button class="btn ghost filter-btn" id="open-filters" aria-haspopup="dialog">${I.filter}Filtres${n ? ` <span class="count">${n}</span>` : ""}</button>
+        <button class="icon-btn c-tool" id="open-filters" aria-haspopup="dialog" aria-label="Filtres${n ? ` (${n} actifs)` : ""}">${I.filter}${n ? `<span class="count">${n}</span>` : ""}</button>
+        <button class="icon-btn c-tool" data-view="${view === "grid" ? "list" : "grid"}" aria-label="${view === "grid" ? "Afficher en liste" : "Afficher en grille"}">${view === "grid" ? I.list : I.grid}</button>
       </div>
       ${n ? `<div class="active-filters">${active().map(([g, l]) => `<button class="chip" data-clear="${g}" aria-label="Retirer le filtre ${esc(l)}">${esc(l)}${I.x}</button>`).join("")}</div>` : ""}`;
   }
@@ -192,69 +177,125 @@
     }[state.sort] || (() => 0));
   }
 
+  // Carte de grille : vignette et drapeau, nom sur 2 lignes, millésime et producteur, statut, quantité et « Sortir ».
   function card(it) {
-    const n = qty(it);
-    const w = windowStatus(it);
-    const image = VC.imageInfo(it);
-    const sub = [it.vintage, it.appellation || it.region, it.country].filter(Boolean).join(" · ");
-    const kind = it.category === "wine" ? (STYLE[it.style] || "Vin").split(" ")[0] : CATEGORY_SHORT[it.category];
-    return `<div class="bottle-wrap"><a class="bottle" href="/app/fiche.html?id=${it.id}">
-      <div class="catalog-photo">${VC.itemVisual(it, getUrl)}${image.path && image.kind !== "bottle" ? `<span class="photo-kind">${image.label}</span>` : ""}</div>
-      <div class="catalog-info"><p class="catalog-producer">${esc(it.producer || kind)}</p><h3>${esc(it.name)}</h3><p class="sub">${esc(sub)}</p>
-      <div class="tags"><span class="tag ${n ? "qty" : "zero"}">${n} bt.</span>${w ? `<span class="tag ${w.key}">${w.label}</span>` : ""}<span class="kind">${esc(kind)}</span></div></div></a>
-      ${n && VC.canEdit(it.collection_id) ? `<button class="out-btn" data-out="${it.id}" aria-label="Sortir une bouteille : ${esc(it.name)}" title="Sortir une bouteille">${I.glass}<small aria-hidden="true">Sortir</small></button>` : ""}</div>`;
+    const n = qty(it), w = windowStatus(it);
+    const sub = [it.vintage, it.producer].filter(Boolean).join(" · ");
+    const out = n && VC.canEdit(it.collection_id) ? `<button class="c-out" data-out="${it.id}" aria-label="Sortir une bouteille : ${esc(it.name)}">Sortir</button>` : "";
+    if (view === "list") return `<div class="c-row"><a href="/app/fiche.html?id=${it.id}" class="c-row-link">
+        <div class="c-thumb">${VC.itemVisual(it, getUrl)}${VC.flag(it)}</div>
+        <div class="c-row-b"><h3>${esc(it.name)}</h3><span class="c-sub">${esc(sub)}</span>${w ? `<span class="tag ${w.key}">${w.label}</span>` : ""}</div>
+        <span class="c-q${n ? "" : " zero"}">${n}</span></a>${out}</div>`;
+    return `<div class="c-card"><a href="/app/fiche.html?id=${it.id}" class="c-link" aria-label="${esc(it.name)}${it.vintage ? " " + it.vintage : ""}"></a>
+      <div class="c-thumb">${VC.itemVisual(it, getUrl)}${VC.flag(it)}</div>
+      <div class="c-b"><h3>${esc(it.name)}</h3><span class="c-sub">${esc(sub)}</span>${w ? `<span class="tag ${w.key}">${w.label}</span>` : ""}
+        <div class="c-foot"><span class="c-q${n ? "" : " zero"}">${n} <small>bt.</small></span>${out}</div></div></div>`;
+  }
+
+  // À ouvrir en priorité : « à boire vite » puis « à l'apogée », dans la cave affichée.
+  function priority() {
+    const rank = { past: 0, soon: 1, peak: 2 };
+    const list = items.filter((it) => qty(it) > 0 && rank[windowStatus(it)?.key] != null)
+      .sort((a, b) => rank[windowStatus(a).key] - rank[windowStatus(b).key] || (a.drink_to || 9999) - (b.drink_to || 9999)).slice(0, 12);
+    if (!list.length) return "";
+    return `<section class="c-pri" aria-labelledby="pri-h"><div class="c-sec-h"><h2 id="pri-h">À ouvrir en priorité</h2><span>${list.length}</span></div>
+      <div class="c-hrow">${list.map((it) => { const w = windowStatus(it);
+        return `<a class="c-mini" href="/app/fiche.html?id=${it.id}"><div class="c-thumb">${VC.itemVisual(it, getUrl)}${VC.flag(it)}</div>
+          <div class="c-mini-b"><h3>${esc(it.name)}</h3><span class="c-sub">${esc([it.vintage, qty(it) + " bt."].filter(Boolean).join(" · "))}</span><span class="tag ${w.key}">${w.label}</span></div></a>`; }).join("")}</div></section>`;
+  }
+
+  function switcher() {
+    if (places.length < 2) return "";
+    return `<div class="seg c-switch" role="group" aria-label="Cave affichée"><button type="button" data-loc="" aria-pressed="${!loc}">Toutes</button>${places.map((p) => `<button type="button" data-loc="${p.id}" aria-pressed="${loc === p.id}">${esc(p.name)}</button>`).join("")}</div>`;
   }
 
   function drawList() {
     const list = filtered();
-    $("#list").dataset.view = view;
-    document.querySelectorAll("button[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === view)));
+    $("#list").className = view === "list" ? "c-list" : "c-grid";
     $("#count").textContent = `${list.length} vin${list.length > 1 ? "s" : ""}`;
     $("#list").innerHTML = list.length ? list.map(card).join("") : `<div class="empty" style="grid-column:1/-1"><p class="muted">Aucune bouteille ne correspond.</p></div>`;
   }
-  // Après un changement de filtre : bandeau (type sélectionné), barre de recherche (pastilles actives) et liste.
+  // Après un changement de filtre : barre de recherche (pastilles actives) et liste.
   function refresh() {
-    $("#dash").innerHTML = dashboard();
     const q = $("#q"), focused = document.activeElement === q;
     $("#findbar").innerHTML = findBar();
     if (focused) { const n = $("#q"); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }
     drawList();
   }
 
+  const totalHere = () => items.reduce((a, it) => a + qty(it), 0);
   function draw() {
-    if (!items.length) {
-      main.innerHTML = `${head()}<div class="cellar-content"><div class="empty cellar-empty">${I.glass}<h2>Cette cave est vide</h2><p class="muted">${canEditHere() ? "Photographiez une étiquette : la fiche se remplit toute seule." : "Les bouteilles ajoutées par les membres apparaîtront ici."}</p>
+    const top = `${head()}<div class="c-page">${switcher()}<div id="invites"></div>`;
+    if (!items.some((it) => (byItem.get(it.id) || []).some((s) => !loc || s.location_id === loc))) {
+      main.innerHTML = `${top}<div class="empty cellar-empty">${I.glass}<h2>${loc ? "Cette cave est vide" : "Votre cave est vide"}</h2><p class="muted">${canEditHere() ? "Photographiez une étiquette : la fiche se remplit toute seule." : "Les bouteilles ajoutées par les membres apparaîtront ici."}</p>
         ${canEditHere() ? `<a class="btn big" href="/app/ajouter.html">${I.camera}Ajouter une bouteille</a>` : ""}</div></div>`;
-      return;
+      return banners();
     }
-    main.innerHTML = `${head()}<div class="cellar-content"><div id="dash">${dashboard()}</div><div class="collection-heading"><div><span class="eyebrow">À découvrir, à garder, à partager</span><h2>Votre collection</h2></div><div class="view-switch" role="group" aria-label="Présentation du catalogue"><button type="button" data-view="grid" aria-pressed="${view === "grid"}" aria-label="Grille photographique">${I.grid}<span>Collection</span></button><button type="button" data-view="list" aria-pressed="${view === "list"}" aria-label="Liste compacte">${I.list}<span>Liste</span></button></div></div><div id="findbar">${findBar()}</div>
-      <div class="list-head"><span id="count" role="status" aria-live="polite"></span></div><div class="catalog" id="list"></div></div>`;
+    main.innerHTML = `${top}${priority()}
+      ${canEditHere() ? `<a class="btn ghost c-photo" href="/app/sortir.html?loc=${encodeURIComponent(loc || "all")}">${I.camera}Sortir par photo</a>` : ""}
+      <section class="c-all" aria-labelledby="all-h"><div class="c-sec-h"><h2 id="all-h">Toute la cave</h2><span>${totalHere()} bouteille${totalHere() > 1 ? "s" : ""}</span></div>
+      <div id="findbar">${findBar()}</div><p class="c-count" id="count" role="status" aria-live="polite"></p><div id="list"></div></section></div>`;
     drawList();
+    banners();
   }
-  const head = () => `<section class="cellar-landscape" aria-label="Votre cave au cœur de Lavaux"><img class="landscape-photo" src="/assets/img/lavaux/lavaux-epesses.jpg" alt="Vignobles en terrasses de Lavaux à Épesses, au bord du Léman" width="1280" height="696" fetchpriority="high"><div class="landscape-inner"><a class="back-link" href="/app/">${I.back}Mes caves</a><div class="landscape-copy"><p class="landscape-greeting">Bonjour${ctx.profile.first_name ? ` ${esc(ctx.profile.first_name)}` : ""},</p><h1>${esc(placeName())}</h1><p>Le plaisir de choisir. Le bonheur de partager.</p><div class="row landscape-actions">${canEditHere() ? `<a class="btn" href="/app/ajouter.html">${I.plus}Ajouter un vin</a><a class="btn ghost" href="/app/sortir.html?loc=${encodeURIComponent(loc || "all")}">${I.glass}Ouvrir une bouteille</a>` : `<span class="landscape-readonly">Cave partagée en lecture seule</span>`}</div></div></div><a class="photo-credit" href="/credits.html#epesses">Lavaux, Épesses · Foto-Falk · CC BY-SA 4.0</a></section>`;
+  // Bandeau Lavaux court : le lieu habille l'accueil, sans rien cacher à lire.
+  const head = () => `<section class="c-band" aria-label="Lavaux"><img src="/assets/img/lavaux/lavaux-epesses.jpg" alt="" width="1280" height="696" fetchpriority="high">
+    <div class="c-band-in"><p>Bonjour${ctx.profile.first_name ? ` ${esc(ctx.profile.first_name)}` : ""}</p><h1>${esc(placeName())}</h1></div>
+    <a class="photo-credit" href="/credits.html#epesses">Lavaux, Épesses · Foto-Falk · CC BY-SA 4.0</a></section>`;
 
-  main.addEventListener("click", (e) => {
+  // Invitations, demandes à valider, fiches prêtes, conseil d'installation (anciennement sur « Quelle cave ? »).
+  async function banners() {
+    const box = $("#invites"); if (!box) return;
+    box.innerHTML = (invites || []).map((i) => `<div class="invite" data-id="${i.id}">
+      <div><b>${esc(i.invited_by_name || "Quelqu'un")}</b> vous invite à partager « ${esc(i.collection_name)} »${i.role === "viewer" ? " en lecture seule" : ""}.<br><small class="muted">${i.role === "viewer" ? "Vous pourrez consulter ses caves et ses bouteilles, sans les modifier." : "Vous verrez et gérerez ensemble les mêmes caves et bouteilles."}</small></div>
+      <div class="row"><button class="btn" data-acc>${I.check}Accepter</button><button class="btn ghost" data-dec>Refuser</button></div></div>`).join("");
+    VC.installHint(box);
+    if (ctx.profile.is_admin) {
+      const { count } = await sb.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "pending");
+      if (count) box.insertAdjacentHTML("afterbegin", `<a class="invite" href="/app/admin.html"><div><b>${count} demande${count > 1 ? "s" : ""} d'invitation</b> à valider.</div></a>`);
+    }
+    const { count: ready } = await sb.from("drafts").select("id", { count: "exact", head: true }).eq("status", "ready");
+    if (ready) box.insertAdjacentHTML("beforeend", `<a class="invite" href="/app/ajouter.html"><div><b>${ready} fiche${ready > 1 ? "s" : ""} prête${ready > 1 ? "s" : ""}</b> à vérifier avant d'entrer en cave.</div></a>`);
+  }
+
+  main.addEventListener("click", async (e) => {
+    const sw = e.target.closest("[data-loc]");
+    if (sw) {
+      loc = sw.dataset.loc; VC.setLoc(loc || "all");
+      history.replaceState(null, "", loc ? `/app/?loc=${loc}` : "/app/");
+      const coll = loc ? places.find((x) => x.id === loc).collection_id : null;
+      items = coll ? allItems.filter((it) => it.collection_id === coll) : allItems;
+      return draw();
+    }
     const toggle = e.target.closest("button[data-view]");
     if (toggle) {
       view = toggle.dataset.view;
       try { localStorage.setItem("vc.cave.view", view); } catch { /* préférence de session */ }
-      return drawList();
+      return refresh();
     }
     const out = e.target.closest("[data-out]");
     if (out) {
       e.preventDefault();
-      const it = items.find((x) => x.id === out.dataset.out);
-      VC.takeOut({ item: it, stock: byItem.get(it.id) || [], places, loc, onDone: async () => { await load(); draw(); } });
+      const it = items.find((x) => x.id === out.dataset.out), path = mainImagePath(it);
+      VC.takeOut({ item: it, stock: byItem.get(it.id) || [], places, loc, url: path && getUrl(path), onDone: async () => { await load(); draw(); } });
       return;
     }
-    const k = e.target.closest("[data-kind]");
-    if (k) { state.cat = state.cat === "kind:" + k.dataset.kind ? "" : "kind:" + k.dataset.kind; save(); return refresh(); }
-    if (e.target.closest("[data-all-kinds]")) { state.cat = ""; save(); return refresh(); }
     const x = e.target.closest("[data-clear]");
     if (x) { const g = x.dataset.clear; state[g] = g === "empty" ? false : ""; if (g === "country") state.region = ""; save(); return refresh(); }
-    if (e.target.closest("#open-filters")) openFilters();
+    if (e.target.closest("#open-filters")) return openFilters();
+    const inv = e.target.closest(".invite[data-id]");
+    if (inv && e.target.closest("[data-acc]")) {
+      const { error } = await sb.rpc("accept_invite", { p_invite: inv.dataset.id });
+      if (error) return fail(error);
+      toast("Partage accepté."); setTimeout(() => location.reload(), 600);
+    } else if (inv && e.target.closest("[data-dec]")) {
+      const { error } = await sb.rpc("decline_invite", { p_invite: inv.dataset.id });
+      if (error) return fail(error);
+      invites = invites.filter((i) => i.id !== inv.dataset.id); inv.remove();
+    }
   });
   main.addEventListener("input", (e) => { if (e.target.id === "q") { state.q = e.target.value; drawList(); } });
 
+  sb.rpc("my_invites").then(({ data }) => { invites = data || []; if (invites.length) banners(); });
   try { await load(); draw(); } catch (e) { VC.fail(e, "Impossible de charger la cave."); }
 })();

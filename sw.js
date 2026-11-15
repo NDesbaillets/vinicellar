@@ -1,7 +1,7 @@
 // Service worker Vinicellar : lancement rapide depuis l'écran d'accueil et page hors ligne.
 // Ne met en cache que les fichiers du site et les bibliothèques versionnées des CDN.
 // Supabase (données, photos signées, fonctions IA) et toute requête autre que GET passent sans cache.
-const VERSION = "vinicellar-refonte2b-20261115";
+const VERSION = "vinicellar-refonte3-20261115";
 const STATIC = VERSION + "-static"; // CSS, JS, images, polices
 const PAGES = VERSION + "-pages";   // pages déjà visitées
 const OFFLINE = "/offline.html";
