@@ -86,6 +86,9 @@
   const reset = $("#reset-form");
   if (reset) {
     const out = reset.querySelector(".form-msg");
+    // Depuis ARÔMES V&N : retour vers /recettes/ (lu tout de suite, la page nettoie ensuite son adresse).
+    const nx = new URLSearchParams(location.search).get("next");
+    const nextAfter = nx && /^\/recettes\/[^\\]*$/.test(nx) && !nx.startsWith("//") ? nx : "/app/";
     (async () => {
       if (!sb) return;
       // Lien « mot de passe oublié » : la page valide elle-même le jeton (robuste aux prévisualisations des messageries).
@@ -109,7 +112,7 @@
       const { error } = await sb.auth.updateUser({ password: pw });
       if (error) return msg(out, error.message || T.error, "error");
       msg(out, T.pwUpdated, "ok");
-      setTimeout(() => (location.href = "/app/"), 1200);
+      setTimeout(() => (location.href = nextAfter), 1200);
     });
   }
 })();
