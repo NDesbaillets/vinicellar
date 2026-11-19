@@ -302,6 +302,8 @@ export function sanitizeStructured(raw: Record<string, unknown>): Structured {
 // ---------------------------------------------------------------- légende : suffisante ou non ?
 export type CaptionSignals = { ingredientLines: number; stepLines: number; verdict: "no" | "maybe"; sufficient: boolean };
 const QTY_RE = /(^|\s)(\d+([.,/]\d+)?|[½¼¾⅓⅔]|une?|deux|trois|quatre|cinq|demi|quelques?)\s*(g|gr|kg|ml|cl|dl|l|c\.?\s?à\.?\s?[sc]\.?|càs|càc|cuill\w*|gousses?|pincées?|bottes?|tranches?|pièces?|pouces?|sachets?|boîtes?|noix|brins?|feuilles?|cup|cups|tbsp|tsp|oz|lb)\b/i;
+// Ligne à puce commençant par un nombre, même sans unité (« - 2 aubergines »).
+const BULLET_QTY_RE = /^[-–—•·*▪✔✅🔸🔹▫️]\s*(\d|[½¼¾]|une?\s)/u;
 const STEP_RE = /(^\s*(\d+\s*[.)\-:]|étape|step)\s*)|\b(mélang\w*|cuis\w*|cuire|ajout\w*|enfourn\w*|préchauff\w*|verse\w*|incorpor\w*|laiss\w*|coup\w*|émince\w*|chauff\w*|mijot\w*|fouett\w*|pétri\w*|sal\w*|poêl\w*|dor\w*|rôti\w*|laqu\w*|badigeonn\w*|mix\w*|rissol\w*|faites|faire|réserv\w*|dispos\w*|étal\w*|mari\w*|bake|mix|stir|add|preheat)\b/i;
 
 /**
@@ -314,7 +316,7 @@ export function captionSignals(caption: string): CaptionSignals {
   const lines = String(caption ?? "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   let ing = 0, steps = 0;
   for (const l of lines) {
-    const isIng = l.length <= 120 && QTY_RE.test(l) && !/^(\d+\s*[.)]\s+)\p{L}{3,}.*\b(mélang|cuis|ajout|enfourn)/iu.test(l);
+    const isIng = l.length <= 120 && (QTY_RE.test(l) || BULLET_QTY_RE.test(l)) && !/^\d+\s*[.)]\s/.test(l);
     if (isIng) ing++;
     else if (l.length >= 15 && STEP_RE.test(l)) steps++;
   }
