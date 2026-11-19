@@ -55,9 +55,11 @@
     if (!books.length) { liste.innerHTML = `<div class="vide-etat"><p>Vous n'appartenez à aucun carnet pour le moment.</p></div>`; liste.setAttribute("aria-busy", "false"); return; }
     const ids = st.book === "all" ? books.map((b) => b.id) : [st.book];
     const base = () => {
-      let q = sb.from("recipes").select("id,book_id,title,source_author,source_url,family,review_state,course,recipe_photos(storage_path,is_cover)")
+      let q = sb.from("recipes").select("id,book_id,title,source_author,source_url,source_type,family,review_state,course,recipe_photos(storage_path,is_cover)")
         .in("book_id", ids).is("deleted_at", null).is("archived_at", null);
       if (st.statut === "a_verifier") q = q.eq("review_state", "a_verifier");
+      // Une photo de page à relire n'entre au carnet qu'après validation : visible seulement sous « À vérifier ».
+      else q = q.or("source_type.neq.photo_page,review_state.neq.a_verifier");
       if (st.statut === "famille") q = q.eq("family", true);
       if (st.course) q = q.eq("course", st.course);
       return q.order("created_at", { ascending: false }).limit(300);
@@ -80,7 +82,7 @@
       const filtre = st.q || st.course || st.statut !== "toutes";
       liste.innerHTML = filtre
         ? `<div class="vide-etat"><p>Aucune recette ne correspond à votre recherche.</p><button type="button" class="btn sec petit" id="reset">Effacer les filtres</button></div>`
-        : `<div class="vide-etat"><p class="italique">Ce carnet attend sa première recette.</p><a class="btn" href="/recettes/editer.html">Écrire une recette</a></div>`;
+        : `<div class="vide-etat"><p class="italique">Ce carnet attend sa première recette.</p><a class="btn" href="/recettes/ajouter.html">Ajouter une recette</a></div>`;
       const r = $("#reset"); if (r) r.addEventListener("click", resetFilters);
       return;
     }
@@ -92,10 +94,10 @@
     liste.innerHTML = `<ol class="grille-planches">${rows.map((r, i) => {
       const u = urls[cover(r)];
       const src = [sourceOf(r), multi ? bookName(r.book_id) : ""].filter(Boolean).join(" · ");
-      const flags = [r.family ? "De famille" : "", r.review_state === "a_verifier" ? "À vérifier" : ""].filter(Boolean).join(" · ");
+      const flags = r.family ? "De famille" : "";
       return `<li><a class="planche" href="/recettes/fiche.html?id=${encodeURIComponent(r.id)}">
         <div class="passe-partout"><div class="cadre">${u ? `<img src="${esc(u)}" alt="" loading="lazy">` : `<span class="vide">Sans photo</span>`}</div></div>
-        <div class="legende"><span class="planche-num">Planche ${String(i + 1).padStart(2, "0")}${flags ? " · " + esc(flags) : ""}</span>
+        <div class="legende"><span class="planche-num">Planche ${String(i + 1).padStart(2, "0")}${flags ? " · " + esc(flags) : ""}</span>${r.review_state === "a_verifier" ? `<span class="planche-verif">À vérifier</span>` : ""}
         <span class="planche-titre">${esc(r.title)}</span>${src ? `<span class="planche-source">${esc(src)}</span>` : ""}</div></a></li>`;
     }).join("")}</ol>`;
   }

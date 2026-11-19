@@ -1,0 +1,28 @@
+{
+"cup_ml": 236.6,
+"tbsp_ml": 14.79,
+"tsp_ml": 4.93,
+"fl_oz_ml": 29.57,
+"oz_g": 28.35,
+"lb_g": 453.6,
+"stick_beurre_g": 113,
+"pinte_us_ml": 473.2,
+"fahrenheit": "°C = (°F − 32) × 5/9",
+"exemples": [
+{"ingredient": "farine", "cup": 1, "grammes": 125},
+{"ingredient": "sucre", "cup": 1, "grammes": 200},
+{"ingredient": "sucre glace", "cup": 1, "grammes": 120},
+{"ingredient": "cassonade", "cup": 1, "grammes": 213},
+{"ingredient": "beurre", "cup": 1, "grammes": 227},
+{"ingredient": "riz", "cup": 1, "grammes": 189},
+{"ingredient": "flocons d'avoine", "cup": 1, "grammes": 90},
+{"ingredient": "cacao en poudre", "cup": 1, "grammes": 95},
+{"ingredient": "lait", "cup": 1, "grammes": 244},
+{"ingredient": "crème", "cup": 1, "grammes": 237},
+{"ingredient": "miel", "cup": 1, "grammes": 336},
+{"ingredient": "noix hachées", "cup": 1, "grammes": 106},
+{"ingredient": "parmesan râpé", "cup": 1, "grammes": 99},
+{"ingredient": "chapelure", "cup": 1, "grammes": 99},
+{"ingredient": "amandes en poudre", "cup": 1, "grammes": 95}
+]
+}

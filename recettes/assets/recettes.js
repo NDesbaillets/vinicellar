@@ -113,6 +113,47 @@
   function host(u) { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return ""; } }
   function safeUrl(u) { try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href : ""; } catch { return ""; } }
 
+
+  // ---- phase 2 : import, versions, fusion
+  const uuid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID()
+    : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === "x" ? r : (r & 3 | 8)).toString(16); }));
+  // Première adresse http(s) d'un texte partagé (« Regarde ça https://… »).
+  function extractUrl(text) {
+    const m = String(text || "").match(/https?:\/\/[^\s<>"']+/i);
+    return m ? m[0].replace(/[.,;:!?)\]]+$/, "") : "";
+  }
+  function alertText(a) {
+    if (a == null) return "";
+    if (typeof a === "string") return a;
+    return a.message || a.text || a.detail || a.label || a.type || "";
+  }
+  // Comparaison de quantités : g/kg et ml/cl/l ramenés à une base commune.
+  const BASE = { g: ["m", 1], kg: ["m", 1000], ml: ["v", 1], cl: ["v", 10], l: ["v", 1000] };
+  function qtyKey(l) {
+    if (l.quantity == null) return "?";
+    const b = BASE[l.unit];
+    return b ? b[0] + ":" + Math.round(Number(l.quantity) * b[1] * 100) / 100 : (l.unit || "") + ":" + Math.round(Number(l.quantity) * 100) / 100;
+  }
+  const lineKey = (l) => (l.catalog_id ? "c:" + l.catalog_id : "l:" + norm(l.label_original));
+  function fmtLine(l) {
+    if (l.quantity == null) return l.precision || "q.b.";
+    const u = fmtUnit(l.unit, l.quantity);
+    return fmtQty(l.quantity) + (u ? " " + u : "");
+  }
+  // Écarts entre deux listes de lignes : { onlyA, onlyB, qty: [{a, b}], same: [{a, b}] }.
+  function diffLines(la, lb) {
+    const mb = new Map(); lb.forEach((l) => { const k = lineKey(l); if (!mb.has(k)) mb.set(k, l); });
+    const seen = new Set(), out = { onlyA: [], onlyB: [], qty: [], same: [] };
+    la.forEach((a) => {
+      const k = lineKey(a), b = mb.get(k);
+      if (!b || seen.has(k)) { if (!b) out.onlyA.push(a); return; }
+      seen.add(k);
+      (qtyKey(a) === qtyKey(b) ? out.same : out.qty).push({ a, b });
+    });
+    lb.forEach((b) => { if (!seen.has(lineKey(b)) && !la.some((a) => lineKey(a) === lineKey(b))) out.onlyB.push(b); });
+    return out;
+  }
+
   // Session et carnets.
   async function getUser() {
     if (!sb) return null;
@@ -133,7 +174,7 @@
     if (!h) return;
     const item = (k, href, label) => `<a href="${href}"${active === k ? ' aria-current="page"' : ""}>${label}</a>`;
     h.innerHTML = `<div class="wrap"><a class="brand" href="/recettes/" aria-label="ARÔMES V&amp;N, accueil">Arômes V&amp;N</a>
-      <nav class="nav" aria-label="Navigation principale">${item("carnet", "/recettes/", "Le carnet")}${item("ajouter", "/recettes/editer.html", "Ajouter")}${item("carnets", "/recettes/carnets.html", "Carnets")}
+      <nav class="nav" aria-label="Navigation principale">${item("carnet", "/recettes/", "Le carnet")}${item("ajouter", "/recettes/ajouter.html", "Ajouter")}${item("carnets", "/recettes/carnets.html", "Carnets")}
       <div class="account"><button type="button" id="account-btn" aria-expanded="false" aria-controls="account-panel" aria-label="Compte">Compte</button>
       <div class="account-panel" id="account-panel" hidden><p class="libelle">Connecté</p><p>${esc(user.email || "")}</p><button type="button" class="btn sec petit bloc" id="logout">Se déconnecter</button></div></div></nav></div>`;
     const btn = $("#account-btn"), panel = $("#account-panel");
@@ -166,5 +207,5 @@
   }
 
   window.AR = { sb, cfg, $, $$, esc, norm, fmtDate, fmtQty, fmtUnit, fmtMin, host, safeUrl, errMsg, toast, setMsg, safeNext, getBookPref, setBookPref,
-    signedUrls, compressImage, getUser, loadBooks, boot, registerSW, ROLES, COURSES, DIFFICULTES, UNITES };
+    signedUrls, compressImage, uuid, extractUrl, alertText, diffLines, fmtLine, lineKey, getUser, loadBooks, boot, registerSW, ROLES, COURSES, DIFFICULTES, UNITES };
 })();
