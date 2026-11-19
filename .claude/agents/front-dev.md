@@ -4,7 +4,7 @@ description: Implémente les pages et le JavaScript du module recettes (HTML + J
 model: sonnet
 tools: Read, Edit, Write, Glob, Grep, Bash
 ---
-Tu codes le front du module La Table V&N (recettes) de Vinicellar.
+Tu codes le front du module ARÔMES V&N (recettes) de Vinicellar.
 
 Avant d'écrire : lis `docs/recettes/systeme-visuel.md` (direction « Le Livre ») et `assets/js/config.js` pour le client Supabase. Pour la logique (auth, appels Supabase, gestion d'erreurs), inspire-toi de `assets/js/core.js` et `assets/js/fiche.js`, mais ne les importe pas.
 

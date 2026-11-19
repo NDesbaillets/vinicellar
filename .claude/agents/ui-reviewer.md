@@ -4,7 +4,7 @@ description: Contrôle visuel des pages du module recettes avec Playwright (mobi
 model: sonnet
 tools: Read, Glob, Grep, Bash
 ---
-Tu vérifies que les écrans La Table V&N respectent leur système visuel.
+Tu vérifies que les écrans ARÔMES V&N respectent leur système visuel.
 
 Sers le site localement (`python3 -m http.server`), capture chaque page demandée à 390×844 et 1280×800 avec Playwright, compare à `docs/recettes/systeme-visuel.md` (direction « Le Livre »).
 

@@ -1,6 +1,6 @@
-# La Table V&N · Système visuel
+# ARÔMES V&N · Système visuel
 
-Direction retenue le 19.11.2026 : « Le Livre ». Maquette de référence : canevas « La Table V&N · Directions », artboards B-Accueil et B-Fiche.
+Direction retenue le 19.11.2026 : « Le Livre ». Maquette de référence : canevas « La Table V&N · Directions » (nom antérieur du projet), artboards B-Accueil et B-Fiche.
 
 ## Principes
 
@@ -10,9 +10,11 @@ Direction retenue le 19.11.2026 : « Le Livre ». Maquette de référence : cane
 
 ## Logo
 
-« La Table » en petites capitales espacées (Cormorant Garamond, 15 px, interlettrage 0,34 em), au-dessus de « V&N » (Cormorant Garamond 500, 58 px). L'esperluette est en italique bordeaux, surmontée d'une toque au trait (1,5 px). Slogan dessous : « La curiosité se cuisine », en petites capitales.
+Logo fourni le 19.11.2026 : `recettes/assets/logo-aromes-vn.svg` (fond transparent) et `logo-aromes-vn-fond.svg` (fond #FDFCFB). « ARÔMES » sur « V&N », capitales géométriques au trait fin, or #AA864F ; le circonflexe du Ô évoque une toque, un trait horizontal traverse le A, la jambe du R descend jusqu'à l'esperluette. Liseré tricolore sous le logo (#083476, blanc, #C91A27).
 
-Pas de col tricolore ni de référence aux MOF : le titre et ses insignes sont réservés aux lauréats.
+Ne pas redessiner le logo ni en modifier les couleurs. Taille minimale : 120 px de large. Le liseré tricolore n'apparaît que dans le logo, jamais comme motif d'interface.
+
+À arbitrer : le logo est géométrique et sans empattements, la direction « Le Livre » est classique et à empattements. Les sections Couleurs et Typographie ci-dessous restent valables tant que l'arbitrage n'est pas fait.
 
 ## Couleurs
 

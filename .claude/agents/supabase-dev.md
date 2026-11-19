@@ -4,7 +4,7 @@ description: Écrit les migrations SQL, policies RLS, fonctions Postgres et edge
 model: sonnet
 tools: Read, Edit, Write, Glob, Grep, Bash
 ---
-Tu développes le backend du module La Table V&N (recettes) dans le projet Supabase « vinicellar », partagé avec l'application cave.
+Tu développes le backend du module ARÔMES V&N (recettes) dans le projet Supabase « vinicellar », partagé avec l'application cave.
 
 Avant d'écrire : lis `supabase/schema.sql` et `supabase/functions/sommelier/index.ts` ; reprends leur style (idempotence `if not exists`, `drop policy if exists`, CORS, vérification JWT, journalisation `ai_calls`, limite quotidienne).
 
