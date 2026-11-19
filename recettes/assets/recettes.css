@@ -54,7 +54,7 @@ h2.section{font-family:var(--titre);font-weight:300;text-transform:uppercase;let
 .btn.danger{background:transparent;color:var(--erreur);border-color:var(--erreur)}
 .btn.danger:hover{background:var(--erreur);color:var(--fond)}
 .btn.petit{min-height:44px;padding:0 14px;font-size:11px}
-.btn.bloc{display:flex;width:100%}
+.btn.large{display:flex;width:100%}
 .btn[disabled],.btn[aria-disabled="true"]{opacity:.55;cursor:default}
 .btn.actif,.btn[aria-pressed="true"]{background:var(--or-texte);color:var(--fond)}
 .btn.sec[aria-pressed="false"]{background:transparent;color:var(--or-texte)}
