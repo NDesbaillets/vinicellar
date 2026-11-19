@@ -10,6 +10,7 @@
   "orientation": "portrait",
   "background_color": "#FBF8F2",
   "theme_color": "#FBF8F2",
+  "share_target": { "action": "/recettes/ajouter.html", "method": "GET", "params": { "title": "title", "text": "text", "url": "url" } },
   "categories": ["food", "lifestyle"],
   "icons": [
     { "src": "/recettes/assets/logo-aromes-vn-fond.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }

@@ -1,6 +1,6 @@
 // Service worker ARÔMES V&N (scope /recettes/). Fichiers statiques de /recettes/ et bibliothèques versionnées des CDN en cache ;
 // pages : réseau d'abord. Supabase (données, photos signées, fonctions) et toute requête non GET ne sont jamais mis en cache.
-const VERSION = "aromes-20261119-r1";
+const VERSION = "aromes-20261119-r2";
 const STATIC = VERSION + "-static";
 const PAGES = VERSION + "-pages";
 const PRECACHE = [

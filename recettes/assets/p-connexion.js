@@ -33,7 +33,7 @@
     const email = f.email.value.trim();
     if (!email) { f.email.focus(); return setMsg(out, T.email, "erreur"); }
     try {
-      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + "/nouveau-mot-de-passe.html" });
+      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: (location.hostname === "vinicellar.ch" ? "https://vinicellar.ch" : location.origin) + "/nouveau-mot-de-passe.html?next=/recettes/" });
       if (error && error.status === 429) return setMsg(out, T.rate, "erreur");
       setMsg(out, T.sent, "ok");
     } catch (err) { console.error(err); setMsg(out, T.net, "erreur"); }
