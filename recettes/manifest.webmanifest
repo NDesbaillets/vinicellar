@@ -1,0 +1,17 @@
+{
+  "id": "/recettes/",
+  "name": "ARÔMES V&N",
+  "short_name": "ARÔMES V&N",
+  "description": "La curiosité se cuisine : votre carnet de recettes.",
+  "lang": "fr",
+  "start_url": "/recettes/",
+  "scope": "/recettes/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FBF8F2",
+  "theme_color": "#FBF8F2",
+  "categories": ["food", "lifestyle"],
+  "icons": [
+    { "src": "/recettes/assets/logo-aromes-vn-fond.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Bienvenue · ARÔMES V&amp;N</title>
+  <meta name="description" content="Activation de votre accès à ARÔMES V&amp;N">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/recettes/assets/logo-aromes-vn-fond.svg" type="image/svg+xml">
+  <link rel="manifest" href="/recettes/manifest.webmanifest">
+  <meta name="theme-color" content="#FBF8F2">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap">
+  <link rel="stylesheet" href="/recettes/assets/recettes.css?v=20261119-r1">
+</head>
+<body>
+  <main class="wrap carte" id="main">
+    <div class="entete">
+      <img src="/recettes/assets/logo-aromes-vn-recadre.svg" alt="ARÔMES V&amp;N" width="240" height="129">
+      <p class="slogan">La curiosité se cuisine</p>
+      <span class="filet" aria-hidden="true"></span>
+    </div>
+    <h1 class="chapitre centre" style="font-size:20px">Bienvenue</h1>
+    <p class="msg centre" id="status" role="status" aria-live="polite">Vérification du lien…</p>
+    <form id="welcome-form" class="champs" hidden novalidate>
+      <p class="muted centre" style="margin:0">Compte : <span id="who"></span></p>
+      <label>Mot de passe (10 caractères minimum)<input type="password" name="password" autocomplete="new-password" minlength="10" required></label>
+      <label>Confirmer le mot de passe<input type="password" name="confirm" autocomplete="new-password" minlength="10" required></label>
+      <div class="grille2">
+        <label>Prénom<input name="first_name" autocomplete="given-name" maxlength="80" required></label>
+        <label>Nom<input name="last_name" autocomplete="family-name" maxlength="80" required></label>
+      </div>
+      <button class="btn bloc" type="submit">Ouvrir mon carnet</button>
+      <p class="msg" id="msg" role="status" aria-live="polite"></p>
+    </form>
+    <form id="resend" class="champs" hidden novalidate>
+      <label>Adresse e-mail<input type="email" name="email" autocomplete="email" required></label>
+      <button class="btn bloc" type="submit">Recevoir un nouveau lien</button>
+    </form>
+  </main>
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+  <script src="/assets/js/config.js"></script>
+  <script src="/recettes/assets/recettes.js?v=20261119-r1"></script>
+  <script src="/recettes/assets/p-bienvenue.js?v=20261119-r1"></script>
+</body>
+</html>
