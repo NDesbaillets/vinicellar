@@ -4,7 +4,7 @@ Site statique (GitHub Pages, vinicellar.ch) + Supabase (projet « vinicellar »,
 
 ## ARÔMES V&N (/recettes/)
 
-ARÔMES V&N : recueil personnel de recettes, hébergé sur vinicellar.ch/recettes/. Même domaine, même projet Supabase, même session d'auth que Vinicellar. Identité visuelle propre (direction « Le Livre » : Cormorant Garamond + EB Garamond, papier #F2EBDD, encre #2A221E, bordeaux #5C1A28, filet or #9A7B4F) ; ne jamais importer `assets/css/app.css` ni `core.js`. Aucun framework, aucun build : HTML + JS vanilla + supabase-js UMD, comme le reste du site.
+ARÔMES V&N : recueil personnel de recettes, hébergé sur vinicellar.ch/recettes/. Même domaine, même projet Supabase, même session d'auth que Vinicellar. Identité visuelle propre (`docs/recettes/systeme-visuel.md` : Jost 300 + EB Garamond, fond #FBF8F2, encre #2A221E, or #AA864F du logo) ; ne jamais importer `assets/css/app.css` ni `core.js`. Aucun framework, aucun build : HTML + JS vanilla + supabase-js UMD, comme le reste du site.
 
 ### Rôle de la session principale (Opus) : coordinateur
 - Tu planifies, découpes, revois. Tu n'écris toi-même que le code d'architecture (schéma SQL, contrats entre modules) et les arbitrages.

@@ -10,7 +10,7 @@ Validé le 19.11.2026 par le propriétaire du projet, après un entretien de 41 
 - **Notes** : partagées avec le carnet par défaut, option « privée » (visible de son seul auteur).
 - **Transmettre** : copie d'une recette vers un autre carnet dont on est membre, sans les notes privées, avec lien vers l'original.
 - **Lien public** : page en lecture seule, jeton non devinable, révocable, `noindex`. Image extraite du reel autorisée ; créateur toujours crédité avec lien vers la source.
-- **Corbeille** : une recette supprimée reste 30 jours, restaurable par tout membre.
+- **Corbeille** : une recette supprimée reste 30 jours, restaurable par un propriétaire ou un membre (pas par un lecteur).
 
 ## 2. Import
 
