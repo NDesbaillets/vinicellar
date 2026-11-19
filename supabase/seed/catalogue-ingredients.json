@@ -1,232 +1,3182 @@
 [
-{"nom": "pomme de terre", "alias": ["pommes de terre"], "rayon": "fruits_legumes", "mois": [1,2,3,4,5,6,7,8,9,10,11,12], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "pomme de terre farineuse", "alias": ["pommes de terre farineuses"], "rayon": "fruits_legumes", "mois": [1,2,3,4,5,6,7,8,9,10,11,12], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "carotte", "alias": ["carottes"], "rayon": "fruits_legumes", "mois": [1,2,3,4,5,6,7,8,9,10,11,12], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "poireau", "alias": ["poireaux"], "rayon": "fruits_legumes", "mois": [9,10,11,12,1,2,3,4], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "oignon", "alias": ["oignons"], "rayon": "fruits_legumes", "mois": [1,2,3,4,5,6,7,8,9,10,11,12], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "oignon nouveau", "alias": ["oignons nouveaux"], "rayon": "fruits_legumes", "mois": [5,6,7], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "oignon rouge", "alias": ["oignons rouges"], "rayon": "fruits_legumes", "mois": [8,9,10,11,12,1,2,3], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "échalote", "alias": ["échalotes"], "rayon": "fruits_legumes", "mois": [1,2,3,4,5,6,7,8,9,10,11,12], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "ail", "alias": ["gousses d'ail", "têtes d'ail"], "rayon": "fruits_legumes", "mois": [1,2,3,4,5,6,7,8,9,10,11,12], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "ail des ours", "alias": ["ails des ours"], "rayon": "fruits_legumes", "mois": [3,4,5], "saison_courte": true, "densite_g_ml": null, "allergenes": []},
-{"nom": "fenouil", "alias": ["fenouils"], "rayon": "fruits_legumes", "mois": [6,7,8,9,10,11], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "céleri-rave", "alias": ["céleris-raves", "céleri rave"], "rayon": "fruits_legumes", "mois": [9,10,11,12,1,2,3,4], "saison_courte": false, "densite_g_ml": null, "allergenes": ["celeri"]},
-{"nom": "céleri branche", "alias": ["céleris branches", "céleris en branches"], "rayon": "fruits_legumes", "mois": [6,7,8,9,10,11], "saison_courte": false, "densite_g_ml": null, "allergenes": ["celeri"]},
-{"nom": "courgette", "alias": ["courgettes"], "rayon": "fruits_legumes", "mois": [5,6,7,8,9,10], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "aubergine", "alias": ["aubergines"], "rayon": "fruits_legumes", "mois": [6,7,8,9,10], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "poivron", "alias": ["poivrons"], "rayon": "fruits_legumes", "mois": [7,8,9,10], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "piment", "alias": ["piments"], "rayon": "fruits_legumes", "mois": [7,8,9,10], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "tomate", "alias": ["tomates"], "rayon": "fruits_legumes", "mois": [6,7,8,9,10], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "concombre", "alias": ["concombres"], "rayon": "fruits_legumes", "mois": [5,6,7,8,9,10], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "haricot vert", "alias": ["haricots verts"], "rayon": "fruits_legumes", "mois": [6,7,8,9,10], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "petit pois frais", "alias": ["petits pois frais", "petits pois"], "rayon": "fruits_legumes", "mois": [6,7], "saison_courte": true, "densite_g_ml": null, "allergenes": []},
-{"nom": "épinard", "alias": ["épinards"], "rayon": "fruits_legumes", "mois": [3,4,5,6,9,10,11], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "chou blanc", "alias": ["choux blancs"], "rayon": "fruits_legumes", "mois": [9,10,11,12,1,2,3], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "chou rouge", "alias": ["choux rouges"], "rayon": "fruits_legumes", "mois": [9,10,11,12,1,2,3], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "chou de Bruxelles", "alias": ["choux de Bruxelles"], "rayon": "fruits_legumes", "mois": [10,11,12,1,2,3], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "chou-fleur", "alias": ["choux-fleurs", "chou fleur"], "rayon": "fruits_legumes", "mois": [6,7,8,9,10,11], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "brocoli", "alias": ["brocolis"], "rayon": "fruits_legumes", "mois": [8,9,10,11], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "chou frisé", "alias": ["choux frisés", "kale"], "rayon": "fruits_legumes", "mois": [10,11,12,1,2,3], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "navet", "alias": ["navets"], "rayon": "fruits_legumes", "mois": [9,10,11,12,1,2,3,4], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "radis", "alias": ["radis roses"], "rayon": "fruits_legumes", "mois": [3,4,5,6,7,8,9,10,11], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "betterave", "alias": ["betteraves"], "rayon": "fruits_legumes", "mois": [8,9,10,11,12,1,2,3], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "asperge blanche", "alias": ["asperges blanches"], "rayon": "fruits_legumes", "mois": [4,5,6], "saison_courte": true, "densite_g_ml": null, "allergenes": []},
-{"nom": "asperge verte", "alias": ["asperges vertes"], "rayon": "fruits_legumes", "mois": [4,5,6], "saison_courte": true, "densite_g_ml": null, "allergenes": []},
-{"nom": "artichaut", "alias": ["artichauts"], "rayon": "fruits_legumes", "mois": [5,6,7,8,9], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "laitue", "alias": ["laitues"], "rayon": "fruits_legumes", "mois": [4,5,6,7,8,9,10,11], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "maïs doux", "alias": ["épis de maïs"], "rayon": "fruits_legumes", "mois": [7,8,9,10], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "potiron", "alias": ["potirons"], "rayon": "fruits_legumes", "mois": [9,10,11], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "gingembre", "alias": ["gingembres"], "rayon": "fruits_legumes", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "citron", "alias": ["citrons"], "rayon": "fruits_legumes", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "pomme", "alias": ["pommes"], "rayon": "fruits_legumes", "mois": [9,10,11,12,1,2,3,4,5], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "poire", "alias": ["poires"], "rayon": "fruits_legumes", "mois": [8,9,10,11], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "coing", "alias": ["coings"], "rayon": "fruits_legumes", "mois": [9,10,11], "saison_courte": true, "densite_g_ml": null, "allergenes": []},
-{"nom": "prune", "alias": ["prunes"], "rayon": "fruits_legumes", "mois": [8,9], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "abricot", "alias": ["abricots"], "rayon": "fruits_legumes", "mois": [6,7,8], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "abricot du Valais", "alias": ["abricots du Valais"], "rayon": "fruits_legumes", "mois": [7,8], "saison_courte": true, "densite_g_ml": null, "allergenes": []},
-{"nom": "cerise", "alias": ["cerises"], "rayon": "fruits_legumes", "mois": [6,7,8], "saison_courte": true, "densite_g_ml": null, "allergenes": []},
-{"nom": "fraise", "alias": ["fraises"], "rayon": "fruits_legumes", "mois": [5,6,7,8], "saison_courte": true, "densite_g_ml": null, "allergenes": []},
-{"nom": "framboise", "alias": ["framboises"], "rayon": "fruits_legumes", "mois": [6,7,8,9], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "myrtille", "alias": ["myrtilles"], "rayon": "fruits_legumes", "mois": [7,8,9], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "mûre", "alias": ["mûres"], "rayon": "fruits_legumes", "mois": [7,8,9], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "raisin", "alias": ["raisins"], "rayon": "fruits_legumes", "mois": [8,9,10], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "melon", "alias": ["melons"], "rayon": "fruits_legumes", "mois": [7,8,9], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "pastèque", "alias": ["pastèques"], "rayon": "fruits_legumes", "mois": [7,8,9], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "pêche", "alias": ["pêches"], "rayon": "fruits_legumes", "mois": [7,8,9], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "châtaigne", "alias": ["châtaignes"], "rayon": "fruits_legumes", "mois": [9,10,11], "saison_courte": true, "densite_g_ml": null, "allergenes": ["fruits_a_coque"]},
-{"nom": "persil", "alias": ["persil plat", "persil frisé"], "rayon": "fruits_legumes", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "basilic", "alias": ["basilics"], "rayon": "fruits_legumes", "mois": [6,7,8,9], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "thym frais", "alias": ["thym"], "rayon": "fruits_legumes", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "romarin", "alias": ["romarins"], "rayon": "fruits_legumes", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "ciboulette", "alias": ["ciboulettes"], "rayon": "fruits_legumes", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "coriandre fraîche", "alias": ["coriandre", "coriandres"], "rayon": "fruits_legumes", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "champignon de Paris", "alias": ["champignons de Paris", "champignons de couche"], "rayon": "fruits_legumes", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "cèpe", "alias": ["cèpes"], "rayon": "fruits_legumes", "mois": [8,9,10], "saison_courte": true, "densite_g_ml": null, "allergenes": []},
-{"nom": "girolle", "alias": ["girolles", "chanterelle", "chanterelles"], "rayon": "fruits_legumes", "mois": [6,7,8,9,10], "saison_courte": true, "densite_g_ml": null, "allergenes": []},
-{"nom": "morille", "alias": ["morilles"], "rayon": "fruits_legumes", "mois": [4,5], "saison_courte": true, "densite_g_ml": null, "allergenes": []},
-{"nom": "trompette de la mort", "alias": ["trompettes de la mort"], "rayon": "fruits_legumes", "mois": [7,8,9,10], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "shiitake", "alias": ["shiitakes"], "rayon": "fruits_legumes", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "bolet", "alias": ["bolets"], "rayon": "fruits_legumes", "mois": [7,8,9,10], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "truffe blanche", "alias": ["truffes blanches"], "rayon": "fruits_legumes", "mois": [10,11,12], "saison_courte": true, "densite_g_ml": null, "allergenes": []},
-{"nom": "truffe noire", "alias": ["truffes noires"], "rayon": "fruits_legumes", "mois": [11,12,1,2,3], "saison_courte": true, "densite_g_ml": null, "allergenes": []},
-{"nom": "bœuf", "alias": ["boeuf"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "bœuf haché", "alias": ["boeuf haché", "viande de bœuf hachée"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "veau", "alias": ["veaux"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "jarret de veau", "alias": ["jarrets de veau"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "ris de veau", "alias": ["ris de veaux"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "porc", "alias": ["viande de porc"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "filet mignon de porc", "alias": ["filets mignons de porc", "filet mignon"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "agneau", "alias": ["agneaux"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "gigot d'agneau", "alias": ["gigots d'agneau"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "poulet", "alias": ["poulets"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "blanc de poulet", "alias": ["blancs de poulet", "filet de poulet", "filets de poulet"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "canard", "alias": ["canards", "magret de canard", "magrets de canard"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "chevreuil", "alias": ["chevreuils"], "rayon": "boucherie", "mois": [8,9,10,11,12,1], "saison_courte": true, "densite_g_ml": null, "allergenes": []},
-{"nom": "cerf", "alias": ["cerfs"], "rayon": "boucherie", "mois": [9,10,11,12,1], "saison_courte": true, "densite_g_ml": null, "allergenes": []},
-{"nom": "sanglier", "alias": ["sangliers"], "rayon": "boucherie", "mois": [9,10,11,12,1], "saison_courte": true, "densite_g_ml": null, "allergenes": []},
-{"nom": "lièvre", "alias": ["lièvres"], "rayon": "boucherie", "mois": [10,11,12,1], "saison_courte": true, "densite_g_ml": null, "allergenes": []},
-{"nom": "faisan", "alias": ["faisans"], "rayon": "boucherie", "mois": [10,11,12,1], "saison_courte": true, "densite_g_ml": null, "allergenes": []},
-{"nom": "pancetta", "alias": ["pancettas"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "lardon", "alias": ["lardons"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "lard", "alias": ["lards", "lard fumé"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "jambon cru", "alias": ["jambons crus"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "jambon blanc", "alias": ["jambons blancs", "jambon cuit"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "bresaola", "alias": ["bresaolas"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "saucisson", "alias": ["saucissons", "saucisson sec"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "saucisse", "alias": ["saucisses"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "chorizo", "alias": ["chorizos"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "viande des Grisons", "alias": ["viande séchée des Grisons", "bündnerfleisch"], "rayon": "boucherie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "féra", "alias": ["féras"], "rayon": "poissonnerie", "mois": [9,10,11,12,1,2,3], "saison_courte": false, "densite_g_ml": null, "allergenes": ["poisson"]},
-{"nom": "perche", "alias": ["perches"], "rayon": "poissonnerie", "mois": [5,6,7,8,9,10], "saison_courte": false, "densite_g_ml": null, "allergenes": ["poisson"]},
-{"nom": "lieu jaune", "alias": ["lieux jaunes"], "rayon": "poissonnerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["poisson"]},
-{"nom": "cabillaud", "alias": ["cabillauds"], "rayon": "poissonnerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["poisson"]},
-{"nom": "saumon", "alias": ["saumons"], "rayon": "poissonnerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["poisson"]},
-{"nom": "saumon fumé", "alias": ["saumons fumés"], "rayon": "poissonnerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["poisson"]},
-{"nom": "thon", "alias": ["thons"], "rayon": "poissonnerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["poisson"]},
-{"nom": "daurade", "alias": ["dorade", "dorades", "daurades"], "rayon": "poissonnerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["poisson"]},
-{"nom": "bar", "alias": ["bars", "loup de mer"], "rayon": "poissonnerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["poisson"]},
-{"nom": "sole", "alias": ["soles"], "rayon": "poissonnerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["poisson"]},
-{"nom": "merlan", "alias": ["merlans"], "rayon": "poissonnerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["poisson"]},
-{"nom": "crevette", "alias": ["crevettes"], "rayon": "poissonnerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["crustaces"]},
-{"nom": "langoustine", "alias": ["langoustines"], "rayon": "poissonnerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["crustaces"]},
-{"nom": "homard", "alias": ["homards"], "rayon": "poissonnerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["crustaces"]},
-{"nom": "moule", "alias": ["moules"], "rayon": "poissonnerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["mollusques"]},
-{"nom": "coquille saint-jacques", "alias": ["coquilles saint-jacques", "saint-jacques"], "rayon": "poissonnerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["mollusques"]},
-{"nom": "calamar", "alias": ["calamars"], "rayon": "poissonnerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["mollusques"]},
-{"nom": "huître", "alias": ["huîtres"], "rayon": "poissonnerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["mollusques"]},
-{"nom": "lait", "alias": ["laits"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.03, "allergenes": ["lait"]},
-{"nom": "crème", "alias": ["crèmes", "crème liquide", "crème entière"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.0, "allergenes": ["lait"]},
-{"nom": "crème fraîche", "alias": ["crèmes fraîches"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.01, "allergenes": ["lait"]},
-{"nom": "beurre", "alias": ["beurres"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.96, "allergenes": ["lait"]},
-{"nom": "beurre clarifié", "alias": ["beurres clarifiés", "ghee"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.9, "allergenes": ["lait"]},
-{"nom": "œuf", "alias": ["oeuf", "oeufs", "œufs"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["oeufs"]},
-{"nom": "yaourt", "alias": ["yaourts", "yogourt", "yoghourt"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.03, "allergenes": ["lait"]},
-{"nom": "mozzarella", "alias": ["mozzarellas"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["lait"]},
-{"nom": "burrata", "alias": ["burratas"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["lait"]},
-{"nom": "parmesan", "alias": ["parmigiano reggiano", "parmigiano", "parmesans"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["lait"]},
-{"nom": "parmesan râpé", "alias": ["parmesan rapé", "parmigiano râpé"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.42, "allergenes": ["lait"]},
-{"nom": "grana padano", "alias": ["grana"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["lait"]},
-{"nom": "pecorino", "alias": ["pecorinos"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["lait"]},
-{"nom": "gorgonzola", "alias": ["gorgonzolas"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["lait"]},
-{"nom": "gruyère", "alias": ["gruyères"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["lait"]},
-{"nom": "emmental", "alias": ["emmenthal", "emmentals"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["lait"]},
-{"nom": "appenzeller", "alias": ["appenzell"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["lait"]},
-{"nom": "raclette", "alias": ["raclettes"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["lait"]},
-{"nom": "tête de moine", "alias": ["têtes de moine"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["lait"]},
-{"nom": "vacherin", "alias": ["vacherins", "vacherin Mont d'Or"], "rayon": "cremerie", "mois": [8,9,10,11,12,1,2,3], "saison_courte": false, "densite_g_ml": null, "allergenes": ["lait"]},
-{"nom": "comté", "alias": ["comtés"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["lait"]},
-{"nom": "chèvre frais", "alias": ["fromage de chèvre", "fromages de chèvre", "chèvre"], "rayon": "cremerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["lait"]},
-{"nom": "pain", "alias": ["pains"], "rayon": "boulangerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["gluten"]},
-{"nom": "pain aux châtaignes", "alias": ["pains aux châtaignes"], "rayon": "boulangerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["gluten", "fruits_a_coque"]},
-{"nom": "pâte feuilletée", "alias": ["pâtes feuilletées"], "rayon": "boulangerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["gluten", "lait"]},
-{"nom": "pâte brisée", "alias": ["pâtes brisées"], "rayon": "boulangerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["gluten", "lait", "oeufs"]},
-{"nom": "baguette", "alias": ["baguettes"], "rayon": "boulangerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["gluten"]},
-{"nom": "chapelure", "alias": ["chapelures"], "rayon": "boulangerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.42, "allergenes": ["gluten"]},
-{"nom": "chapelure panko", "alias": ["panko"], "rayon": "boulangerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.35, "allergenes": ["gluten"]},
-{"nom": "farine", "alias": ["farines", "farine de blé", "farine T55"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.53, "allergenes": ["gluten"]},
-{"nom": "farine 00", "alias": ["farines 00", "farine tipo 00"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.53, "allergenes": ["gluten"]},
-{"nom": "farine complète", "alias": ["farine intégrale", "farines complètes"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.5, "allergenes": ["gluten"]},
-{"nom": "fécule de maïs", "alias": ["fécules de maïs", "maïzena", "amidon de maïs"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.6, "allergenes": []},
-{"nom": "fécule de pomme de terre", "alias": ["fécules de pomme de terre", "fécule"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.6, "allergenes": []},
-{"nom": "semoule", "alias": ["semoules", "semoule de blé dur"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.7, "allergenes": ["gluten"]},
-{"nom": "polenta", "alias": ["polentas", "semoule de maïs"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.7, "allergenes": []},
-{"nom": "levure chimique", "alias": ["levures chimiques", "poudre à lever"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.9, "allergenes": []},
-{"nom": "bicarbonate de soude", "alias": ["bicarbonate", "bicarbonates de soude"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.9, "allergenes": []},
-{"nom": "riz à risotto", "alias": ["riz arborio", "riz carnaroli", "riz pour risotto"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.8, "allergenes": []},
-{"nom": "riz", "alias": ["riz blanc"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.8, "allergenes": []},
-{"nom": "riz basmati", "alias": ["basmati"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.8, "allergenes": []},
-{"nom": "pâte alimentaire", "alias": ["pâtes", "pâtes alimentaires"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["gluten"]},
-{"nom": "gnocchi", "alias": ["gnocchis"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["gluten", "oeufs"]},
-{"nom": "couscous", "alias": ["couscous"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.7, "allergenes": ["gluten"]},
-{"nom": "nouilles soba", "alias": ["soba"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["gluten"]},
-{"nom": "nouilles de riz", "alias": ["vermicelles de riz"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "lentille", "alias": ["lentilles"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.8, "allergenes": []},
-{"nom": "flocons d'avoine", "alias": ["flocon d'avoine", "avoine en flocons"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.38, "allergenes": ["gluten"]},
-{"nom": "sucre", "alias": ["sucre semoule", "sucre blanc", "sucres"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.845, "allergenes": []},
-{"nom": "sucre glace", "alias": ["sucre impalpable", "sucres glace"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.507, "allergenes": []},
-{"nom": "cassonade", "alias": ["cassonades"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.9, "allergenes": []},
-{"nom": "sucre de canne", "alias": ["sucres de canne", "sucre brun"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.85, "allergenes": []},
-{"nom": "sucre vanillé", "alias": ["sucres vanillés"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.845, "allergenes": []},
-{"nom": "miel", "alias": ["miels"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.42, "allergenes": []},
-{"nom": "sirop d'érable", "alias": ["sirops d'érable"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.32, "allergenes": []},
-{"nom": "huile d'olive", "alias": ["huiles d'olive", "huile d'olive vierge extra"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.915, "allergenes": []},
-{"nom": "huile de tournesol", "alias": ["huiles de tournesol"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.92, "allergenes": []},
-{"nom": "huile de colza", "alias": ["huiles de colza", "huile de canola"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.92, "allergenes": []},
-{"nom": "huile de noix", "alias": ["huiles de noix"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.92, "allergenes": ["fruits_a_coque"]},
-{"nom": "huile de sésame", "alias": ["huiles de sésame"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.92, "allergenes": ["sesame"]},
-{"nom": "vinaigre", "alias": ["vinaigres", "vinaigre de vin"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.0, "allergenes": []},
-{"nom": "vinaigre balsamique", "alias": ["balsamique", "vinaigres balsamiques", "vinaigre de Modène"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.1, "allergenes": ["sulfites"]},
-{"nom": "vinaigre de riz", "alias": ["vinaigres de riz"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.0, "allergenes": []},
-{"nom": "vinaigre de cidre", "alias": ["vinaigres de cidre"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.0, "allergenes": []},
-{"nom": "moutarde", "alias": ["moutardes", "moutarde de Dijon"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.05, "allergenes": ["moutarde"]},
-{"nom": "graine de moutarde", "alias": ["graines de moutarde"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["moutarde"]},
-{"nom": "mayonnaise", "alias": ["mayonnaises"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.92, "allergenes": ["oeufs", "moutarde"]},
-{"nom": "câpre", "alias": ["câpres"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "olive", "alias": ["olives"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "pesto", "alias": ["pestos"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["fruits_a_coque", "lait"]},
-{"nom": "concentré de tomate", "alias": ["concentrés de tomate", "pâte de tomate"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.2, "allergenes": []},
-{"nom": "tomate pelée en conserve", "alias": ["tomates pelées", "tomates concassées", "tomates en conserve"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.05, "allergenes": []},
-{"nom": "bouillon de volaille", "alias": ["bouillons de volaille", "fond de volaille"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.0, "allergenes": ["celeri"]},
-{"nom": "bouillon de bœuf", "alias": ["bouillons de bœuf", "fond de bœuf"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.0, "allergenes": ["celeri"]},
-{"nom": "sauce Worcestershire", "alias": ["sauces Worcestershire", "worcestershire"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.1, "allergenes": ["poisson", "sulfites"]},
-{"nom": "sauce soja", "alias": ["sauces soja", "sauce soya", "shoyu"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.2, "allergenes": ["soja", "gluten"]},
-{"nom": "miso blanc", "alias": ["shiro miso"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.15, "allergenes": ["soja"]},
-{"nom": "miso rouge", "alias": ["aka miso"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.15, "allergenes": ["soja"]},
-{"nom": "mirin", "alias": ["mirins"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.04, "allergenes": []},
-{"nom": "saké de cuisine", "alias": ["saké", "sake", "saké de cuisson"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.99, "allergenes": []},
-{"nom": "nuoc-mâm", "alias": ["nuoc mâm", "nuoc nam"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.2, "allergenes": ["poisson"]},
-{"nom": "sauce hoisin", "alias": ["sauces hoisin"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.2, "allergenes": ["soja", "gluten"]},
-{"nom": "sauce d'huître", "alias": ["sauces d'huîtres"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 1.2, "allergenes": ["mollusques", "soja", "gluten"]},
-{"nom": "tofu", "alias": ["tofus"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["soja"]},
-{"nom": "nori", "alias": ["feuilles de nori", "algue nori"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "sel", "alias": ["sel fin", "sel de cuisine"], "rayon": "epices", "mois": [], "saison_courte": false, "densite_g_ml": 1.2, "allergenes": []},
-{"nom": "poivre noir", "alias": ["poivre", "poivre moulu"], "rayon": "epices", "mois": [], "saison_courte": false, "densite_g_ml": 0.5, "allergenes": []},
-{"nom": "piment d'Espelette", "alias": ["piments d'Espelette"], "rayon": "epices", "mois": [], "saison_courte": false, "densite_g_ml": 0.5, "allergenes": []},
-{"nom": "paprika", "alias": ["paprikas", "paprika fumé"], "rayon": "epices", "mois": [], "saison_courte": false, "densite_g_ml": 0.5, "allergenes": []},
-{"nom": "cayenne", "alias": ["poudre de cayenne", "piment de Cayenne"], "rayon": "epices", "mois": [], "saison_courte": false, "densite_g_ml": 0.5, "allergenes": []},
-{"nom": "cumin", "alias": ["cumins", "cumin moulu"], "rayon": "epices", "mois": [], "saison_courte": false, "densite_g_ml": 0.45, "allergenes": []},
-{"nom": "curcuma", "alias": ["curcumas"], "rayon": "epices", "mois": [], "saison_courte": false, "densite_g_ml": 0.5, "allergenes": []},
-{"nom": "curry", "alias": ["curry en poudre", "poudre de curry"], "rayon": "epices", "mois": [], "saison_courte": false, "densite_g_ml": 0.5, "allergenes": ["celeri", "moutarde"]},
-{"nom": "cannelle", "alias": ["cannelles"], "rayon": "epices", "mois": [], "saison_courte": false, "densite_g_ml": 0.5, "allergenes": []},
-{"nom": "muscade", "alias": ["noix de muscade"], "rayon": "epices", "mois": [], "saison_courte": false, "densite_g_ml": 0.5, "allergenes": []},
-{"nom": "safran", "alias": ["safrans", "filaments de safran"], "rayon": "epices", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "clou de girofle", "alias": ["clous de girofle"], "rayon": "epices", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "cardamome", "alias": ["cardamomes", "cardamome verte"], "rayon": "epices", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "vanille", "alias": ["gousse de vanille", "gousses de vanille"], "rayon": "epices", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "laurier", "alias": ["feuilles de laurier"], "rayon": "epices", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "herbes de Provence", "alias": ["herbes de provence"], "rayon": "epices", "mois": [], "saison_courte": false, "densite_g_ml": 0.4, "allergenes": []},
-{"nom": "cacao en poudre", "alias": ["cacao", "poudre de cacao"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.4, "allergenes": []},
-{"nom": "chocolat noir", "alias": ["chocolats noirs"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "cacahuète", "alias": ["cacahuètes", "arachide", "arachides"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["arachides"]},
-{"nom": "amande", "alias": ["amandes"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["fruits_a_coque"]},
-{"nom": "amandes en poudre", "alias": ["poudre d'amande", "amandes moulues"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.4, "allergenes": ["fruits_a_coque"]},
-{"nom": "noisette", "alias": ["noisettes"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["fruits_a_coque"]},
-{"nom": "noix", "alias": ["noix entières", "cerneaux"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["fruits_a_coque"]},
-{"nom": "noix hachées", "alias": ["noix concassées", "noix émiettées"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": 0.45, "allergenes": ["fruits_a_coque"]},
-{"nom": "raisin sec", "alias": ["raisins secs", "sultanines"], "rayon": "epicerie", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "vin blanc", "alias": ["vins blancs", "vin blanc sec"], "rayon": "boissons", "mois": [], "saison_courte": false, "densite_g_ml": 0.99, "allergenes": ["sulfites"]},
-{"nom": "vin rouge", "alias": ["vins rouges", "vin rouge sec"], "rayon": "boissons", "mois": [], "saison_courte": false, "densite_g_ml": 0.99, "allergenes": ["sulfites"]},
-{"nom": "bière", "alias": ["bières", "bière blonde"], "rayon": "boissons", "mois": [], "saison_courte": false, "densite_g_ml": 1.01, "allergenes": ["gluten"]},
-{"nom": "épinard surgelé", "alias": ["épinards surgelés"], "rayon": "surgeles", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": []},
-{"nom": "crème glacée", "alias": ["crèmes glacées", "glace"], "rayon": "surgeles", "mois": [], "saison_courte": false, "densite_g_ml": null, "allergenes": ["lait", "oeufs"]}
+ {
+  "nom": "pomme de terre",
+  "alias": [
+   "pommes de terre"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "pomme de terre farineuse",
+  "alias": [
+   "pommes de terre farineuses"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "carotte",
+  "alias": [
+   "carottes"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "poireau",
+  "alias": [
+   "poireaux"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   9,
+   10,
+   11,
+   12,
+   1,
+   2,
+   3,
+   4
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "oignon",
+  "alias": [
+   "oignons"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "oignon nouveau",
+  "alias": [
+   "oignons nouveaux"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   5,
+   6,
+   7
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "oignon rouge",
+  "alias": [
+   "oignons rouges"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   8,
+   9,
+   10,
+   11,
+   12,
+   1,
+   2,
+   3
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "échalote",
+  "alias": [
+   "échalotes"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "ail",
+  "alias": [
+   "gousses d'ail",
+   "têtes d'ail"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "ail des ours",
+  "alias": [
+   "ails des ours"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   3,
+   4,
+   5
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "fenouil",
+  "alias": [
+   "fenouils"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   6,
+   7,
+   8,
+   9,
+   10,
+   11
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "céleri-rave",
+  "alias": [
+   "céleris-raves",
+   "céleri rave"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   9,
+   10,
+   11,
+   12,
+   1,
+   2,
+   3,
+   4
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "celeri"
+  ]
+ },
+ {
+  "nom": "céleri branche",
+  "alias": [
+   "céleris branches",
+   "céleris en branches"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   6,
+   7,
+   8,
+   9,
+   10,
+   11
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "celeri"
+  ]
+ },
+ {
+  "nom": "courgette",
+  "alias": [
+   "courgettes"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   5,
+   6,
+   7,
+   8,
+   9,
+   10
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "aubergine",
+  "alias": [
+   "aubergines"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   6,
+   7,
+   8,
+   9,
+   10
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "poivron",
+  "alias": [
+   "poivrons"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   7,
+   8,
+   9,
+   10
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "piment",
+  "alias": [
+   "piments"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   7,
+   8,
+   9,
+   10
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "tomate",
+  "alias": [
+   "tomates"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   6,
+   7,
+   8,
+   9,
+   10
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "concombre",
+  "alias": [
+   "concombres"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   5,
+   6,
+   7,
+   8,
+   9,
+   10
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "haricot vert",
+  "alias": [
+   "haricots verts"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   6,
+   7,
+   8,
+   9,
+   10
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "petit pois frais",
+  "alias": [
+   "petits pois frais",
+   "petits pois"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   6,
+   7
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "épinard",
+  "alias": [
+   "épinards"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   3,
+   4,
+   5,
+   6,
+   9,
+   10,
+   11
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "chou blanc",
+  "alias": [
+   "choux blancs"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   9,
+   10,
+   11,
+   12,
+   1,
+   2,
+   3
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "chou rouge",
+  "alias": [
+   "choux rouges"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   9,
+   10,
+   11,
+   12,
+   1,
+   2,
+   3
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "chou de Bruxelles",
+  "alias": [
+   "choux de Bruxelles"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   10,
+   11,
+   12,
+   1,
+   2,
+   3
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "chou-fleur",
+  "alias": [
+   "choux-fleurs",
+   "chou fleur"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   6,
+   7,
+   8,
+   9,
+   10,
+   11
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "brocoli",
+  "alias": [
+   "brocolis"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   8,
+   9,
+   10,
+   11
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "chou frisé",
+  "alias": [
+   "choux frisés",
+   "kale"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   10,
+   11,
+   12,
+   1,
+   2,
+   3
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "navet",
+  "alias": [
+   "navets"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   9,
+   10,
+   11,
+   12,
+   1,
+   2,
+   3,
+   4
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "radis",
+  "alias": [
+   "radis roses"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   3,
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "betterave",
+  "alias": [
+   "betteraves"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   8,
+   9,
+   10,
+   11,
+   12,
+   1,
+   2,
+   3
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "asperge blanche",
+  "alias": [
+   "asperges blanches"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   4,
+   5,
+   6
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "asperge verte",
+  "alias": [
+   "asperges vertes"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   4,
+   5,
+   6
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "artichaut",
+  "alias": [
+   "artichauts"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   5,
+   6,
+   7,
+   8,
+   9
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "laitue",
+  "alias": [
+   "laitues"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   4,
+   5,
+   6,
+   7,
+   8,
+   9,
+   10,
+   11
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "maïs doux",
+  "alias": [
+   "épis de maïs"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   7,
+   8,
+   9,
+   10
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "potiron",
+  "alias": [
+   "potirons"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   9,
+   10,
+   11
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "gingembre",
+  "alias": [
+   "gingembres"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "citron",
+  "alias": [
+   "citrons"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "pomme",
+  "alias": [
+   "pommes"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   9,
+   10,
+   11,
+   12,
+   1,
+   2,
+   3,
+   4,
+   5
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "poire",
+  "alias": [
+   "poires"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   8,
+   9,
+   10,
+   11
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "coing",
+  "alias": [
+   "coings"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   9,
+   10,
+   11
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "prune",
+  "alias": [
+   "prunes"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   8,
+   9
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "abricot",
+  "alias": [
+   "abricots"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   6,
+   7,
+   8
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "abricot du Valais",
+  "alias": [
+   "abricots du Valais"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   7,
+   8
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "cerise",
+  "alias": [
+   "cerises"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   6,
+   7,
+   8
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "fraise",
+  "alias": [
+   "fraises"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   5,
+   6,
+   7,
+   8
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "framboise",
+  "alias": [
+   "framboises"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   6,
+   7,
+   8,
+   9
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "myrtille",
+  "alias": [
+   "myrtilles"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   7,
+   8,
+   9
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "mûre",
+  "alias": [
+   "mûres"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   7,
+   8,
+   9
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "raisin",
+  "alias": [
+   "raisins"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   8,
+   9,
+   10
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "melon",
+  "alias": [
+   "melons"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   7,
+   8,
+   9
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "pastèque",
+  "alias": [
+   "pastèques"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   7,
+   8,
+   9
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "pêche",
+  "alias": [
+   "pêches"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   7,
+   8,
+   9
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "châtaigne",
+  "alias": [
+   "châtaignes"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   9,
+   10,
+   11
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": [
+   "fruits_a_coque"
+  ]
+ },
+ {
+  "nom": "persil",
+  "alias": [
+   "persil plat",
+   "persil frisé"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "basilic",
+  "alias": [
+   "basilics"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   6,
+   7,
+   8,
+   9
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "thym frais",
+  "alias": [
+   "thym"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "romarin",
+  "alias": [
+   "romarins"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "ciboulette",
+  "alias": [
+   "ciboulettes"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "coriandre fraîche",
+  "alias": [
+   "coriandre",
+   "coriandres"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "champignon de Paris",
+  "alias": [
+   "champignons de Paris",
+   "champignons de couche"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "cèpe",
+  "alias": [
+   "cèpes"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   8,
+   9,
+   10
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "girolle",
+  "alias": [
+   "girolles",
+   "chanterelle",
+   "chanterelles"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   6,
+   7,
+   8,
+   9,
+   10
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "morille",
+  "alias": [
+   "morilles"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   4,
+   5
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "trompette de la mort",
+  "alias": [
+   "trompettes de la mort"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   7,
+   8,
+   9,
+   10
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "shiitake",
+  "alias": [
+   "shiitakes"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "bolet",
+  "alias": [
+   "bolets"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   7,
+   8,
+   9,
+   10
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "truffe blanche",
+  "alias": [
+   "truffes blanches"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   10,
+   11,
+   12
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "truffe noire",
+  "alias": [
+   "truffes noires"
+  ],
+  "rayon": "fruits_legumes",
+  "mois": [
+   11,
+   12,
+   1,
+   2,
+   3
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "bœuf",
+  "alias": [
+   "boeuf"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "bœuf haché",
+  "alias": [
+   "boeuf haché",
+   "viande de bœuf hachée"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "veau",
+  "alias": [
+   "veaux"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "jarret de veau",
+  "alias": [
+   "jarrets de veau"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "ris de veau",
+  "alias": [
+   "ris de veaux"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "porc",
+  "alias": [
+   "viande de porc"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "filet mignon de porc",
+  "alias": [
+   "filets mignons de porc",
+   "filet mignon"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "agneau",
+  "alias": [
+   "agneaux"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "gigot d'agneau",
+  "alias": [
+   "gigots d'agneau"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "poulet",
+  "alias": [
+   "poulets"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "blanc de poulet",
+  "alias": [
+   "blancs de poulet",
+   "filet de poulet",
+   "filets de poulet"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "canard",
+  "alias": [
+   "canards",
+   "magret de canard",
+   "magrets de canard"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "chevreuil",
+  "alias": [
+   "chevreuils"
+  ],
+  "rayon": "boucherie",
+  "mois": [
+   8,
+   9,
+   10,
+   11,
+   12,
+   1
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "cerf",
+  "alias": [
+   "cerfs"
+  ],
+  "rayon": "boucherie",
+  "mois": [
+   9,
+   10,
+   11,
+   12,
+   1
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "sanglier",
+  "alias": [
+   "sangliers"
+  ],
+  "rayon": "boucherie",
+  "mois": [
+   9,
+   10,
+   11,
+   12,
+   1
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "lièvre",
+  "alias": [
+   "lièvres"
+  ],
+  "rayon": "boucherie",
+  "mois": [
+   10,
+   11,
+   12,
+   1
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "faisan",
+  "alias": [
+   "faisans"
+  ],
+  "rayon": "boucherie",
+  "mois": [
+   10,
+   11,
+   12,
+   1
+  ],
+  "saison_courte": true,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "pancetta",
+  "alias": [
+   "pancettas"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "lardon",
+  "alias": [
+   "lardons"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "lard",
+  "alias": [
+   "lards",
+   "lard fumé"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "jambon cru",
+  "alias": [
+   "jambons crus"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "jambon blanc",
+  "alias": [
+   "jambons blancs",
+   "jambon cuit"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "bresaola",
+  "alias": [
+   "bresaolas"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "saucisson",
+  "alias": [
+   "saucissons",
+   "saucisson sec"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "saucisse",
+  "alias": [
+   "saucisses"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "chorizo",
+  "alias": [
+   "chorizos"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "viande des Grisons",
+  "alias": [
+   "viande séchée des Grisons",
+   "bündnerfleisch"
+  ],
+  "rayon": "boucherie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "féra",
+  "alias": [
+   "féras"
+  ],
+  "rayon": "poissonnerie",
+  "mois": [
+   9,
+   10,
+   11,
+   12,
+   1,
+   2,
+   3
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "poisson"
+  ]
+ },
+ {
+  "nom": "perche",
+  "alias": [
+   "perches"
+  ],
+  "rayon": "poissonnerie",
+  "mois": [
+   5,
+   6,
+   7,
+   8,
+   9,
+   10
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "poisson"
+  ]
+ },
+ {
+  "nom": "lieu jaune",
+  "alias": [
+   "lieux jaunes"
+  ],
+  "rayon": "poissonnerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "poisson"
+  ]
+ },
+ {
+  "nom": "cabillaud",
+  "alias": [
+   "cabillauds"
+  ],
+  "rayon": "poissonnerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "poisson"
+  ]
+ },
+ {
+  "nom": "saumon",
+  "alias": [
+   "saumons"
+  ],
+  "rayon": "poissonnerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "poisson"
+  ]
+ },
+ {
+  "nom": "saumon fumé",
+  "alias": [
+   "saumons fumés"
+  ],
+  "rayon": "poissonnerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "poisson"
+  ]
+ },
+ {
+  "nom": "thon",
+  "alias": [
+   "thons"
+  ],
+  "rayon": "poissonnerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "poisson"
+  ]
+ },
+ {
+  "nom": "daurade",
+  "alias": [
+   "dorade",
+   "dorades",
+   "daurades"
+  ],
+  "rayon": "poissonnerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "poisson"
+  ]
+ },
+ {
+  "nom": "bar",
+  "alias": [
+   "bars",
+   "loup de mer"
+  ],
+  "rayon": "poissonnerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "poisson"
+  ]
+ },
+ {
+  "nom": "sole",
+  "alias": [
+   "soles"
+  ],
+  "rayon": "poissonnerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "poisson"
+  ]
+ },
+ {
+  "nom": "merlan",
+  "alias": [
+   "merlans"
+  ],
+  "rayon": "poissonnerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "poisson"
+  ]
+ },
+ {
+  "nom": "crevette",
+  "alias": [
+   "crevettes"
+  ],
+  "rayon": "poissonnerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "crustaces"
+  ]
+ },
+ {
+  "nom": "langoustine",
+  "alias": [
+   "langoustines"
+  ],
+  "rayon": "poissonnerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "crustaces"
+  ]
+ },
+ {
+  "nom": "homard",
+  "alias": [
+   "homards"
+  ],
+  "rayon": "poissonnerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "crustaces"
+  ]
+ },
+ {
+  "nom": "moule",
+  "alias": [
+   "moules"
+  ],
+  "rayon": "poissonnerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "mollusques"
+  ]
+ },
+ {
+  "nom": "coquille saint-jacques",
+  "alias": [
+   "coquilles saint-jacques",
+   "saint-jacques"
+  ],
+  "rayon": "poissonnerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "mollusques"
+  ]
+ },
+ {
+  "nom": "calamar",
+  "alias": [
+   "calamars"
+  ],
+  "rayon": "poissonnerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "mollusques"
+  ]
+ },
+ {
+  "nom": "huître",
+  "alias": [
+   "huîtres"
+  ],
+  "rayon": "poissonnerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "mollusques"
+  ]
+ },
+ {
+  "nom": "lait",
+  "alias": [
+   "laits"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.03,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "crème",
+  "alias": [
+   "crèmes",
+   "crème liquide",
+   "crème entière"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.0,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "crème fraîche",
+  "alias": [
+   "crèmes fraîches"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.01,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "beurre",
+  "alias": [
+   "beurres"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.96,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "beurre clarifié",
+  "alias": [
+   "beurres clarifiés",
+   "ghee"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.9,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "œuf",
+  "alias": [
+   "oeuf",
+   "oeufs",
+   "œufs"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "oeufs"
+  ]
+ },
+ {
+  "nom": "yaourt",
+  "alias": [
+   "yaourts",
+   "yogourt",
+   "yoghourt"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.03,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "mozzarella",
+  "alias": [
+   "mozzarellas"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "burrata",
+  "alias": [
+   "burratas"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "parmesan",
+  "alias": [
+   "parmigiano reggiano",
+   "parmigiano",
+   "parmesans"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "parmesan râpé",
+  "alias": [
+   "parmesan rapé",
+   "parmigiano râpé"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.42,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "grana padano",
+  "alias": [
+   "grana"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "pecorino",
+  "alias": [
+   "pecorinos"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "gorgonzola",
+  "alias": [
+   "gorgonzolas"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "gruyère",
+  "alias": [
+   "gruyères"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "emmental",
+  "alias": [
+   "emmenthal",
+   "emmentals"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "appenzeller",
+  "alias": [
+   "appenzell"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "raclette",
+  "alias": [
+   "raclettes"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "tête de moine",
+  "alias": [
+   "têtes de moine"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "vacherin",
+  "alias": [
+   "vacherins",
+   "vacherin Mont d'Or"
+  ],
+  "rayon": "cremerie",
+  "mois": [
+   8,
+   9,
+   10,
+   11,
+   12,
+   1,
+   2,
+   3
+  ],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "comté",
+  "alias": [
+   "comtés"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "chèvre frais",
+  "alias": [
+   "fromage de chèvre",
+   "fromages de chèvre",
+   "chèvre"
+  ],
+  "rayon": "cremerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "lait"
+  ]
+ },
+ {
+  "nom": "pain",
+  "alias": [
+   "pains"
+  ],
+  "rayon": "boulangerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "gluten"
+  ]
+ },
+ {
+  "nom": "pain aux châtaignes",
+  "alias": [
+   "pains aux châtaignes"
+  ],
+  "rayon": "boulangerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "gluten",
+   "fruits_a_coque"
+  ]
+ },
+ {
+  "nom": "pâte feuilletée",
+  "alias": [
+   "pâtes feuilletées"
+  ],
+  "rayon": "boulangerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "gluten",
+   "lait"
+  ]
+ },
+ {
+  "nom": "pâte brisée",
+  "alias": [
+   "pâtes brisées"
+  ],
+  "rayon": "boulangerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "gluten",
+   "lait",
+   "oeufs"
+  ]
+ },
+ {
+  "nom": "baguette",
+  "alias": [
+   "baguettes"
+  ],
+  "rayon": "boulangerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "gluten"
+  ]
+ },
+ {
+  "nom": "chapelure",
+  "alias": [
+   "chapelures"
+  ],
+  "rayon": "boulangerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.42,
+  "allergenes": [
+   "gluten"
+  ]
+ },
+ {
+  "nom": "chapelure panko",
+  "alias": [
+   "panko"
+  ],
+  "rayon": "boulangerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.35,
+  "allergenes": [
+   "gluten"
+  ]
+ },
+ {
+  "nom": "farine",
+  "alias": [
+   "farines",
+   "farine de blé",
+   "farine T55"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.53,
+  "allergenes": [
+   "gluten"
+  ]
+ },
+ {
+  "nom": "farine 00",
+  "alias": [
+   "farines 00",
+   "farine tipo 00"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.53,
+  "allergenes": [
+   "gluten"
+  ]
+ },
+ {
+  "nom": "farine complète",
+  "alias": [
+   "farine intégrale",
+   "farines complètes"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.5,
+  "allergenes": [
+   "gluten"
+  ]
+ },
+ {
+  "nom": "fécule de maïs",
+  "alias": [
+   "fécules de maïs",
+   "maïzena",
+   "amidon de maïs"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.6,
+  "allergenes": []
+ },
+ {
+  "nom": "fécule de pomme de terre",
+  "alias": [
+   "fécules de pomme de terre",
+   "fécule"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.6,
+  "allergenes": []
+ },
+ {
+  "nom": "semoule",
+  "alias": [
+   "semoules",
+   "semoule de blé dur"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.7,
+  "allergenes": [
+   "gluten"
+  ]
+ },
+ {
+  "nom": "polenta",
+  "alias": [
+   "polentas",
+   "semoule de maïs"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.7,
+  "allergenes": []
+ },
+ {
+  "nom": "levure chimique",
+  "alias": [
+   "levures chimiques",
+   "poudre à lever"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.9,
+  "allergenes": []
+ },
+ {
+  "nom": "bicarbonate de soude",
+  "alias": [
+   "bicarbonate",
+   "bicarbonates de soude"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.9,
+  "allergenes": []
+ },
+ {
+  "nom": "riz à risotto",
+  "alias": [
+   "riz arborio",
+   "riz carnaroli",
+   "riz pour risotto"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.8,
+  "allergenes": []
+ },
+ {
+  "nom": "riz",
+  "alias": [
+   "riz blanc"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.8,
+  "allergenes": []
+ },
+ {
+  "nom": "riz basmati",
+  "alias": [
+   "basmati"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.8,
+  "allergenes": []
+ },
+ {
+  "nom": "pâte alimentaire",
+  "alias": [
+   "pâtes",
+   "pâtes alimentaires"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "gluten"
+  ]
+ },
+ {
+  "nom": "gnocchi",
+  "alias": [
+   "gnocchis"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "gluten",
+   "oeufs"
+  ]
+ },
+ {
+  "nom": "couscous",
+  "alias": [
+   "couscous"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.7,
+  "allergenes": [
+   "gluten"
+  ]
+ },
+ {
+  "nom": "nouilles soba",
+  "alias": [
+   "soba"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "gluten"
+  ]
+ },
+ {
+  "nom": "nouilles de riz",
+  "alias": [
+   "vermicelles de riz"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "lentille",
+  "alias": [
+   "lentilles"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.8,
+  "allergenes": []
+ },
+ {
+  "nom": "flocons d'avoine",
+  "alias": [
+   "flocon d'avoine",
+   "avoine en flocons"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.38,
+  "allergenes": [
+   "gluten"
+  ]
+ },
+ {
+  "nom": "sucre",
+  "alias": [
+   "sucre semoule",
+   "sucre blanc",
+   "sucres"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.845,
+  "allergenes": []
+ },
+ {
+  "nom": "sucre glace",
+  "alias": [
+   "sucre impalpable",
+   "sucres glace"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.507,
+  "allergenes": []
+ },
+ {
+  "nom": "cassonade",
+  "alias": [
+   "cassonades"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.9,
+  "allergenes": []
+ },
+ {
+  "nom": "sucre de canne",
+  "alias": [
+   "sucres de canne",
+   "sucre brun"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.85,
+  "allergenes": []
+ },
+ {
+  "nom": "sucre vanillé",
+  "alias": [
+   "sucres vanillés"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.845,
+  "allergenes": []
+ },
+ {
+  "nom": "miel",
+  "alias": [
+   "miels"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.42,
+  "allergenes": []
+ },
+ {
+  "nom": "sirop d'érable",
+  "alias": [
+   "sirops d'érable"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.32,
+  "allergenes": []
+ },
+ {
+  "nom": "huile d'olive",
+  "alias": [
+   "huiles d'olive",
+   "huile d'olive vierge extra"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.915,
+  "allergenes": []
+ },
+ {
+  "nom": "huile de tournesol",
+  "alias": [
+   "huiles de tournesol"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.92,
+  "allergenes": []
+ },
+ {
+  "nom": "huile de colza",
+  "alias": [
+   "huiles de colza",
+   "huile de canola"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.92,
+  "allergenes": []
+ },
+ {
+  "nom": "huile de noix",
+  "alias": [
+   "huiles de noix"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.92,
+  "allergenes": [
+   "fruits_a_coque"
+  ]
+ },
+ {
+  "nom": "huile de sésame",
+  "alias": [
+   "huiles de sésame"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.92,
+  "allergenes": [
+   "sesame"
+  ]
+ },
+ {
+  "nom": "vinaigre",
+  "alias": [
+   "vinaigres",
+   "vinaigre de vin"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.0,
+  "allergenes": []
+ },
+ {
+  "nom": "vinaigre balsamique",
+  "alias": [
+   "balsamique",
+   "vinaigres balsamiques",
+   "vinaigre de Modène"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.1,
+  "allergenes": [
+   "sulfites"
+  ]
+ },
+ {
+  "nom": "vinaigre de riz",
+  "alias": [
+   "vinaigres de riz"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.0,
+  "allergenes": []
+ },
+ {
+  "nom": "vinaigre de cidre",
+  "alias": [
+   "vinaigres de cidre"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.0,
+  "allergenes": []
+ },
+ {
+  "nom": "moutarde",
+  "alias": [
+   "moutardes",
+   "moutarde de Dijon"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.05,
+  "allergenes": [
+   "moutarde"
+  ]
+ },
+ {
+  "nom": "graine de moutarde",
+  "alias": [
+   "graines de moutarde"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "moutarde"
+  ]
+ },
+ {
+  "nom": "mayonnaise",
+  "alias": [
+   "mayonnaises"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.92,
+  "allergenes": [
+   "oeufs",
+   "moutarde"
+  ]
+ },
+ {
+  "nom": "câpre",
+  "alias": [
+   "câpres"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "olive",
+  "alias": [
+   "olives"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "pesto",
+  "alias": [
+   "pestos"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "fruits_a_coque",
+   "lait"
+  ]
+ },
+ {
+  "nom": "concentré de tomate",
+  "alias": [
+   "concentrés de tomate",
+   "pâte de tomate"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.2,
+  "allergenes": []
+ },
+ {
+  "nom": "tomate pelée en conserve",
+  "alias": [
+   "tomates pelées",
+   "tomates concassées",
+   "tomates en conserve"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.05,
+  "allergenes": []
+ },
+ {
+  "nom": "bouillon de volaille",
+  "alias": [
+   "bouillons de volaille",
+   "fond de volaille"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.0,
+  "allergenes": [
+   "celeri"
+  ]
+ },
+ {
+  "nom": "bouillon de bœuf",
+  "alias": [
+   "bouillons de bœuf",
+   "fond de bœuf"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.0,
+  "allergenes": [
+   "celeri"
+  ]
+ },
+ {
+  "nom": "sauce Worcestershire",
+  "alias": [
+   "sauces Worcestershire",
+   "worcestershire"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.1,
+  "allergenes": [
+   "poisson",
+   "sulfites"
+  ]
+ },
+ {
+  "nom": "sauce soja",
+  "alias": [
+   "sauces soja",
+   "sauce soya",
+   "shoyu"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.2,
+  "allergenes": [
+   "soja",
+   "gluten"
+  ]
+ },
+ {
+  "nom": "miso blanc",
+  "alias": [
+   "shiro miso"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.15,
+  "allergenes": [
+   "soja"
+  ]
+ },
+ {
+  "nom": "miso rouge",
+  "alias": [
+   "aka miso"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.15,
+  "allergenes": [
+   "soja"
+  ]
+ },
+ {
+  "nom": "mirin",
+  "alias": [
+   "mirins"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.04,
+  "allergenes": []
+ },
+ {
+  "nom": "saké de cuisine",
+  "alias": [
+   "saké",
+   "sake",
+   "saké de cuisson"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.99,
+  "allergenes": []
+ },
+ {
+  "nom": "nuoc-mâm",
+  "alias": [
+   "nuoc mâm",
+   "nuoc nam"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.2,
+  "allergenes": [
+   "poisson"
+  ]
+ },
+ {
+  "nom": "sauce hoisin",
+  "alias": [
+   "sauces hoisin"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.2,
+  "allergenes": [
+   "soja",
+   "gluten"
+  ]
+ },
+ {
+  "nom": "sauce d'huître",
+  "alias": [
+   "sauces d'huîtres"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.2,
+  "allergenes": [
+   "mollusques",
+   "soja",
+   "gluten"
+  ]
+ },
+ {
+  "nom": "tofu",
+  "alias": [
+   "tofus"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "soja"
+  ]
+ },
+ {
+  "nom": "nori",
+  "alias": [
+   "feuilles de nori",
+   "algue nori"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "sel",
+  "alias": [
+   "sel fin",
+   "sel de cuisine"
+  ],
+  "rayon": "epices",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.2,
+  "allergenes": []
+ },
+ {
+  "nom": "poivre noir",
+  "alias": [
+   "poivre",
+   "poivre moulu"
+  ],
+  "rayon": "epices",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.5,
+  "allergenes": []
+ },
+ {
+  "nom": "piment d'Espelette",
+  "alias": [
+   "piments d'Espelette"
+  ],
+  "rayon": "epices",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.5,
+  "allergenes": []
+ },
+ {
+  "nom": "paprika",
+  "alias": [
+   "paprikas",
+   "paprika fumé"
+  ],
+  "rayon": "epices",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.5,
+  "allergenes": []
+ },
+ {
+  "nom": "cayenne",
+  "alias": [
+   "poudre de cayenne",
+   "piment de Cayenne"
+  ],
+  "rayon": "epices",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.5,
+  "allergenes": []
+ },
+ {
+  "nom": "cumin",
+  "alias": [
+   "cumins",
+   "cumin moulu"
+  ],
+  "rayon": "epices",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.45,
+  "allergenes": []
+ },
+ {
+  "nom": "curcuma",
+  "alias": [
+   "curcumas"
+  ],
+  "rayon": "epices",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.5,
+  "allergenes": []
+ },
+ {
+  "nom": "curry",
+  "alias": [
+   "curry en poudre",
+   "poudre de curry"
+  ],
+  "rayon": "epices",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.5,
+  "allergenes": [
+   "celeri",
+   "moutarde"
+  ]
+ },
+ {
+  "nom": "cannelle",
+  "alias": [
+   "cannelles"
+  ],
+  "rayon": "epices",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.5,
+  "allergenes": []
+ },
+ {
+  "nom": "muscade",
+  "alias": [
+   "noix de muscade"
+  ],
+  "rayon": "epices",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.5,
+  "allergenes": []
+ },
+ {
+  "nom": "safran",
+  "alias": [
+   "safrans",
+   "filaments de safran"
+  ],
+  "rayon": "epices",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "clou de girofle",
+  "alias": [
+   "clous de girofle"
+  ],
+  "rayon": "epices",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "cardamome",
+  "alias": [
+   "cardamomes",
+   "cardamome verte"
+  ],
+  "rayon": "epices",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "vanille",
+  "alias": [
+   "gousse de vanille",
+   "gousses de vanille"
+  ],
+  "rayon": "epices",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "laurier",
+  "alias": [
+   "feuilles de laurier"
+  ],
+  "rayon": "epices",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "herbes de Provence",
+  "alias": [
+   "herbes de provence"
+  ],
+  "rayon": "epices",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.4,
+  "allergenes": []
+ },
+ {
+  "nom": "cacao en poudre",
+  "alias": [
+   "cacao",
+   "poudre de cacao"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.4,
+  "allergenes": []
+ },
+ {
+  "nom": "chocolat noir",
+  "alias": [
+   "chocolats noirs"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "cacahuète",
+  "alias": [
+   "cacahuètes",
+   "arachide",
+   "arachides"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "arachides"
+  ]
+ },
+ {
+  "nom": "amande",
+  "alias": [
+   "amandes"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "fruits_a_coque"
+  ]
+ },
+ {
+  "nom": "amandes en poudre",
+  "alias": [
+   "poudre d'amande",
+   "amandes moulues"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.4,
+  "allergenes": [
+   "fruits_a_coque"
+  ]
+ },
+ {
+  "nom": "noisette",
+  "alias": [
+   "noisettes"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "fruits_a_coque"
+  ]
+ },
+ {
+  "nom": "noix",
+  "alias": [
+   "noix entières",
+   "cerneaux"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "fruits_a_coque"
+  ]
+ },
+ {
+  "nom": "noix hachées",
+  "alias": [
+   "noix concassées",
+   "noix émiettées"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.45,
+  "allergenes": [
+   "fruits_a_coque"
+  ]
+ },
+ {
+  "nom": "raisin sec",
+  "alias": [
+   "raisins secs",
+   "sultanines"
+  ],
+  "rayon": "epicerie",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "vin blanc",
+  "alias": [
+   "vins blancs",
+   "vin blanc sec"
+  ],
+  "rayon": "boissons",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.99,
+  "allergenes": [
+   "sulfites"
+  ]
+ },
+ {
+  "nom": "vin rouge",
+  "alias": [
+   "vins rouges",
+   "vin rouge sec"
+  ],
+  "rayon": "boissons",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 0.99,
+  "allergenes": [
+   "sulfites"
+  ]
+ },
+ {
+  "nom": "bière",
+  "alias": [
+   "bières",
+   "bière blonde"
+  ],
+  "rayon": "boissons",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": 1.01,
+  "allergenes": [
+   "gluten"
+  ]
+ },
+ {
+  "nom": "épinard surgelé",
+  "alias": [
+   "épinards surgelés"
+  ],
+  "rayon": "surgeles",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": []
+ },
+ {
+  "nom": "crème glacée",
+  "alias": [
+   "crèmes glacées",
+   "glace"
+  ],
+  "rayon": "surgeles",
+  "mois": [],
+  "saison_courte": false,
+  "densite_g_ml": null,
+  "allergenes": [
+   "lait",
+   "oeufs"
+  ]
+ }
 ]
