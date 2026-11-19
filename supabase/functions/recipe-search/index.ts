@@ -4,7 +4,7 @@
 // Secret requis : ANTHROPIC_API_KEY. Optionnel : AI_RECIPE_SEARCH_DAILY_LIMIT (défaut 60 par personne et par 24 h).
 import Anthropic from "npm:@anthropic-ai/sdk@0.121.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
-import { buildFilters, normalize, parseFilters, SYSTEM, type Filters } from "./lib.ts";
+import { buildFilters, parseFilters, SYSTEM, type Filters } from "./lib.ts";
 
 const ALLOWED_ORIGINS = ["https://vinicellar.ch", "https://www.vinicellar.ch", "http://localhost:8000"];
 const MODEL = "claude-sonnet-5-5";
@@ -116,6 +116,5 @@ Deno.serve(async (req) => {
     ingredients: { inclus: f.incNames, exclus: f.excNames, non_reconnus: [...f.incTxt, ...f.excTxt] },
     degrade,
     recettes,
-    question: normalize(q) ? q : null,
   });
 });
