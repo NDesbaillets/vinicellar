@@ -449,6 +449,17 @@ revoke execute on function public.is_book_member(uuid), public.is_book_editor(uu
 grant execute on function public.is_book_member(uuid), public.is_book_editor(uuid), public.is_book_owner(uuid),
   public.my_books(), public.my_book(), public.recipe_book_id(uuid), public.book_people(uuid),
   public.my_book_invites(), public.accept_book_invite(uuid), public.decline_book_invite(uuid) to authenticated;
+-- Droits sur les tables : explicites et minimaux (les projets Supabase récents n'en donnent plus par défaut).
+-- Aucun accès anonyme ; la RLS reste le garde-fou ligne par ligne.
+revoke all on public.recipe_books, public.recipe_book_members, public.recipe_book_invites,
+  public.recipe_ingredients_catalog, public.recipes, public.recipe_ingredient_lines, public.recipe_steps,
+  public.recipe_notes, public.recipe_photos from anon;
+grant select, update on public.recipe_books to authenticated;
+grant select, update, delete on public.recipe_book_members to authenticated;
+grant select, insert, delete on public.recipe_book_invites to authenticated;
+grant select, insert on public.recipe_ingredients_catalog to authenticated;
+grant select, insert, update, delete on public.recipes, public.recipe_ingredient_lines, public.recipe_steps,
+  public.recipe_notes, public.recipe_photos to authenticated;
 -- La purge n'est appelée que côté serveur.
 revoke execute on function public.purge_recipe_trash() from anon, authenticated, public;
 
