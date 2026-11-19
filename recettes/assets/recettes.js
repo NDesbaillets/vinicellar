@@ -176,7 +176,7 @@
     h.innerHTML = `<div class="wrap"><a class="brand" href="/recettes/" aria-label="ARÔMES V&amp;N, accueil">Arômes V&amp;N</a>
       <nav class="nav" aria-label="Navigation principale">${item("carnet", "/recettes/", "Le carnet")}${item("ajouter", "/recettes/ajouter.html", "Ajouter")}${item("carnets", "/recettes/carnets.html", "Carnets")}
       <div class="account"><button type="button" id="account-btn" aria-expanded="false" aria-controls="account-panel" aria-label="Compte">Compte</button>
-      <div class="account-panel" id="account-panel" hidden><p class="libelle">Connecté</p><p>${esc(user.email || "")}</p><button type="button" class="btn sec petit bloc" id="logout">Se déconnecter</button></div></div></nav></div>`;
+      <div class="account-panel" id="account-panel" hidden><p class="libelle">Connecté</p><p>${esc(user.email || "")}</p><button type="button" class="btn sec petit large" id="logout">Se déconnecter</button></div></div></nav></div>`;
     const btn = $("#account-btn"), panel = $("#account-panel");
     btn.addEventListener("click", () => { panel.hidden = !panel.hidden; btn.setAttribute("aria-expanded", String(!panel.hidden)); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus(); } });
