@@ -50,6 +50,24 @@
     await loadStatus();
   }
   await loadCooks();
+  // Phase 7 : « Cuisiné pour Marie, Paul (12.03.2026) » (vue recipe_served_to, contrat 07). Une erreur ici ne bloque jamais la fiche.
+  // Confidentialité : ces mentions restent dans le carnet ; la page publique, le livre et l'export ne les lisent pas.
+  let servedTo = [];
+  async function loadServed() {
+    try {
+      const sv = await sb.from("recipe_served_to").select("guest_id,guest_name,day,reception_id").eq("recipe_id", id).order("day", { ascending: false });
+      if (sv.error) throw sv.error;
+      servedTo = sv.data || [];
+    } catch (e) { console.error(e); servedTo = []; }
+  }
+  await loadServed();
+  function servedHtml() {
+    if (!servedTo.length) return "";
+    const by = new Map();
+    servedTo.forEach((x) => { const k = x.reception_id || String(x.day); if (!by.has(k)) by.set(k, { day: String(x.day).slice(0, 10), guests: new Map() }); by.get(k).guests.set(x.guest_id, x.guest_name); });
+    const rows = [...by.values()].sort((a, b) => b.day.localeCompare(a.day));
+    return `<h3 class="jr-titre">Pour des invités</h3><ul class="jr-invites">${rows.map((r) => `<li>Cuisiné pour ${[...r.guests].map(([gid, n]) => `<a href="/recettes/invite.html?id=${encodeURIComponent(gid)}">${esc(n)}</a>`).join(", ")} <span class="muted">(${esc(AR.fmtDay(r.day))})</span></li>`).join("")}</ul>`;
+  }
   // Statut : la vue recipe_status fait foi ; à défaut, on le déduit du journal chargé.
   function statusInfo() {
     if (stat) return { count: stat.cook_count, last: stat.last_cooked_on, avg: stat.avg_rating, cooked: stat.status === "cuisinee" };
@@ -231,7 +249,8 @@
       ${cooksOk ? "" : `<p class="msg erreur" role="alert">Le journal n'est pas disponible pour le moment.</p>`}
       <p class="jr-resume"${cooksOk ? "" : " hidden"}><span class="libelle or">${st.cooked ? "Cuisinée" : "À essayer"}</span>${r.family ? ` <span class="libelle or">· De famille</span>` : ""}${st.count ? `<span class="muted"> · ${st.count} fois${st.avg != null ? `, note moyenne ${esc(String(st.avg).replace(".", ","))} / 5` : ""}</span>` : ""}</p>
       ${jr.open ? cookForm() : (!r.deleted_at && cooksOk ? `<p><button type="button" class="btn" data-cook="open">Je l'ai cuisinée</button></p>` : "")}
-      ${cooks.length ? `<ul class="jr-liste">${items}</ul>` : (cooksOk ? `<p class="muted italique">Personne n'a encore cuisiné cette recette.</p>` : "")}`;
+      ${cooks.length ? `<ul class="jr-liste">${items}</ul>` : (cooksOk && !servedTo.length ? `<p class="muted italique">Personne n'a encore cuisiné cette recette.</p>` : "")}
+      ${servedHtml()}`;
   }
   const renderJournal = () => { const j = $("#journal-zone"), z = $("#statut-zone"); if (j) j.innerHTML = journalHtml(); if (z) z.innerHTML = statutHtml(); };
   const renderGallery = () => { const g = $("#galerie-zone"); if (g) g.innerHTML = galleryHtml(); };

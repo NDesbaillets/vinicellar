@@ -71,6 +71,8 @@
 
 
   // ---- export JSON (contrat 06-transmettre §3) : chargé avec la session de l'utilisateur, la RLS limite aux données du carnet
+  // CONFIDENTIALITÉ (docs/recettes/07-invites-contrat.md §5, cadrage §9) : L'export ne lit AUCUNE table d'invités ni de réceptions (recipe_guests, recipe_receptions*, recipe_served_to) : allergies et régimes de tiers sont des données de santé, jamais exposées ici.
+  // Une option explicite « Inclure les invités » devra être ajoutée avant tout export de ces données.
   const slug = (t) => AR.norm(t).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50) || "carnet";
   async function inChunks(table, col, ids, select, extra) {
     const out = [];

@@ -260,6 +260,19 @@
   const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
   const JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
   const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  // ---- phase 7 : invités et réceptions (contrat 07-invites-contrat.md)
+  const RUBRIQUES = [["aperitif", "Apéritif"], ["entree", "Entrée"], ["plat", "Plat"], ["fromage", "Fromage"], ["dessert", "Dessert"], ["autre", "Autre"]];
+  const CRENEAUX = { midi: "Midi", soir: "Soir" };
+  // Rubrique proposée d'après la catégorie de la recette.
+  const rubriqueDe = (course) => ({ entree: "entree", plat: "plat", dessert: "dessert" }[course] || "autre");
+  const prenom = (name) => String(name || "").trim().split(/\s+/)[0] || "";
+  // Pastilles d'allergies et de régime d'un invité.
+  function guestPills(g) {
+    const a = (g.allergens || []).map((k) => `<li class="iv-pastille iv-allergie">${esc(ALLERGENES[k] || k)}</li>`);
+    const r = g.regime ? [`<li class="iv-pastille">${esc(REGIMES[g.regime] || g.regime)}</li>`] : [];
+    const out = [...a, ...r];
+    return out.length ? `<ul class="iv-pastilles" aria-label="Allergies et régime">${out.join("")}</ul>` : "";
+  }
   // Jours en chaînes AAAA-MM-JJ (calculs en UTC : aucun décalage d'heure d'été).
   const toUtc = (iso) => { const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/); return Date.UTC(+m[1], +m[2] - 1, +m[3]); };
   const fromUtc = (t) => { const d = new Date(t); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`; };
@@ -291,7 +304,7 @@
     if (!catalogP) catalogP = (async () => {
       const out = [];
       for (let from = 0; ; from += 1000) {
-        const { data, error } = await sb.from("recipe_ingredients_catalog").select("id,name,aliases,aisle,season_months,short_season").order("name").range(from, from + 999);
+        const { data, error } = await sb.from("recipe_ingredients_catalog").select("id,name,aliases,aisle,season_months,short_season,allergens").order("name").range(from, from + 999);
         if (error) throw error;
         out.push(...(data || []).map((c) => ({ ...c, _n: norm(c.name), _a: (c.aliases || []).map(norm) })));
         if (!data || data.length < 1000) break;
@@ -459,11 +472,11 @@
     if (!h) return;
     const item = (k, href, label) => `<a href="${href}"${active === k ? ' aria-current="page"' : ""}>${label}</a>`;
     const sub = (k, href, label) => `<a class="menu-lien" href="${href}"${active === k ? ' aria-current="page"' : ""}>${label}</a>`;
-    const inCompte = active === "carnets" || active === "profil";
+    const inCompte = active === "carnets" || active === "profil" || active === "invites";
     h.innerHTML = `<div class="wrap"><a class="brand" href="/recettes/" aria-label="ARÔMES V&amp;N, accueil">Arômes V&amp;N</a>
       <nav class="nav" aria-label="Navigation principale">${item("carnet", "/recettes/", "Le carnet")}${item("saisons", "/recettes/saisons.html", "Saisons")}${item("ajouter", "/recettes/ajouter.html", "Ajouter")}${item("semaine", "/recettes/semaine.html", "Semaine")}${item("courses", "/recettes/courses.html", "Courses")}</nav>
       <div class="account"><button type="button" id="account-btn" class="${inCompte ? "actif-compte" : ""}" aria-expanded="false" aria-controls="account-panel" aria-label="Compte">Compte</button>
-      <div class="account-panel" id="account-panel" hidden><p class="libelle">Connecté</p><p>${esc(user.email || "")}</p>${sub("profil", "/recettes/profil.html", "Mon profil")}${sub("carnets", "/recettes/carnets.html", "Carnets")}<button type="button" class="btn sec petit large" id="logout">Se déconnecter</button></div></div></div>`;
+      <div class="account-panel" id="account-panel" hidden><p class="libelle">Connecté</p><p>${esc(user.email || "")}</p>${sub("profil", "/recettes/profil.html", "Mon profil")}${sub("invites", "/recettes/invites.html", "Invités")}${sub("carnets", "/recettes/carnets.html", "Carnets")}<button type="button" class="btn sec petit large" id="logout">Se déconnecter</button></div></div></div>`;
     const btn = $("#account-btn"), panel = $("#account-panel");
     btn.addEventListener("click", () => { panel.hidden = !panel.hidden; btn.setAttribute("aria-expanded", String(!panel.hidden)); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus(); } });
@@ -514,5 +527,5 @@
   window.AR = { sb, cfg, $, $$, esc, norm, fmtDate, fmtDay, todayIso, parseDay, fmtQty, fmtUnit, fmtMin, host, safeUrl, errMsg, toast, setMsg, safeNext, getBookPref, setBookPref,
     signedUrls, compressImage, scaleQty: window.ARPure.scaleQty, portionFactor: window.ARPure.portionFactor, showOffline, clearOfflineData, uuid, extractUrl, alertText, diffLines, fmtLine, lineKey, getUser, loadBooks, boot, registerSW, ROLES, COURSES, DIFFICULTES, UNITES,
     VAPID_PUBLIC: AR_VAPID_PUBLIC, ALLERGENES, REGIMES, RAYONS, MOIS, JOURS, cap, addDays, weekdayOf, mondayOf, dayLabel, debounce, fmtShop, fnMessage,
-    loadCatalog, catalogFind, catalogByName, catalogPicker, fetchCards, plancheHtml, dedupeVersions, pickBook, isNetErr, push };
+    RUBRIQUES, CRENEAUX, rubriqueDe, prenom, guestPills, loadCatalog, catalogFind, catalogByName, catalogPicker, fetchCards, plancheHtml, dedupeVersions, pickBook, isNetErr, push };
 })();

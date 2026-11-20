@@ -1,4 +1,6 @@
 // ARÔMES V&N · page publique d'une recette partagée (sans compte). Lit ?t=<jeton>, appelle la fonction recipe-public.
+// CONFIDENTIALITÉ (docs/recettes/07-invites-contrat.md §5, cadrage §9) : Cette page ne lit AUCUNE table d'invités ni de réceptions (recipe_guests, recipe_receptions*, recipe_served_to) : allergies et régimes de tiers sont des données de santé, jamais exposées ici.
+// Aucune mention « Cuisiné pour » : la fonction recipe-public ne renvoie que la recette.
 (async function () {
   const AR = window.AR, { $, esc } = AR;
   const main = $("#main");

@@ -8,10 +8,13 @@
   main.setAttribute("aria-busy", "false");
   if (!books.length) { zone.innerHTML = `<div class="vide-etat"><p>Vous n'appartenez à aucun carnet pour le moment.</p></div>`; return; }
 
-  const pref = AR.getBookPref();
-  const st = { book: books.some((b) => b.id === pref) ? pref : "all", month: new Date().getMonth() + 1, who: new Set([me]), tab: "sugg", have: [] };
+  const qs = new URLSearchParams(location.search);
+  const qBook = qs.get("book"), pref = books.some((b) => b.id === qBook) ? qBook : AR.getBookPref();
+  // ?invites=<id,id> : invités présélectionnés (lien « Suggérer un menu pour … » de la fiche invité).
+  const qGuests = (qs.get("invites") || "").split(",").map((x) => x.trim()).filter((x) => /^[0-9a-f-]{36}$/i.test(x));
+  const st = { book: books.some((b) => b.id === pref) ? pref : "all", month: new Date().getMonth() + 1, who: new Set([me]), guests: new Set(qGuests), hideServed: false, tab: "sugg", have: [] };
   const scope = () => (st.book === "all" ? books.map((b) => b.id) : [st.book]);
-  let people = [], profiled = new Set(), profs = [];
+  let people = [], profiled = new Set(), profs = [], guests = [];
   const notes = new Map(); // raison de l'écart, par recette
 
   zone.innerHTML = `
@@ -53,6 +56,14 @@
     profiled = new Set(profs.map((x) => x.user_id));
     st.who = new Set([...st.who].filter((id) => people.some((p) => p[0] === id)));
     if (!st.who.size) st.who.add(me);
+    // Invités des carnets visés (les archivés sont exclus). Une erreur ici (migration non appliquée) n'empêche pas les suggestions.
+    guests = [];
+    try {
+      const g = await sb.from("recipe_guests").select("*").in("book_id", ids).is("archived_at", null).order("name");
+      if (g.error) throw g.error;
+      guests = g.data || [];
+    } catch (e) { console.error(e); }
+    st.guests = new Set([...st.guests].filter((id) => guests.some((x) => x.id === id)));
   }
   function renderWho() {
     const box = $("#sa-qui");
@@ -62,6 +73,11 @@
       <div class="sa-personnes">${people.map(([id, name]) => `<label class="case pf-case"><input type="checkbox" data-who="${esc(id)}"${st.who.has(id) ? " checked" : ""}> ${esc(name)}${id !== me && !profiled.has(id) ? ` <span class="muted">(pas de profil)</span>` : ""}</label>`).join("")}</div>
       <p class="aide">Les allergies, aversions et régimes des personnes cochées sont respectés. Chacun voit celles des autres membres du carnet, pas ses préférences de difficulté.${others ? "" : " Invitez des membres dans un carnet pour composer un menu à plusieurs."}</p>
       ${[...st.who].some((id) => id !== me && !profiled.has(id)) ? `<p class="aide">Une personne cochée n'a pas rempli son profil : aucune contrainte n'est appliquée pour elle. Invitez-la à le remplir.</p>` : ""}
+      ${guests.length ? `<div class="sa-invites"><p class="libelle or sa-groupe">Invités</p>
+        <div class="sa-personnes">${guests.map((x) => `<label class="case pf-case"><input type="checkbox" data-guest="${esc(x.id)}"${st.guests.has(x.id) ? " checked" : ""}> <span>${esc(x.name)}${st.book === "all" && books.length > 1 ? ` <span class="muted">(${esc((books.find((b) => b.id === x.book_id) || {}).name || "")})</span>` : ""}</span></label>`).join("")}</div>
+        <p class="aide">Les allergies, aversions et régimes des invités cochés sont respectés.</p>
+        ${st.guests.size ? `<div class="pf-interrupteur"><span class="pf-int-lib" id="sa-hide-l">Masquer les plats déjà servis</span>
+          <button type="button" class="pf-switch" id="sa-hide" role="switch" aria-checked="${st.hideServed}" aria-labelledby="sa-hide-l"><span class="pf-curseur" aria-hidden="true"></span></button></div>` : ""}</div>` : ""}
       ${!profiled.has(me) ? `<p class="aide">Vous n'avez pas encore de profil : <a href="/recettes/profil.html">renseignez vos allergies et aversions</a>.</p>` : ""}</fieldset>`;
   }
 
@@ -74,13 +90,17 @@
     box.innerHTML = `<p class="chargement">Recherche de suggestions…</p>`;
     try {
       const who = [...st.who];
-      const { data, error } = await sb.rpc("recipe_suggestions", { p_book_ids: scope(), p_for_users: who.length === 1 && who[0] === me ? null : who, p_month: st.month, p_limit: 40 });
+      const gids = [...st.guests];
+      const args = { p_book_ids: scope(), p_for_users: who.length === 1 && who[0] === me ? null : who, p_month: st.month, p_limit: 40 };
+      if (gids.length) { args.p_guest_ids = gids; args.p_hide_served = st.hideServed; }
+      const { data, error } = await sb.rpc("recipe_suggestions", args);
       if (error) throw error;
       const cards = await AR.fetchCards((data || []).map((x) => x.recipe_id));
       if (my !== seq) return;
       const rows = AR.dedupeVersions((data || []).filter((x) => cards.has(x.recipe_id)), (x) => cards.get(x.recipe_id).version_group).slice(0, 12);
       // Lignes sans ingrédient du catalogue : allergènes non contrôlables (à signaler si une contrainte existe).
-      const constraints = profs.some((p) => st.who.has(p.user_id) && ((p.allergens || []).length || (p.aversions || []).length || (p.aversions_texte || []).length || ["vegetarien", "vegan", "pescetarien", "sans_gluten", "sans_lactose"].includes(p.regime)));
+      const hasC = (p) => (p.allergens || []).length || (p.aversions || []).length || (p.aversions_texte || []).length || ["vegetarien", "vegan", "pescetarien", "sans_gluten", "sans_lactose"].includes(p.regime);
+      const constraints = profs.some((p) => st.who.has(p.user_id) && hasC(p)) || guests.some((x) => st.guests.has(x.id) && hasC(x));
       const unc = new Map();
       if (constraints && rows.length) {
         const l = await sb.from("recipe_ingredient_lines").select("recipe_id,catalog_id,optional").in("recipe_id", rows.map((x) => x.recipe_id));
@@ -88,8 +108,8 @@
       }
       if (my !== seq) return;
       box.setAttribute("aria-busy", "false");
-      if (!rows.length) { box.innerHTML = `<div class="vide-etat"><p class="italique">Aucune suggestion pour ce mois et ces personnes. Élargissez le carnet ou retirez une contrainte.</p></div>`; return; }
-      box.innerHTML = `<ol class="sa-liste">${rows.map((x, i) => itemHtml(cards.get(x.recipe_id), i + 1, `<ul class="sa-raisons">${(x.raisons || []).map((t) => `<li>${esc(t)}</li>`).join("")}</ul>${unc.get(x.recipe_id) ? `<p class="aide">${unc.get(x.recipe_id)} ingrédient${unc.get(x.recipe_id) > 1 ? "s" : ""} non rattaché${unc.get(x.recipe_id) > 1 ? "s" : ""} au catalogue : allergènes non contrôlables.</p>` : ""}`,
+      if (!rows.length) { box.innerHTML = `<div class="vide-etat"><p class="italique">${gids.length && st.hideServed ? "Aucune suggestion : tout ce qui convient a déjà été servi à ces invités. Désactivez « Masquer les plats déjà servis » pour le revoir, en fin de liste. " : ""}Aucune suggestion pour ce mois et ces personnes. Élargissez le carnet ou retirez une contrainte.</p></div>`; return; }
+      box.innerHTML = `<ol class="sa-liste">${rows.map((x, i) => itemHtml(cards.get(x.recipe_id), i + 1, `<ul class="sa-raisons">${(x.raisons || []).map((t) => `<li>${esc(t)}</li>`).join("")}</ul>${x.deja_servi ? `<p class="sa-servi">${esc(x.deja_servi)}</p>` : ""}${unc.get(x.recipe_id) ? `<p class="aide">${unc.get(x.recipe_id)} ingrédient${unc.get(x.recipe_id) > 1 ? "s" : ""} non rattaché${unc.get(x.recipe_id) > 1 ? "s" : ""} au catalogue : allergènes non contrôlables.</p>` : ""}`,
         `<div class="sa-btns"><button type="button" class="btn sec petit" data-fb="pas_cette_fois">Pas cette fois</button><button type="button" class="btn sec petit" data-fb="jamais">Jamais</button></div>`)).join("")}</ol>`;
     } catch (e) {
       if (my !== seq) return;
@@ -171,6 +191,8 @@
   zone.addEventListener("change", (e) => {
     if (e.target.id === "sa-book") { st.book = e.target.value; if (st.book !== "all") AR.setBookPref(st.book); refreshAll(); if (st.have.length && $("#sa-have-res").innerHTML) searchHave(); return; }
     if (e.target.id === "sa-mois") { st.month = +e.target.value; renderSaison(); loadSugg(); return; }
+    const gu = e.target.closest("[data-guest]");
+    if (gu) { if (gu.checked) st.guests.add(gu.dataset.guest); else st.guests.delete(gu.dataset.guest); renderWho(); loadSuggDeb(); const again = $(`[data-guest="${gu.dataset.guest}"]`); if (again) again.focus(); return; }
     const w = e.target.closest("[data-who]");
     if (w) {
       if (w.checked) st.who.add(w.dataset.who); else st.who.delete(w.dataset.who);
@@ -181,6 +203,7 @@
   zone.addEventListener("click", (e) => {
     const t = e.target.closest("[data-tab]");
     if (t) { st.tab = t.dataset.tab; $$("[data-tab]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tab === st.tab))); $("#sa-sugg").hidden = st.tab !== "sugg"; $("#sa-have").hidden = st.tab !== "have"; if (st.tab === "have") renderHave(); return; }
+    const hs = e.target.closest("#sa-hide"); if (hs) { st.hideServed = hs.getAttribute("aria-checked") !== "true"; renderWho(); loadSugg(); const n = $("#sa-hide"); if (n) n.focus(); return; }
     const fb = e.target.closest("[data-fb]"); if (fb) return void sendFeedback(fb.closest(".sa-item"), fb.dataset.fb);
     const u = e.target.closest("[data-undo]"); if (u) return void undoFeedback(u.closest(".sa-item"));
     const rm = e.target.closest("[data-rm]"); if (rm) { st.have = st.have.filter((c) => c.id !== rm.dataset.rm); renderHave(); return; }

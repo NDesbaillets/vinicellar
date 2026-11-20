@@ -1,5 +1,6 @@
 // ARÔMES V&N · livre du carnet : page imprimable (A4), couverture, sommaire, une recette par page.
 // Données : contrat 06-transmettre §4. Notes partagées uniquement (jamais les notes privées, même les siennes).
+// CONFIDENTIALITÉ (docs/recettes/07-invites-contrat.md §5, cadrage §9) : Le livre ne lit AUCUNE table d'invités ni de réceptions (recipe_guests, recipe_receptions*, recipe_served_to) : allergies et régimes de tiers sont des données de santé, jamais exposées ici.
 (async function () {
   const AR = window.AR, { sb, $, esc, errMsg } = AR;
   const ctx = await AR.boot("carnets");

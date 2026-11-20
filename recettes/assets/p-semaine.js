@@ -49,7 +49,7 @@
     if (!silent) { g.setAttribute("aria-busy", "true"); g.innerHTML = `<p class="chargement">Chargement de la semaine…</p>`; }
     try {
       const rows = await fetchWeek();
-      const sig = JSON.stringify(rows.map((r) => [r.id, r.day, r.slot, r.state, r.recipe_id, r.servings, r.note]).sort()) + st.week + st.book;
+      const sig = JSON.stringify(rows.map((r) => [r.id, r.day, r.slot, r.state, r.recipe_id, r.servings, r.note, r.reception_id]).sort()) + st.week + st.book;
       if (silent && sig === lastSig) return;
       lastSig = sig;
       plan.clear(); rows.forEach((r) => plan.set(key(String(r.day).slice(0, 10), r.slot), r));
@@ -72,11 +72,13 @@
     else if (r.recipe_id) corps = `<p class="se-recette">${rec && !rec.deleted ? `<a href="/recettes/fiche.html?id=${encodeURIComponent(r.recipe_id)}">${esc(rec.title)}</a>` : `<span class="muted italique">${rec ? "Recette dans la corbeille" : "Recette indisponible"}</span>`}</p>
       ${ed ? `<div class="rangee"><button type="button" class="btn sec petit" data-act="pick" aria-label="Changer la recette : ${esc(dl)}">Changer</button><button type="button" class="btn lien" data-act="norecipe" aria-label="Retirer la recette : ${esc(dl)}">Retirer la recette</button></div>` : ""}`;
     else corps = ed ? `<div class="rangee"><button type="button" class="btn petit" data-act="pick" aria-label="Choisir une recette : ${esc(dl)}">Choisir une recette</button></div>` : `<p class="muted italique se-txt">Pas encore de recette.</p>`;
+    const inv = r.state === "invites" && (ed || r.reception_id)
+      ? `<div class="rangee se-inv">${ed ? `<button type="button" class="btn sec petit" data-act="invites" aria-label="Choisir les invités : ${esc(dl)}">Invités…</button>` : ""}${r.reception_id ? `<a class="btn lien" href="/recettes/reception.html?id=${encodeURIComponent(r.reception_id)}">Voir la réception</a>` : ""}</div>` : "";
     const ctrl = ed
       ? `<div class="se-ctrl"><select data-f="state" aria-label="État du repas : ${esc(dl)}">${Object.entries(ETATS).map(([k, l]) => `<option value="${k}"${r.state === k ? " selected" : ""}>${l}</option>`).join("")}</select>
         ${withRecipe ? `<label class="se-conv">Convives<input type="number" inputmode="numeric" min="1" max="99" step="1" data-f="servings" value="${r.servings == null ? "" : esc(r.servings)}" aria-label="Convives : ${esc(dl)}"></label>` : ""}</div>`
       : `<p class="se-etat"><span class="libelle or">${ETATS[r.state]}</span>${withRecipe && r.servings ? ` <span class="muted">· ${r.servings} convive${r.servings > 1 ? "s" : ""}</span>` : ""}</p>`;
-    return `<div class="se-case" ${data}><div class="se-case-tete"><span class="libelle">${label}</span>${ed ? `<button type="button" class="btn lien" data-act="off" aria-label="Retirer ce repas du planning : ${esc(dl)}">Retirer le repas</button>` : ""}</div>${ctrl}${corps}</div>`;
+    return `<div class="se-case" ${data}><div class="se-case-tete"><span class="libelle">${label}</span>${ed ? `<button type="button" class="btn lien" data-act="off" aria-label="Retirer ce repas du planning : ${esc(dl)}">Retirer le repas</button>` : ""}</div>${ctrl}${corps}${inv}</div>`;
   }
   function render() {
     const g = $("#se-grille"), today = AR.todayIso(), ds = days();
@@ -85,8 +87,9 @@
     $("#se-outils").innerHTML = editor()
       ? `<button type="button" class="btn sec" data-top="rythme">Reprendre le rythme de la semaine dernière</button>
          <button type="button" class="btn sec" data-top="remplir">Remplir ma semaine</button>
-         <button type="button" class="btn" data-top="courses">Ajouter la semaine aux courses</button>`
-      : `<p class="muted italique">Vous consultez ce planning en lecture seule.</p>`;
+         <button type="button" class="btn" data-top="courses">Ajouter la semaine aux courses</button>
+         <a class="btn lien" href="/recettes/invites.html?book=${encodeURIComponent(st.book)}">Invités et réceptions</a>`
+      : `<p class="muted italique">Vous consultez ce planning en lecture seule.</p><a class="btn lien" href="/recettes/invites.html?book=${encodeURIComponent(st.book)}">Invités et réceptions</a>`;
     g.setAttribute("aria-busy", "false");
     g.innerHTML = ds.map((d) => `<section class="se-jour${d === today ? " se-auj" : ""}" aria-label="${esc(AR.dayLabel(d))}"><h2 class="se-jour-t">${esc(AR.cap(AR.JOURS[AR.weekdayOf(d)]))} <span>${esc(AR.fmtDay(d))}</span>${d === today ? ` <span class="se-badge">Aujourd'hui</span>` : ""}</h2>
       ${SLOTS.map(([s, l]) => cellHtml(d, s, l)).join("")}</section>`).join("");
@@ -196,6 +199,46 @@
     tabCarnet();
   }
 
+  // ---- « Invités… » : choix des invités d'une case « invités », puis création ou mise à jour de la réception (recipe_plan_to_reception)
+  async function invitesSheet(day, slot) {
+    const row = plan.get(key(day, slot)); if (!row) return;
+    const lab = `${AR.dayLabel(day)} · ${slot === "midi" ? "midi" : "soir"}`;
+    const body = openSheet("Invités", lab);
+    body.innerHTML = `<p class="chargement">Chargement des invités…</p>`;
+    let guests, chosen = new Set();
+    try {
+      const g = await sb.from("recipe_guests").select("id,name,household,archived_at").eq("book_id", st.book).order("name");
+      if (g.error) throw g.error;
+      if (row.reception_id) {
+        const c = await sb.from("recipe_reception_guests").select("guest_id").eq("reception_id", row.reception_id);
+        if (c.error) throw c.error;
+        chosen = new Set((c.data || []).map((x) => x.guest_id));
+      }
+      guests = (g.data || []).filter((x) => !x.archived_at || chosen.has(x.id));
+    } catch (e) { body.innerHTML = `<p class="msg erreur" role="alert">${esc(errMsg(e, "Impossible de lire les invités."))}</p>`; return; }
+    const upd = !!row.reception_id;
+    body.innerHTML = `<form id="se-inv-form" class="champs" novalidate>
+      ${guests.length ? `<fieldset class="pf-groupe"><legend class="libelle or">Qui est invité ?</legend><div class="se-inv-liste">${guests.map((x) => `<label class="case pf-case"><input type="checkbox" name="inv" value="${esc(x.id)}"${chosen.has(x.id) ? " checked" : ""}> <span>${esc(x.name)}${x.household ? ` <span class="muted">· ${esc(x.household)}</span>` : ""}${x.archived_at ? ` <span class="muted">(archivé)</span>` : ""}</span></label>`).join("")}</div></fieldset>`
+        : `<p class="muted italique">Aucun invité dans ce carnet pour l'instant. Vous pouvez créer la réception sans invités, ou <a href="/recettes/invite.html?book=${encodeURIComponent(st.book)}&amp;nouveau=1">ajouter un invité</a> d'abord.</p>`}
+      <p class="aide">${upd ? "La réception existe déjà : sa liste d'invités sera remplacée par ce choix. Le menu, le titre, la note et la photo sont conservés." : "La réception reprend le jour, le créneau, la note, le nombre de convives et la recette de cette case."}</p>
+      <div class="rangee"><button type="submit" class="btn">${upd ? "Mettre à jour la réception" : "Créer la réception"}</button></div>
+      <p class="msg" id="se-inv-msg" role="status" aria-live="polite"></p></form>`;
+    const first = $("input[name=inv]", body) || $("button[type=submit]", body); if (first) first.focus();
+    $("#se-inv-form", body).addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = $("button[type=submit]", body), out = $("#se-inv-msg", body);
+      btn.disabled = true; out.textContent = "Enregistrement…"; out.className = "msg";
+      const ids = $$("input[name=inv]:checked", body).map((x) => x.value);
+      const { data, error } = await sb.rpc("recipe_plan_to_reception", { p_plan: row.id, p_guest_ids: ids });
+      if (error) { btn.disabled = false; out.className = "msg erreur"; out.textContent = errMsg(error, "La réception n'a pas pu être créée."); return; }
+      row.reception_id = data || row.reception_id; lastSig = "";
+      closeSheet();
+      toast(upd ? "Réception mise à jour." : "Réception créée : elle apparaît dans la case.");
+      await load(true); render();
+      const lk = $(`[data-day="${day}"][data-slot="${slot}"] a[href*="reception.html"]`); if (lk) lk.focus();
+    });
+  }
+
   // ---- « Remplir ma semaine » : une proposition par case vide, validée une par une
   async function remplir() {
     const empty = days().flatMap((d) => SLOTS.map(([s]) => [d, s])).filter(([d, s]) => { const r = plan.get(key(d, s)); return r && r.state === "prevu" && !r.recipe_id; });
@@ -274,6 +317,7 @@
     const b = e.target.closest("[data-act]"); if (!b) return;
     const cell = b.closest(".se-case"), day = cell.dataset.day, slot = cell.dataset.slot;
     if (b.dataset.act === "pick") { opener = b; return void pickSheet(day, slot); }
+    if (b.dataset.act === "invites") { opener = b; return void invitesSheet(day, slot); }
     b.disabled = true;
     let ok = true;
     if (b.dataset.act === "on") ok = !!(await saveCell(day, slot, { state: "prevu" }));
