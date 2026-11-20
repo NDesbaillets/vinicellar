@@ -264,7 +264,7 @@
     if (r.difficulty) chiffres.push(["Difficulté", AR.DIFFICULTES[r.difficulty] || "", false]);
     const meta = [r.course ? AR.COURSES[r.course] : "", r.cuisine || ""].filter(Boolean).join(" · ");
     const srcUrl = AR.safeUrl(r.source_url || "");
-    const source = [r.source_author ? esc(r.source_author) : "", srcUrl ? `<a href="${esc(srcUrl)}" target="_blank" rel="noopener noreferrer">${esc(AR.host(srcUrl))}</a>` : ""].filter(Boolean).join(" · ");
+    const source = [r.source_type === "note" ? "Importée d'une note" : "", r.source_author ? esc(r.source_author) : "", srcUrl ? `<a href="${esc(srcUrl)}" target="_blank" rel="noopener noreferrer">${esc(AR.host(srcUrl))}</a>` : ""].filter(Boolean).join(" · ");
     const trash = r.deleted_at
       ? `<div class="bandeau" role="status"><p>Cette recette est dans la corbeille depuis le ${esc(fmtDate(r.deleted_at))}.</p>${editor ? `<button type="button" class="btn petit" data-act="restore">Restaurer</button>` : ""}</div>` : "";
     const visibles = notes;
