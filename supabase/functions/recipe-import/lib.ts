@@ -1,5 +1,13 @@
 // ARÔMES V&N · recipe-import : fonctions pures (aucun réseau, aucune base), testées dans lib_test.ts.
 
+// Classes de caractères construites par code (ni caractère invisible ni échappement dans le source).
+const cc = (...codes: number[]) => String.fromCharCode(...codes);
+const span = (a: number, b: number) => cc(a) + "-" + cc(b);
+const SPACE_RUN_RE = new RegExp("[" + cc(0x20, 0x09, 0xa0) + "]+", "g");
+const NBSP_RE = new RegExp("[" + cc(0xa0, 0x2007, 0x202f) + "]", "g");
+const INVISIBLE_RE = new RegExp("[" + span(0x00, 0x08) + cc(0x0b, 0x0c) + span(0x0e, 0x1f) + cc(0x7f, 0x200b, 0xfeff, 0xfffc) + "]", "g");
+const COMBINING_RE = new RegExp("[" + span(0x300, 0x36f) + "]", "g");
+
 // ---------------------------------------------------------------- types
 export const UNITS = ["g", "kg", "ml", "cl", "l", "cas", "cac", "piece", "pincee", "botte", "gousse", "tranche"] as const;
 export type Unit = typeof UNITS[number];
@@ -42,7 +50,7 @@ export function norm(s: string): string {
   return String(s ?? "")
     .toLowerCase()
     .replace(/œ/g, "oe").replace(/æ/g, "ae")
-    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .normalize("NFD").replace(COMBINING_RE, "")
     .replace(/[^a-z0-9]+/g, " ")
     .trim();
 }
@@ -93,7 +101,7 @@ export function parseQuantity(v: unknown): number | null {
   return Number.isFinite(f) && f >= 0 && /^[\d.]+$/.test(s) ? f : null;
 }
 
-const compact = (s: string) => s.toLowerCase().replace(/œ/g, "oe").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "");
+const compact = (s: string) => s.toLowerCase().replace(/œ/g, "oe").normalize("NFD").replace(COMBINING_RE, "").replace(/[^a-z0-9]+/g, "");
 
 const UNIT_WORDS: Record<Unit, string[]> = {
   g: ["g", "gr", "gramme", "grammes", "gram", "grams"],
@@ -567,7 +575,7 @@ export function htmlToText(html: string, max = 60000): { text: string; title: st
   const main = body.match(/<article\b[\s\S]*?<\/article\s*>/i) ?? body.match(/<main\b[\s\S]*?<\/main\s*>/i);
   if (main && stripTags(main[0]).length > 500) body = main[0];
   const text = decodeEntities(body.replace(/<\/?(p|li|div|br|h[1-6]|tr|section|ul|ol)\b[^>]*>/gi, "\n").replace(/<[^>]*>/g, " "))
-    .replace(/[ \t ]+/g, " ").replace(/ *\n */g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+    .replace(SPACE_RUN_RE, " ").replace(/ *\n */g, "\n").replace(/\n{3,}/g, "\n\n").trim();
   return { text: [title && `Titre de la page : ${title}`, description && `Description : ${description}`, text].filter(Boolean).join("\n").slice(0, max), title, siteName };
 }
 
@@ -613,8 +621,8 @@ export function cleanNoteText(input: unknown): string {
   if (typeof input !== "string") return "";
   return input
     .replace(/\r\n?/g, "\n")
-    .replace(/[\u00a0\u2007\u202f]/g, " ")
-    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u200b\ufeff\ufffc]/g, "")   // \ufffc : pièce jointe d'Apple Notes
+    .replace(NBSP_RE, " ")
+    .replace(INVISIBLE_RE, "")   // U+FFFC : pièce jointe d'Apple Notes
     .replace(/[ \t]+\n/g, "\n")
     .replace(/\n{4,}/g, "\n\n\n")
     .trim()
