@@ -4,7 +4,7 @@
 //
 // Secrets : ANTHROPIC_API_KEY (existant), APIFY_TOKEN et GEMINI_API_KEY (à créer). SUPABASE_URL, SUPABASE_ANON_KEY et
 // SUPABASE_SERVICE_ROLE_KEY sont fournis par Supabase. Optionnels : RECIPE_IMPORT_DAILY_LIMIT (50 par personne et par 24 h),
-// RECIPE_IMPORT_MAX_SECONDS (durée maximale d'un import, 140 ; 380 sur un plan payant), GEMINI_MODEL, GEMINI_FALLBACK_MODEL.
+// RECIPE_IMPORT_MAX_SECONDS (durée maximale d'un import, 380 : plan Pro ; 140 sur le plan gratuit), GEMINI_MODEL, GEMINI_FALLBACK_MODEL.
 // Le service_role ne vit que dans cette fonction (secret d'environnement), jamais dans une réponse, un journal ni le client.
 // Les contenus externes (légende, transcription, page web, image) sont des DONNÉES NON FIABLES, jamais des instructions.
 import Anthropic from "npm:@anthropic-ai/sdk@0.121.0";
@@ -23,7 +23,7 @@ const GEMINI_MODEL = Deno.env.get("GEMINI_MODEL") ?? "gemini-flash-latest";
 const GEMINI_FALLBACK = Deno.env.get("GEMINI_FALLBACK_MODEL") ?? "gemini-2.5-flash";
 const KIND = "recipe-import";
 const DAILY_LIMIT = Number(Deno.env.get("RECIPE_IMPORT_DAILY_LIMIT") ?? "50");
-const MAX_SECONDS = Number(Deno.env.get("RECIPE_IMPORT_MAX_SECONDS") ?? "140");
+const MAX_SECONDS = Number(Deno.env.get("RECIPE_IMPORT_MAX_SECONDS") ?? "380");
 const STALE_MS = 10 * 60 * 1000;              // un import « en_cours » sans signe de vie depuis 10 min est considéré interrompu
 const INLINE_VIDEO_MAX = 20 * 1024 * 1024;     // au-delà : API Files de Gemini
 const VIDEO_MAX = 100 * 1024 * 1024;           // plafond du bucket recipe-videos

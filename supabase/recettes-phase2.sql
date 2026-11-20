@@ -66,10 +66,10 @@ create policy "editors insert" on public.recipe_imports for insert to authentica
           or p like '%..%')
   );
 
--- Pas de policy d'update : le client ne modifie jamais un import. Il peut retirer les siens une fois terminés.
+-- Pas de policy d'update : le client ne modifie jamais un import. Il peut retirer les siens une fois terminés, échoués ou à relire.
 drop policy if exists "author delete finished" on public.recipe_imports;
 create policy "author delete finished" on public.recipe_imports for delete to authenticated
-  using (created_by = (select auth.uid()) and status in ('termine','echec'));
+  using (created_by = (select auth.uid()) and status in ('termine','echec','a_relire'));
 
 -- Droits : explicites et minimaux. Insertion limitée aux colonnes que le client choisit (le statut, l'étape,
 -- les erreurs et les liens vers la fiche restent à la fonction serveur).
@@ -139,3 +139,17 @@ language sql stable set search_path = '' as $$
 $$;
 revoke execute on function public.recipe_find_duplicates(uuid[], text, text) from anon, public;
 grant execute on function public.recipe_find_duplicates(uuid[], text, text) to authenticated, service_role;
+
+-- « Garder séparée » : l'éditeur du carnet écarte le doublon signalé sur un import. Le client n'a aucun droit
+-- d'update sur recipe_imports : cette fonction est le seul chemin, limité à la colonne duplicate_of.
+create or replace function public.recipe_dismiss_duplicate(p_import uuid) returns boolean
+language plpgsql security definer set search_path = '' as $$
+declare n integer;
+begin
+  update public.recipe_imports i set duplicate_of = null
+   where i.id = p_import and i.duplicate_of is not null and public.is_book_editor(i.book_id);
+  get diagnostics n = row_count;
+  return n > 0;
+end $$;
+revoke execute on function public.recipe_dismiss_duplicate(uuid) from anon, public;
+grant execute on function public.recipe_dismiss_duplicate(uuid) to authenticated;

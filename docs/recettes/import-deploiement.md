@@ -12,7 +12,7 @@ Supabase > projet « vinicellar » > Edge Functions > Secrets (ou `supabase secr
 | `APIFY_TOKEN` | console.apify.com > Settings > API & Integrations > Personal API token | à créer |
 | `GEMINI_API_KEY` | aistudio.google.com > Get API key (clé « Gemini API ») | à créer |
 
-Facultatifs (valeurs par défaut entre parenthèses) : `RECIPE_IMPORT_DAILY_LIMIT` (50), `RECIPE_IMPORT_MAX_SECONDS` (140), `GEMINI_MODEL` (`gemini-flash-latest`), `GEMINI_FALLBACK_MODEL` (`gemini-2.5-flash`).
+Facultatifs (valeurs par défaut entre parenthèses) : `RECIPE_IMPORT_DAILY_LIMIT` (50), `RECIPE_IMPORT_MAX_SECONDS` (380, plan Pro), `GEMINI_MODEL` (`gemini-flash-latest`), `GEMINI_FALLBACK_MODEL` (`gemini-2.5-flash`).
 
 Fixez un plafond de dépense mensuel sur Apify, Google AI Studio et Anthropic avant d'ouvrir l'import à d'autres personnes.
 
@@ -32,7 +32,7 @@ supabase functions deploy recipe-import --project-ref <réf du projet>
 
 Ne pas passer `--no-verify-jwt` : la vérification du JWT par la passerelle doit rester active (la fonction revérifie aussi le jeton et l'appartenance au carnet). Le dossier contient `index.ts`, `lib.ts` (fonctions pures) et `lib_test.ts` (tests, non déployé utilement mais sans effet).
 
-Durée d'exécution : un import tourne en arrière-plan après la réponse `202`. La plateforme coupe une fonction au bout de son délai maximal (environ 150 s sur le plan gratuit, environ 400 s sur un plan payant, à vérifier dans Edge Functions > Limits). La fonction s'arrête d'elle-même après `RECIPE_IMPORT_MAX_SECONDS` (140 par défaut). Sur un plan payant, fixer `RECIPE_IMPORT_MAX_SECONDS=380` pour laisser les relances Gemini (5 s, 15 s, 30 s) aller au bout. Un import coupé par la plateforme reste « en cours » ; il passe en « echec » (« Import interrompu ») au prochain import de n'importe qui, après 10 minutes, et peut être relancé.
+Durée d'exécution : un import tourne en arrière-plan après la réponse `202`. La plateforme coupe une fonction au bout de son délai maximal (environ 150 s sur le plan gratuit, environ 400 s sur un plan payant, à vérifier dans Edge Functions > Limits). La fonction s'arrête d'elle-même après `RECIPE_IMPORT_MAX_SECONDS` (380 par défaut, adapté au plan Pro, ce qui laisse les relances Gemini de 5 s, 15 s et 30 s aller au bout). Sur le plan gratuit, fixer `RECIPE_IMPORT_MAX_SECONDS=140`. Un import coupé par la plateforme reste « en cours » ; il passe en « echec » (« Import interrompu ») au prochain import de n'importe qui, après 10 minutes, et peut être relancé.
 
 ## 4. Tester avec un reel
 
@@ -71,7 +71,7 @@ Au maximum permis (50 imports par personne et par jour), cela représente de l'o
 - Vidéo : téléchargée jusqu'à 100 Mo et 10 minutes ; au-delà, la fiche repose sur la légende seule, avec une alerte. Conservée 30 jours dans `recipe-videos`, puis supprimée lors d'un import ultérieur (nettoyage opportuniste : sans nouvel import, les fichiers restent ; une tâche planifiée pourra remplacer cela plus tard).
 - Gemini : 3 relances (5 s, 15 s, 30 s) sur 429/500/503, puis le modèle de repli. Si la vidéo reste inanalysable mais que la légende dépasse 40 caractères, la fiche est créée sur la légende avec une alerte ; sinon l'import échoue.
 - Web : page de 3 Mo au plus, 15 s de délai, 60 000 caractères de texte. Les pages chargées par JavaScript, derrière un mur de connexion ou un bouclier anti-robot ne sont pas lisibles. Les adresses privées (localhost, réseaux internes) sont refusées. Pas d'image récupérée depuis un site web.
-- Photo de page : 4 photos, 5 Mo chacune au maximum (le front les compresse à 2000 px). Une écriture manuscrite difficile donne des alertes et une fiche partielle ; l'import se termine en `a_relire`, et ce statut n'est pas supprimable par le client (voir points ouverts).
+- Photo de page : 4 photos, 5 Mo chacune au maximum (le front les compresse à 2000 px). Une écriture manuscrite difficile donne des alertes et une fiche partielle ; l'import se termine en `a_relire` (l'auteur peut supprimer la ligne d'import).
 - Conversions : les températures °F, oz, lb, sticks, fl oz, pints, quarts et gallons sont converties de façon fixe. Les cups sont converties en grammes seulement si l'ingrédient a une densité dans le catalogue et n'est pas un liquide ; sinon en ml avec une alerte « Converti ». Aucune table de densités n'est embarquée : il faut renseigner `density_g_per_ml` dans le catalogue (SQL Editor) pour les ingrédients courants (farine, sucre, beurre, etc.).
 - Catalogue : un ingrédient inconnu est ajouté avec `validated = false` (60 au plus par import) ; il reste à valider et à compléter (rayon, saisons, allergènes, densité).
 - Doublons : comparés dans tous les carnets de la personne (même lien, titre voisin, ou même auteur avec au moins 60 % d'ingrédients du catalogue en commun). La fiche est toujours créée ; `duplicate_of` et une alerte signalent le doublon.
