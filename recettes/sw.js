@@ -1,7 +1,7 @@
 // Service worker ARÔMES V&N (scope /recettes/). Fichiers statiques de /recettes/ et bibliothèques versionnées des CDN en cache ;
 // pages : réseau d'abord. Supabase : seules les lectures (GET) nécessaires à l'affichage d'une recette déjà consultée sont gardées
 // (réseau d'abord, repli sur la copie) ; écritures, authentification, fonctions et signatures ne sont jamais mises en cache.
-const VERSION = "aromes-20261120-r3";
+const VERSION = "aromes-20261120-r4";
 const STATIC = VERSION + "-static";
 const PAGES = VERSION + "-pages";
 const DATA = VERSION + "-data";
@@ -94,3 +94,26 @@ async function donnees(e, req, key) {
     return Response.error();
   }
 }
+
+// ---- notifications push (phase 5) : le corps reçu est { title, body, url, tag, kind, icon }
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { body: e.data ? e.data.text() : "" }; }
+  const titre = typeof d.title === "string" && d.title ? d.title : "ARÔMES V&N";
+  e.waitUntil(self.registration.showNotification(titre, {
+    body: typeof d.body === "string" ? d.body : "", tag: typeof d.tag === "string" ? d.tag : undefined,
+    icon: typeof d.icon === "string" ? d.icon : "/recettes/assets/logo-aromes-vn-fond.svg",
+    data: { url: typeof d.url === "string" ? d.url : "/recettes/" }
+  }));
+});
+// Ouvre l'adresse de la notification (limitée à /recettes/) en réutilisant un onglet déjà ouvert.
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  let cible = new URL("/recettes/", self.location.origin);
+  try { const u = new URL((e.notification.data && e.notification.data.url) || "/recettes/", self.location.origin); if (u.origin === self.location.origin && u.pathname.startsWith("/recettes/")) cible = u; } catch { /* adresse invalide */ }
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((onglets) => {
+    const ouvert = onglets.find((c) => new URL(c.url).pathname.startsWith("/recettes/"));
+    if (ouvert) return ouvert.focus().then((c) => (c && "navigate" in c ? c.navigate(cible.href) : c)).catch(() => self.clients.openWindow(cible.href));
+    return self.clients.openWindow(cible.href);
+  }));
+});

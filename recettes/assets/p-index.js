@@ -3,7 +3,7 @@
   const ctx = await AR.boot("carnet");
   if (!ctx) return;
   let books = ctx.books;
-  const st = { statut: "toutes", course: "", q: "", book: AR.getBookPref() };
+  const st = { statut: "toutes", course: "", q: "", book: AR.getBookPref(), mode: "mots" };
   const msg = $("#msg"), liste = $("#liste");
 
   // ---- sélecteurs
@@ -89,10 +89,13 @@
     const urls = await AR.signedUrls(rows.map(cover).filter(Boolean));
     if (my !== seq) return;
     if (titleOnly) setMsg(msg, "Aucun résultat exact : recettes dont le titre contient votre recherche.");
+    renderPlanches(rows.map((r) => ({ ...r, cover: urls[cover(r)] || null })));
+  }
+  function renderPlanches(rows) {
     const multi = books.length > 1 && st.book === "all";
     const bookName = (id) => (books.find((b) => b.id === id) || {}).name || "";
     liste.innerHTML = `<ol class="grille-planches">${rows.map((r, i) => {
-      const u = urls[cover(r)];
+      const u = r.cover;
       const src = [sourceOf(r), multi ? bookName(r.book_id) : ""].filter(Boolean).join(" · ");
       const flags = r.family ? "De famille" : "";
       return `<li><a class="planche" href="/recettes/fiche.html?id=${encodeURIComponent(r.id)}">
@@ -107,12 +110,117 @@
   }
   function syncStatut() { $$("[data-statut]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.statut === st.statut))); }
 
+
+  // ---- mode « question » (phase 4) : Claude traduit la phrase en filtres, affichés en pastilles retirables.
+  // Retirer une pastille relance recipe_search en RPC, sans repasser par Claude.
+  const nl = { f: null, nonRec: [], degrade: false, q: "" };
+  const MAX_DIFF = { 1: "Facile", 2: "Moyen au plus", 3: "Difficile au plus" };
+  const bookIds = () => (st.book === "all" ? books.map((b) => b.id) : [st.book]);
+  function pastilles() {
+    const f = nl.f || {}, out = [];
+    if (f.texte) out.push(["texte", null, `« ${f.texte} »`]);
+    if (f.type_plat) out.push(["type_plat", null, AR.COURSES[f.type_plat] || f.type_plat]);
+    if (f.cuisine) out.push(["cuisine", null, f.cuisine]);
+    if (f.temps_total_max) out.push(["temps_total_max", null, `${f.temps_total_max} min max`]);
+    if (f.difficulte_max) out.push(["difficulte_max", null, MAX_DIFF[f.difficulte_max] || `Difficulté ${f.difficulte_max} au plus`]);
+    (f.ingredients_inclus || []).forEach((n, i) => out.push(["ingredients_inclus", i, `Avec ${n}`]));
+    (f.ingredients_exclus || []).forEach((n, i) => out.push(["ingredients_exclus", i, `Sans ${n}`]));
+    if (f.saison_mois) out.push(["saison_mois", null, AR.cap(AR.MOIS[f.saison_mois - 1] || String(f.saison_mois))]);
+    if (f.regime) out.push(["regime", null, AR.REGIMES[f.regime] || f.regime]);
+    return out;
+  }
+  function renderPastilles() {
+    const box = $("#nl-pastilles");
+    if (st.mode !== "question" || !nl.f) { box.innerHTML = ""; return; }
+    const ps = pastilles();
+    box.innerHTML = `<p class="libelle or" id="nl-compris">Ce qui a été compris</p>
+      ${ps.length ? `<ul class="nl-liste" aria-labelledby="nl-compris">${ps.map(([k, i, t]) => `<li><span class="nl-pastille">${esc(t)}<button type="button" class="nl-x" data-k="${k}" data-i="${i == null ? "" : i}" aria-label="Retirer le filtre : ${esc(t)}">×</button></span></li>`).join("")}</ul>`
+        : `<p class="muted italique">Aucun filtre reconnu dans la question.</p>`}
+      ${nl.nonRec.length ? `<p class="aide">Hors catalogue, cherchés dans les lignes des recettes : ${esc(nl.nonRec.join(", "))}.</p>` : ""}`;
+  }
+  async function runFilters() {
+    const my = ++seq, f = nl.f;
+    liste.setAttribute("aria-busy", "true");
+    let cat = [];
+    try { cat = await AR.loadCatalog(); } catch (e) { console.error(e); }
+    const split = (names) => {
+      const ids = [], txt = [];
+      (names || []).forEach((n) => { const c = nl.nonRec.includes(n) ? null : AR.catalogByName(cat, n); if (c) ids.push(c.id); else txt.push(n); });
+      return [ids, txt];
+    };
+    const [inc, incT] = split(f.ingredients_inclus), [exc, excT] = split(f.ingredients_exclus);
+    const { data, error } = await sb.rpc("recipe_search", { p_book_ids: bookIds(), p_texte: f.texte || null, p_course: f.type_plat || null, p_cuisine: f.cuisine || null, p_time_max: f.temps_total_max || null,
+      p_diff_max: f.difficulte_max || null, p_inc: inc.length ? inc : null, p_exc: exc.length ? exc : null, p_inc_txt: incT.length ? incT : null, p_exc_txt: excT.length ? excT : null,
+      p_month: f.saison_mois || null, p_regime: f.regime || null, p_limit: 60 });
+    if (my !== seq) return;
+    liste.setAttribute("aria-busy", "false");
+    if (error) { liste.innerHTML = ""; return setMsg(msg, errMsg(error, "Impossible de relancer la recherche."), "erreur"); }
+    const ids = (data || []).map((x) => x.recipe_id);
+    let cards = new Map();
+    try { cards = await AR.fetchCards(ids); } catch (e) { console.error(e); }
+    if (my !== seq) return;
+    const rows = (data || []).map((x) => cards.get(x.recipe_id) || { id: x.recipe_id, book_id: x.book_id, title: x.title, family: x.family, review_state: x.review_state, cover: null });
+    if (!rows.length) { liste.innerHTML = `<div class="vide-etat"><p>Aucune recette ne correspond à ces filtres.</p><p class="aide">Retirez une pastille pour élargir.</p></div>`; return; }
+    renderPlanches(rows);
+  }
+  async function askClaude() {
+    const q = $("#q").value.trim();
+    if (q.length < 2) return setMsg(msg, "Écrivez une question de 2 caractères au moins.", "erreur");
+    if (!books.length) return;
+    nl.q = q; nl.f = null; nl.nonRec = []; nl.degrade = false; renderPastilles();
+    setMsg(msg, "Lecture de votre question…");
+    liste.setAttribute("aria-busy", "true");
+    const my = ++seq;
+    const btn = $("#search-form button[type=submit]"); btn.disabled = true;
+    try {
+      const { data, error } = await sb.functions.invoke("recipe-search", { body: { q, book_ids: st.book === "all" ? [] : [st.book] } });
+      if (error) throw error;
+      if (my !== seq) return;
+      nl.f = { ...(data.filtres || {}) }; nl.degrade = !!data.degrade; nl.nonRec = (data.ingredients && data.ingredients.non_reconnus) || [];
+      setMsg(msg, nl.degrade ? "Recherche simplifiée : le langage naturel est indisponible." : "");
+      renderPastilles();
+      const ids = (data.recettes || []).map((r) => r.id);
+      const cards = await AR.fetchCards(ids).catch(() => new Map());
+      if (my !== seq) return;
+      liste.setAttribute("aria-busy", "false");
+      const rows = (data.recettes || []).map((r) => cards.get(r.id) || { ...r, cover: null });
+      if (!rows.length) liste.innerHTML = `<div class="vide-etat"><p>Aucune recette ne correspond à votre question.</p>${pastilles().length ? `<p class="aide">Retirez une pastille pour élargir.</p>` : ""}</div>`;
+      else renderPlanches(rows);
+    } catch (e) {
+      if (my !== seq) return;
+      // Repli : la phrase est cherchée comme texte simple, avec le message du serveur (limite, service indisponible…).
+      const m = await AR.fnMessage(e, "Le langage naturel est indisponible pour le moment.");
+      st.q = q; nl.f = null; renderPastilles();
+      await load();
+      setMsg(msg, `${m} Recherche simplifiée par mots.`, "erreur");
+    } finally { btn.disabled = false; }
+  }
+  function setMode(m) {
+    st.mode = m;
+    $$("[data-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
+    const q = m === "question";
+    $("#nl-aide").hidden = !q; $(".filtres").hidden = q; $("#course").closest("label").hidden = q;
+    $("#q").placeholder = q ? "Un dessert rapide sans crème pour cet automne…" : "Une recette, un ingrédient…";
+    $("#search-form button[type=submit]").textContent = q ? "Demander" : "Chercher";
+    nl.f = null; renderPastilles(); setMsg(msg, "");
+    if (!q) load();
+    else if (nl.q === "" && !$("#q").value) liste.innerHTML = `<div class="vide-etat"><p class="italique">Posez une question : les recettes correspondantes s'afficheront ici.</p></div>`;
+  }
+  $$("[data-mode]").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+  $("#nl-pastilles").addEventListener("click", (e) => {
+    const b = e.target.closest(".nl-x"); if (!b || !nl.f) return;
+    const k = b.dataset.k;
+    if (b.dataset.i !== "") nl.f[k] = (nl.f[k] || []).filter((_, i) => i !== +b.dataset.i); else nl.f[k] = null;
+    renderPastilles(); runFilters();
+    const n = $(".nl-x", $("#nl-pastilles")); if (n) n.focus(); else $("#q").focus();
+  });
+
   // ---- événements
-  $("#search-form").addEventListener("submit", (e) => { e.preventDefault(); st.q = $("#q").value.trim(); load(); });
-  $("#q").addEventListener("input", () => { clearTimeout(load.t); load.t = setTimeout(() => { const v = $("#q").value.trim(); if (v !== st.q) { st.q = v; load(); } }, 350); });
+  $("#search-form").addEventListener("submit", (e) => { e.preventDefault(); if (st.mode === "question") return void askClaude(); st.q = $("#q").value.trim(); load(); });
+  $("#q").addEventListener("input", () => { if (st.mode === "question") return; clearTimeout(load.t); load.t = setTimeout(() => { const v = $("#q").value.trim(); if (v !== st.q) { st.q = v; load(); } }, 350); });
   $$("[data-statut]").forEach((b) => b.addEventListener("click", () => { st.statut = b.dataset.statut; syncStatut(); load(); }));
   $("#course").addEventListener("change", (e) => { st.course = e.target.value; load(); });
-  $("#book").addEventListener("change", (e) => { st.book = e.target.value; AR.setBookPref(st.book); load(); });
+  $("#book").addEventListener("change", (e) => { st.book = e.target.value; AR.setBookPref(st.book); if (st.mode === "question") { if (nl.f) runFilters(); return; } load(); });
 
   loadInvites();
   load();

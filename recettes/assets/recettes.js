@@ -248,32 +248,226 @@
     return out;
   }
 
-  // Session et carnets.
-  async function getUser() {
-    if (!sb) return null;
-    const { data } = await sb.auth.getSession();
-    return data.session ? data.session.user : null;
-  }
-  async function loadBooks(userId) {
-    const { data, error } = await sb.from("recipe_book_members").select("role, recipe_books(id, name)").eq("user_id", userId);
-    if (error) throw error;
-    const order = { owner: 0, member: 1, reader: 2 };
-    return (data || []).filter((r) => r.recipe_books)
-      .map((r) => ({ id: r.recipe_books.id, name: r.recipe_books.name, role: r.role }))
-      .sort((a, b) => order[a.role] - order[b.role] || a.name.localeCompare(b.name, "fr"));
+  // ---- phases 4 à 6 : constantes, dates, catalogue, saisie assistée
+  // Clé publique VAPID (notifications push). Laissée vide tant que le serveur n'est pas configuré : l'interrupteur est alors masqué.
+  const AR_VAPID_PUBLIC = "";
+  const ALLERGENES = { gluten: "Gluten", crustaces: "Crustacés", oeufs: "Œufs", poisson: "Poisson", arachides: "Arachides", soja: "Soja", lait: "Lait", fruits_a_coque: "Fruits à coque",
+    celeri: "Céleri", moutarde: "Moutarde", sesame: "Sésame", sulfites: "Sulfites", lupin: "Lupin", mollusques: "Mollusques" };
+  const REGIMES = { omnivore: "Omnivore", flexitarien: "Flexitarien", vegetarien: "Végétarien", vegan: "Végétalien (vegan)", pescetarien: "Pescétarien", sans_gluten: "Sans gluten", sans_lactose: "Sans lactose" };
+  // Ordre d'un magasin.
+  const RAYONS = [["fruits_legumes", "Fruits et légumes"], ["boulangerie", "Boulangerie"], ["boucherie", "Boucherie"], ["poissonnerie", "Poissonnerie"], ["cremerie", "Crémerie"],
+    ["epicerie", "Épicerie"], ["epices", "Épices"], ["surgeles", "Surgelés"], ["boissons", "Boissons"], ["autre", "Autre"]];
+  const MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+  const JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  // Jours en chaînes AAAA-MM-JJ (calculs en UTC : aucun décalage d'heure d'été).
+  const toUtc = (iso) => { const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/); return Date.UTC(+m[1], +m[2] - 1, +m[3]); };
+  const fromUtc = (t) => { const d = new Date(t); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`; };
+  const addDays = (iso, n) => fromUtc(toUtc(iso) + n * 864e5);
+  const weekdayOf = (iso) => (new Date(toUtc(iso)).getUTCDay() + 6) % 7; // 0 = lundi
+  const mondayOf = (iso) => addDays(iso, -weekdayOf(iso));
+  const dayLabel = (iso) => `${cap(JOURS[weekdayOf(iso)])} ${fmtDay(iso)}`;
+  const debounce = (fn, ms = 300) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
+  // Quantité d'une liste de courses (« 1,25 kg », « 3 pièces »), vide si aucune.
+  function fmtShop(q, u) {
+    if (q == null || q === "") return "";
+    const n = Number(q), us = fmtUnit(u, n);
+    return fmtQty(n) + (us ? " " + us : "");
   }
 
+  // Message d'une edge function (corps JSON { message }) sinon message générique.
+  async function fnMessage(error, fallback) {
+    try {
+      const res = error && error.context;
+      if (res && typeof res.json === "function") { const j = await res.json(); if (j && j.message) return String(j.message); }
+    } catch { /* corps illisible */ }
+    return errMsg(error, fallback);
+  }
+
+  // Catalogue d'ingrédients (une lecture par page). Recherche tolérante aux accents, par nom puis alias.
+  let catalogP = null;
+  function loadCatalog() {
+    if (!catalogP) catalogP = (async () => {
+      const out = [];
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await sb.from("recipe_ingredients_catalog").select("id,name,aliases,aisle,season_months,short_season").order("name").range(from, from + 999);
+        if (error) throw error;
+        out.push(...(data || []).map((c) => ({ ...c, _n: norm(c.name), _a: (c.aliases || []).map(norm) })));
+        if (!data || data.length < 1000) break;
+      }
+      return out;
+    })().catch((e) => { catalogP = null; throw e; });
+    return catalogP;
+  }
+  function catalogFind(cat, q, max = 8, skip) {
+    const n = norm(q);
+    if (n.length < 1) return [];
+    const scored = [];
+    for (const c of cat) {
+      if (skip && skip.has(c.id)) continue;
+      let s = -1;
+      if (c._n === n) s = 0; else if (c._n.startsWith(n)) s = 1; else if (c._a.some((a) => a.startsWith(n))) s = 2; else if (c._n.split(/[\s'’-]+/).some((w) => w.startsWith(n))) s = 3; else if (c._n.includes(n) || c._a.some((a) => a.includes(n))) s = 4;
+      if (s >= 0) scored.push([s, c]);
+    }
+    return scored.sort((a, b) => a[0] - b[0] || a[1].name.localeCompare(b[1].name, "fr")).slice(0, max).map((x) => x[1]);
+  }
+  const catalogByName = (cat, name) => { const n = norm(name); return cat.find((c) => c._n === n) || cat.find((c) => c._a.includes(n)) || null; };
+
+  // Saisie avec suggestions du catalogue : champ + liste de boutons (44 px) sous le champ.
+  //   opts : { label, placeholder, onPick(catalogRow), exclude(): Set d'ids déjà choisis, id }
+  function catalogPicker(box, opts) {
+    const id = opts.id || "ac" + Math.random().toString(36).slice(2, 7);
+    box.innerHTML = `<label for="${id}">${esc(opts.label)}</label><input id="${id}" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${id}-l" autocomplete="off" enterkeyhint="done" placeholder="${esc(opts.placeholder || "")}">
+      <ul class="ac-liste" id="${id}-l" role="listbox" aria-label="Suggestions" hidden></ul><p class="aide ac-etat" role="status" aria-live="polite"></p>`;
+    const input = $("input", box), list = $("ul", box), etat = $(".ac-etat", box);
+    let cur = [];
+    const close = () => { list.hidden = true; input.setAttribute("aria-expanded", "false"); };
+    const pick = (c) => { input.value = ""; close(); etat.textContent = ""; opts.onPick(c); input.focus(); };
+    async function refresh() {
+      const q = input.value.trim();
+      if (!q) { close(); etat.textContent = ""; return; }
+      let cat;
+      try { cat = await loadCatalog(); } catch (e) { etat.textContent = errMsg(e, "Le catalogue est indisponible."); return; }
+      cur = catalogFind(cat, q, 8, opts.exclude ? opts.exclude() : null);
+      if (!cur.length) { list.innerHTML = `<li class="ac-vide" role="presentation">Aucun ingrédient du catalogue ne correspond.</li>`; list.hidden = false; return; }
+      list.innerHTML = cur.map((c, i) => `<li role="presentation"><button type="button" role="option" class="ac-opt" data-i="${i}">${esc(c.name)}</button></li>`).join("");
+      list.hidden = false; input.setAttribute("aria-expanded", "true");
+    }
+    input.addEventListener("input", debounce(refresh, 120));
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); refresh().then(() => { if (!list.hidden && cur[0]) pick(cur[0]); }); }
+      else if (e.key === "Escape") close();
+      else if (e.key === "ArrowDown") { const b = $(".ac-opt", list); if (b) { e.preventDefault(); b.focus(); } }
+    });
+    list.addEventListener("keydown", (e) => {
+      const b = e.target.closest(".ac-opt"); if (!b) return;
+      if (e.key === "ArrowDown") { e.preventDefault(); const n = b.parentElement.nextElementSibling; if (n) $(".ac-opt", n).focus(); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); const p = b.parentElement.previousElementSibling; if (p) $(".ac-opt", p).focus(); else input.focus(); }
+      else if (e.key === "Escape") { close(); input.focus(); }
+    });
+    list.addEventListener("click", (e) => { const b = e.target.closest(".ac-opt"); if (b && cur[+b.dataset.i]) pick(cur[+b.dataset.i]); });
+    return { input, close };
+  }
+
+  // Cartes « planche » (recettes) pour les écrans de suggestion : cover = chemin de la couverture.
+  async function fetchCards(ids) {
+    if (!ids.length) return new Map();
+    const { data, error } = await sb.from("recipes").select("id,book_id,title,source_author,source_url,family,review_state,course,version_group,time_total_min,difficulty,servings,recipe_photos(storage_path,is_cover)").in("id", ids);
+    if (error) throw error;
+    const rows = data || [];
+    const urls = await signedUrls(rows.map((r) => { const p = (r.recipe_photos || []).find((x) => x.is_cover); return p && p.storage_path; }).filter(Boolean));
+    const m = new Map();
+    rows.forEach((r) => { const p = (r.recipe_photos || []).find((x) => x.is_cover); m.set(r.id, { ...r, cover: p ? urls[p.storage_path] || null : null }); });
+    return m;
+  }
+  function plancheHtml(r, num, extra) {
+    const src = r.source_author || host(r.source_url || "") || "";
+    return `<a class="planche" href="/recettes/fiche.html?id=${encodeURIComponent(r.id)}">
+      <div class="passe-partout"><div class="cadre">${r.cover ? `<img src="${esc(r.cover)}" alt="" loading="lazy">` : `<span class="vide">Sans photo</span>`}</div></div>
+      <div class="legende"><span class="planche-num">${num != null ? "Planche " + String(num).padStart(2, "0") : ""}${r.family ? (num != null ? " · " : "") + "De famille" : ""}</span>
+      <span class="planche-titre">${esc(r.title)}</span>${src ? `<span class="planche-source">${esc(src)}</span>` : ""}${extra || ""}</div></a>`;
+  }
+  // Une seule fiche par groupe de versions (la mieux classée).
+  function dedupeVersions(items, get) {
+    const seen = new Set();
+    return items.filter((it) => { const g = get(it); if (!g) return true; if (seen.has(g)) return false; seen.add(g); return true; });
+  }
+  // Carnet courant d'un écran à carnet unique : préférence si valide, sinon premier carnet.
+  function pickBook(books, prefer) {
+    const want = prefer || getBookPref();
+    return (books.find((b) => b.id === want) || books[0] || {}).id || null;
+  }
+  const isNetErr = (e) => !!e && (navigator.onLine === false || /Failed to fetch|NetworkError|Load failed|network|internetdisconnected/i.test(String(e.message || e)));
+
+
+  // ---- notifications push (contrat 05-organiser §4). Sans clé VAPID publique, rien n'est proposé.
+  const b64 = (v) => Uint8Array.from(atob((v + "=".repeat((4 - v.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+  const push = {
+    available: () => !!AR_VAPID_PUBLIC,
+    supported: () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window,
+    async current() { try { const reg = await navigator.serviceWorker.ready; return await reg.pushManager.getSubscription(); } catch { return null; } },
+    // À appeler sur un geste. Renvoie 'ok', 'refuse', 'non_supporte' ou 'erreur'.
+    async enable() {
+      if (!push.supported()) return "non_supporte";
+      try {
+        if (await Notification.requestPermission() !== "granted") return "refuse";
+        const reg = await navigator.serviceWorker.ready;
+        const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(AR_VAPID_PUBLIC) });
+        const j = sub.toJSON();
+        const { error } = await sb.rpc("recipe_push_subscribe", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
+        if (error) { console.error(error); return "erreur"; }
+        return "ok";
+      } catch (e) { console.error(e); return "erreur"; }
+    },
+    async disable() {
+      const sub = await push.current();
+      if (!sub) return "ok";
+      const { error } = await sb.from("recipe_push_subscriptions").delete().eq("endpoint", sub.endpoint);
+      if (error) { console.error(error); return "erreur"; }
+      await sub.unsubscribe().catch(() => {});
+      return "ok";
+    },
+    // À chaque connexion : rattache l'abonnement existant au compte courant (idempotent).
+    async refresh() {
+      if (!AR_VAPID_PUBLIC || !push.supported() || Notification.permission !== "granted") return;
+      const sub = await push.current();
+      if (!sub) return;
+      const j = sub.toJSON();
+      sb.rpc("recipe_push_subscribe", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth }).then(() => {}, () => {});
+    }
+  };
+
+
+  // Session et carnets.
+  // Hors ligne, le jeton expiré ne peut pas être renouvelé : on lit l'utilisateur dans la session enregistrée (lecture seule des copies locales).
+  function storedUser() {
+    try {
+      const k = Object.keys(localStorage).find((x) => /^sb-.*-auth-token$/.test(x));
+      const j = k ? JSON.parse(localStorage.getItem(k)) : null;
+      const u = j && (j.user || (j.currentSession && j.currentSession.user));
+      return u && u.id ? u : null;
+    } catch { return null; }
+  }
+  async function getUser() {
+    if (!sb) return null;
+    try {
+      const { data } = await sb.auth.getSession();
+      if (data.session) return data.session.user;
+    } catch (e) { console.error(e); }
+    return navigator.onLine === false ? storedUser() : null;
+  }
+  const BOOKS_KEY = "ar.books";
+  async function loadBooks(userId) {
+    const { data, error } = await sb.from("recipe_book_members").select("role, recipe_books(id, name)").eq("user_id", userId);
+    if (error) {
+      // Hors ligne : derniers carnets connus (lecture seule des copies locales).
+      try { const c = JSON.parse(localStorage.getItem(BOOKS_KEY) || "null"); if (c && c.uid === userId && c.books.length && (navigator.onLine === false || /fetch|network|load failed/i.test(String(error.message)))) return c.books; } catch { /* copie illisible */ }
+      throw error;
+    }
+    const order = { owner: 0, member: 1, reader: 2 };
+    const out = (data || []).filter((r) => r.recipe_books)
+      .map((r) => ({ id: r.recipe_books.id, name: r.recipe_books.name, role: r.role }))
+      .sort((a, b) => order[a.role] - order[b.role] || a.name.localeCompare(b.name, "fr"));
+    try { localStorage.setItem(BOOKS_KEY, JSON.stringify({ uid: userId, books: out })); } catch { /* stockage indisponible */ }
+    return out;
+  }
+
+  // Barre de navigation : cinq entrées (en bas de l'écran sur mobile) ; profil, carnets et déconnexion dans le menu Compte.
   function mountNav(active, user) {
     const h = $("#site-header");
     if (!h) return;
     const item = (k, href, label) => `<a href="${href}"${active === k ? ' aria-current="page"' : ""}>${label}</a>`;
+    const sub = (k, href, label) => `<a class="menu-lien" href="${href}"${active === k ? ' aria-current="page"' : ""}>${label}</a>`;
+    const inCompte = active === "carnets" || active === "profil";
     h.innerHTML = `<div class="wrap"><a class="brand" href="/recettes/" aria-label="ARÔMES V&amp;N, accueil">Arômes V&amp;N</a>
-      <nav class="nav" aria-label="Navigation principale">${item("carnet", "/recettes/", "Le carnet")}${item("ajouter", "/recettes/ajouter.html", "Ajouter")}${item("carnets", "/recettes/carnets.html", "Carnets")}
-      <div class="account"><button type="button" id="account-btn" aria-expanded="false" aria-controls="account-panel" aria-label="Compte">Compte</button>
-      <div class="account-panel" id="account-panel" hidden><p class="libelle">Connecté</p><p>${esc(user.email || "")}</p><button type="button" class="btn sec petit large" id="logout">Se déconnecter</button></div></div></nav></div>`;
+      <nav class="nav" aria-label="Navigation principale">${item("carnet", "/recettes/", "Le carnet")}${item("saisons", "/recettes/saisons.html", "Saisons")}${item("ajouter", "/recettes/ajouter.html", "Ajouter")}${item("semaine", "/recettes/semaine.html", "Semaine")}${item("courses", "/recettes/courses.html", "Courses")}</nav>
+      <div class="account"><button type="button" id="account-btn" class="${inCompte ? "actif-compte" : ""}" aria-expanded="false" aria-controls="account-panel" aria-label="Compte">Compte</button>
+      <div class="account-panel" id="account-panel" hidden><p class="libelle">Connecté</p><p>${esc(user.email || "")}</p>${sub("profil", "/recettes/profil.html", "Mon profil")}${sub("carnets", "/recettes/carnets.html", "Carnets")}<button type="button" class="btn sec petit large" id="logout">Se déconnecter</button></div></div></div>`;
     const btn = $("#account-btn"), panel = $("#account-panel");
     btn.addEventListener("click", () => { panel.hidden = !panel.hidden; btn.setAttribute("aria-expanded", String(!panel.hidden)); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus(); } });
+    document.addEventListener("click", (e) => { if (!panel.hidden && !e.target.closest(".account")) { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); } });
     $("#logout").addEventListener("click", async () => { await sb.auth.signOut(); await clearOfflineData(); location.href = "/recettes/connexion.html"; });
   }
 
@@ -291,12 +485,14 @@
     let books = [];
     try { books = await loadBooks(user.id); }
     catch (e) { if (main) main.insertAdjacentHTML("afterbegin", `<p class="msg erreur" role="alert">${esc(errMsg(e, "Impossible de charger vos carnets."))}</p>`); }
+    push.refresh();
     return { user, books };
   }
 
   // Copies hors ligne des recettes (service worker) : effacées à la déconnexion, pour ne rien laisser sur un appareil partagé.
   async function clearOfflineData() {
     try { const ks = await caches.keys(); await Promise.all(ks.filter((k) => /^aromes-.*-data$/.test(k)).map((k) => caches.delete(k))); } catch { /* cache indisponible */ }
+    try { Object.keys(localStorage).filter((k) => /^ar\.(courses|books)/.test(k)).forEach((k) => localStorage.removeItem(k)); } catch { /* stockage indisponible */ }
   }
   // Bandeau « Hors ligne » : le service worker prévient la page quand il répond avec une copie enregistrée.
   function showOffline() {
@@ -316,5 +512,7 @@
   }
 
   window.AR = { sb, cfg, $, $$, esc, norm, fmtDate, fmtDay, todayIso, parseDay, fmtQty, fmtUnit, fmtMin, host, safeUrl, errMsg, toast, setMsg, safeNext, getBookPref, setBookPref,
-    signedUrls, compressImage, scaleQty: window.ARPure.scaleQty, portionFactor: window.ARPure.portionFactor, showOffline, clearOfflineData, uuid, extractUrl, alertText, diffLines, fmtLine, lineKey, getUser, loadBooks, boot, registerSW, ROLES, COURSES, DIFFICULTES, UNITES };
+    signedUrls, compressImage, scaleQty: window.ARPure.scaleQty, portionFactor: window.ARPure.portionFactor, showOffline, clearOfflineData, uuid, extractUrl, alertText, diffLines, fmtLine, lineKey, getUser, loadBooks, boot, registerSW, ROLES, COURSES, DIFFICULTES, UNITES,
+    VAPID_PUBLIC: AR_VAPID_PUBLIC, ALLERGENES, REGIMES, RAYONS, MOIS, JOURS, cap, addDays, weekdayOf, mondayOf, dayLabel, debounce, fmtShop, fnMessage,
+    loadCatalog, catalogFind, catalogByName, catalogPicker, fetchCards, plancheHtml, dedupeVersions, pickBook, isNetErr, push };
 })();

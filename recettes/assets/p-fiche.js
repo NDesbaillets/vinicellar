@@ -91,7 +91,13 @@
       versions = (v.data || []).map((x) => ({ ...x, lines: vl.filter((y) => y.recipe_id === x.id) }));
     } catch (e) { console.error(e); }
   }
-  await Promise.all([loadDup(), loadVersions()]);
+  // Recette transmise : lien vers l'original tant que l'on y a accès (sinon rien).
+  let origin = null;
+  async function loadOrigin() {
+    if (!r.transmitted_from) return;
+    try { const o = await sb.from("recipes").select("id,title,deleted_at").eq("id", r.transmitted_from).maybeSingle(); if (!o.error && o.data && !o.data.deleted_at) origin = o.data; } catch { /* sans accès : masqué */ }
+  }
+  await Promise.all([loadDup(), loadVersions(), loadOrigin()]);
   const view = { tab: "fiche", lang: "fr", portions: null };
   const qs = new URLSearchParams(location.search);
   if (+qs.get("p") > 0) view.portions = Math.min(99, Math.round(+qs.get("p")));
@@ -160,11 +166,13 @@
       <button type="button" class="po-b" data-po="1" aria-label="Une portion de plus"${w >= 99 ? " disabled" : ""}>+</button></div>
       ${diff ? `<p class="po-note">Recette prévue pour ${r.servings}. <button type="button" class="btn lien" data-po="reset">Revenir à ${r.servings}</button></p>` : ""}</div>`;
   }
+  const mountOutils = () => { if (window.ARFicheOutils) window.ARFicheOutils.mount({ ctx, r: () => r, lines: () => lines, wanted, editor, member: !!book }); };
   function refreshPortions(focusKey) {
     const pz = $("#po-zone"), iz = $("#ing-zone"); if (!pz || !iz) return;
     pz.innerHTML = portionsHtml();
     iz.innerHTML = ingredients();
     const g = $("#go-cuisine"); if (g) g.href = cuisineHref();
+    mountOutils();
     if (focusKey) { const b = $(`[data-po="${focusKey}"]`, main) || $(".po-b:not([disabled])", main); if (b) b.focus(); }
   }
 
@@ -295,6 +303,7 @@
       <h1 class="fiche-titre"${orig && safeLang ? ` lang="${esc(safeLang)}"` : ""}>${esc(titre)}</h1>
       ${r.title_original && !orig ? `<p class="fiche-orig">${esc(r.title_original)}</p>` : ""}
       ${source ? `<p class="fiche-source">${source}</p>` : ""}
+      ${origin ? `<p class="fiche-source">Transmise depuis <a href="/recettes/fiche.html?id=${encodeURIComponent(origin.id)}">${esc(origin.title)}</a></p>` : ""}
       <div id="statut-zone">${statutHtml()}</div>
       <span class="filet" style="margin:18px auto 0" aria-hidden="true"></span>
       ${tabsHtml}
@@ -302,9 +311,11 @@
       <div class="actions">${r.family || editor ? `<button type="button" class="btn sec ${r.family ? "actif" : ""}" id="family" aria-pressed="${r.family}" ${editor ? "" : "disabled"}>De famille</button>` : ""}
         ${steps.length && !r.deleted_at ? `<a class="btn" id="go-cuisine" href="${esc(cuisineHref())}">Mode cuisine</a>` : ""}
         ${!r.deleted_at ? `<button type="button" class="btn sec" data-cook="open">Je l'ai cuisinée</button>` : ""}</div>
+      <div id="outils-zone" class="fo-zone"></div>
       ${noteHtml}
       ${corps}
       ${editor ? `<div class="actions-bas">${r.deleted_at ? "" : `<a class="btn" href="/recettes/editer.html?id=${encodeURIComponent(r.id)}">Modifier</a><button type="button" class="btn danger" data-act="trash">Mettre à la corbeille</button>`}</div>` : ""}`;
+    mountOutils();
   }
 
   // Onglet « Versions » : les autres recettes du même groupe et leurs écarts avec cette fiche.
@@ -338,10 +349,13 @@
   // Doublon : « Ranger comme version » réunit les deux fiches sous un même version_group ; dans les deux cas la suggestion est écartée.
   async function dismissDup() {
     const id = dup.imp.id;
-    try { localStorage.setItem(DUP_KEY(id), "1"); } catch { /* stockage indisponible */ }
-    // Le back-end ne laisse en principe pas le client modifier l'import : on essaie, sans en dépendre.
-    const u = await sb.from("recipe_imports").update({ duplicate_of: null }).eq("id", id);
-    if (u.error) await sb.from("recipe_imports").delete().eq("id", id).in("status", ["termine", "echec"]);
+    // Seul chemin autorisé : la fonction SQL recipe_dismiss_duplicate (aucun droit d'update direct sur recipe_imports).
+    // Le drapeau local ne sert que de repli si l'appel échoue (réseau, fonction absente).
+    const { error } = await sb.rpc("recipe_dismiss_duplicate", { p_import: id });
+    if (error) {
+      console.error(error);
+      try { localStorage.setItem(DUP_KEY(id), "1"); } catch { /* stockage indisponible */ }
+    }
     dup = null;
   }
   async function resolveDup(btn) {

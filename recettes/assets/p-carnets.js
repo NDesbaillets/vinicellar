@@ -54,6 +54,9 @@
           <label>Adresse e-mail<input type="email" name="email" autocomplete="off" required></label>
           <label>Rôle<select name="role"><option value="member">Membre (peut écrire)</option><option value="reader">Lecteur (consulte et annote)</option></select></label>
           <div><button class="btn petit" type="submit">Envoyer l'invitation</button></div><p class="msg" data-msg role="status" aria-live="polite"></p></form>` : ""}
+      <h3 class="libelle" style="margin:28px 0 4px">Exporter et imprimer</h3>
+      <p class="aide" style="margin:0 0 10px">Le fichier JSON contient les recettes, ingrédients, étapes, cuissons et notes que vous pouvez lire. Le livre s'imprime ou s'enregistre en PDF.</p>
+      <div class="rangee"><button type="button" class="btn sec petit" data-act="export">Exporter le carnet (JSON)</button><a class="btn sec petit" href="/recettes/livre.html?book=${encodeURIComponent(b.id)}">Livre du carnet</a></div><p class="msg" data-export-msg role="status" aria-live="polite"></p>
       ${editor ? `<h3 class="libelle" style="margin:28px 0 4px">Corbeille</h3>
         ${trash.length ? `<ul class="membres">${trash.map((t) => { const left = Math.max(0, 30 - Math.floor((Date.now() - new Date(t.deleted_at)) / 864e5)); return `<li data-recipe="${esc(t.id)}"><div class="qui">${esc(t.title)}<small>Supprimée le ${esc(fmtDate(t.deleted_at))} · encore ${left} jour${left > 1 ? "s" : ""}</small></div>
           <div class="rangee"><button type="button" class="btn sec petit" data-act="restore">Restaurer</button><button type="button" class="btn danger petit" data-act="purge">Supprimer définitivement</button></div></li>`; }).join("")}</ul>` : `<p class="muted italique">La corbeille est vide. Les recettes supprimées y restent 30 jours.</p>`}` : ""}
@@ -66,6 +69,54 @@
     books.forEach(renderBook);
   }
 
+
+  // ---- export JSON (contrat 06-transmettre §3) : chargé avec la session de l'utilisateur, la RLS limite aux données du carnet
+  const slug = (t) => AR.norm(t).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50) || "carnet";
+  async function inChunks(table, col, ids, select, extra) {
+    const out = [];
+    for (let i = 0; i < ids.length; i += 100) {
+      let q = sb.from(table).select(select).in(col, ids.slice(i, i + 100));
+      if (extra) q = extra(q);
+      const { data, error } = await q;
+      if (error) throw error;
+      out.push(...(data || []));
+    }
+    return out;
+  }
+  async function exportBook(b, btn, msg) {
+    btn.disabled = true; AR.setMsg(msg, "Préparation du fichier…");
+    try {
+      const rr = await sb.from("recipes").select("*").eq("book_id", b.id).is("deleted_at", null).is("archived_at", null).order("created_at");
+      if (rr.error) throw rr.error;
+      const recs = rr.data || [], ids = recs.map((r) => r.id);
+      const [lines, steps, photos, cooks, notes] = await Promise.all([
+        inChunks("recipe_ingredient_lines", "recipe_id", ids, "*"), inChunks("recipe_steps", "recipe_id", ids, "*"),
+        inChunks("recipe_photos", "recipe_id", ids, "recipe_id,kind,is_cover,storage_path", (q) => q.neq("kind", "cuisson")),
+        inChunks("recipe_cooks", "recipe_id", ids, "*"), inChunks("recipe_notes", "recipe_id", ids, "*")]);
+      const by = (arr, id) => arr.filter((x) => x.recipe_id === id);
+      const pos = (a, c) => (a.position || 0) - (c.position || 0);
+      const out = { format: "aromes-vn-export", version: 1, exported_at: new Date().toISOString(), book: { name: b.name },
+        recipes: recs.map((r, n) => ({
+          title: r.title, title_original: r.title_original, lang_original: r.lang_original, summary: r.summary, course: r.course, cuisine: r.cuisine, difficulty: r.difficulty, family: !!r.family,
+          servings: r.servings, servings_estimated: !!r.servings_estimated, time_active_min: r.time_active_min, time_active_estimated: !!r.time_active_estimated,
+          time_total_min: r.time_total_min, time_total_estimated: !!r.time_total_estimated, review_state: r.review_state,
+          source: { type: r.source_type, url: r.source_url, author: r.source_author }, created_at: r.created_at,
+          ingredients: by(lines, r.id).sort(pos).map((l) => ({ group: l.group_label || null, label: l.label_original, quantity: l.quantity, unit: l.unit, precision: l.precision, optional: !!l.optional })),
+          steps: by(steps, r.id).sort(pos).map((s) => ({ text: s.text, timer_seconds: s.timer_seconds })),
+          photos: by(photos, r.id).sort((a, c) => (c.is_cover ? 1 : 0) - (a.is_cover ? 1 : 0)).map((p, i) => ({ kind: p.kind, cover: !!p.is_cover, file: `photos/${String(n + 1).padStart(3, "0")}-${slug(r.title)}${i ? "-" + (i + 1) : ""}.jpg` })),
+          cooks: by(cooks, r.id).map((c) => ({ date: c.cooked_on, rating: c.rating, comment: c.comment, servings: c.servings })),
+          notes: by(notes, r.id).map((x) => ({ body: x.body, private: !!x.private, own: x.author_id === ctx.user.id }))
+        })) };
+      const today = new Date(), dd = `${String(today.getDate()).padStart(2, "0")}.${String(today.getMonth() + 1).padStart(2, "0")}.${today.getFullYear()}`;
+      const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
+      const a = document.createElement("a"), url = URL.createObjectURL(blob);
+      a.href = url; a.download = `aromes-${slug(b.name)}-${dd}.json`; document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      AR.setMsg(msg, `${recs.length} recette${recs.length > 1 ? "s" : ""} exportée${recs.length > 1 ? "s" : ""}.`, "ok");
+    } catch (e) { AR.setMsg(msg, errMsg(e, "L'export a échoué. Réessayez."), "erreur"); }
+    btn.disabled = false;
+  }
+
   // ---- actions (délégation)
   liste.addEventListener("click", async (e) => {
     const btn = e.target.closest("button[data-act]");
@@ -74,6 +125,7 @@
     const b = books.find((x) => x.id === root.dataset.book);
     const act = btn.dataset.act;
     const li = btn.closest("li");
+    if (act === "export") return void exportBook(b, btn, $("[data-export-msg]", root));
     btn.disabled = true;
     try {
       if (act === "remove") {
