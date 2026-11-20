@@ -250,7 +250,7 @@
 
   // ---- phases 4 à 6 : constantes, dates, catalogue, saisie assistée
   // Clé publique VAPID (notifications push). Laissée vide tant que le serveur n'est pas configuré : l'interrupteur est alors masqué.
-  const AR_VAPID_PUBLIC = "";
+  const AR_VAPID_PUBLIC = "BBkHgMDBgJTiHVrdDKjRY7SZCxJMSr3NRcdD0BPxrp9hY0YwtY629J6FobuCvam-WQ06ux1xkDhjEwKXs2coOq4";
   const ALLERGENES = { gluten: "Gluten", crustaces: "Crustacés", oeufs: "Œufs", poisson: "Poisson", arachides: "Arachides", soja: "Soja", lait: "Lait", fruits_a_coque: "Fruits à coque",
     celeri: "Céleri", moutarde: "Moutarde", sesame: "Sésame", sulfites: "Sulfites", lupin: "Lupin", mollusques: "Mollusques" };
   const REGIMES = { omnivore: "Omnivore", flexitarien: "Flexitarien", vegetarien: "Végétarien", vegan: "Végétalien (vegan)", pescetarien: "Pescétarien", sans_gluten: "Sans gluten", sans_lactose: "Sans lactose" };
