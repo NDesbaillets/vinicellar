@@ -118,7 +118,7 @@
     const btn = $("#go-lien"); btn.disabled = true; setMsg(out, "Envoi…");
     try {
       const id = AR.uuid();
-      const ins = await sb.from("recipe_imports").insert({ id, book_id: bookSel.value, kind: d.kind, source_url: d.url, created_by: ctx.user.id, status: "en_attente" }).select("*").single();
+      const ins = await sb.from("recipe_imports").insert({ id, book_id: bookSel.value, kind: d.kind, source_url: d.url, created_by: ctx.user.id }).select("*").single();
       if (ins.error) throw ins.error;
       upsert(ins.data);
       try { await callImport(id); }
@@ -170,7 +170,7 @@
         paths.push(path);
       }
       setMsg(out, "Envoi…");
-      const ins = await sb.from("recipe_imports").insert({ id, book_id: book, kind: "photo_page", page_paths: paths, created_by: ctx.user.id, status: "en_attente" }).select("*").single();
+      const ins = await sb.from("recipe_imports").insert({ id, book_id: book, kind: "photo_page", page_paths: paths, created_by: ctx.user.id }).select("*").single();
       if (ins.error) { await sb.storage.from("recipes").remove(paths); throw ins.error; }
       upsert(ins.data);
       try { await callImport(id); }

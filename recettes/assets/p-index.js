@@ -196,7 +196,7 @@
     } finally { btn.disabled = false; }
   }
   function setMode(m) {
-    st.mode = m;
+    st.mode = m; clearTimeout(load.t);
     $$("[data-mode]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === m)));
     const q = m === "question";
     $("#nl-aide").hidden = !q; $(".filtres").hidden = q; $("#course").closest("label").hidden = q;
