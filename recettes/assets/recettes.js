@@ -524,8 +524,57 @@
     }
   }
 
+  // Retour en arrière par balayage vers la droite (utile dans l'app installée, sans geste natif).
+  function swipeBack(fallback) {
+    const standalone = navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+    let t0 = null, moving = false;
+    const page = document.querySelector("main") || document.body;
+    const reset = () => { page.style.transition = "transform .2s ease, opacity .2s ease"; page.style.transform = ""; page.style.opacity = ""; };
+    const blocked = (el) => {
+      for (; el && el !== document.body; el = el.parentElement) {
+        if (el.matches && el.matches("input,textarea,select,[contenteditable],[data-no-swipe],dialog")) return true;
+        if (el.scrollWidth > el.clientWidth + 2 && /(auto|scroll)/.test(getComputedStyle(el).overflowX)) return true;
+      }
+      return false;
+    };
+    document.addEventListener("touchstart", (e) => {
+      const t = e.touches[0];
+      // Dans Safari, le bord gauche appartient au geste natif : on le laisse.
+      t0 = e.touches.length === 1 && (standalone || t.clientX > 24) && !blocked(e.target) && !document.querySelector("dialog[open]")
+        ? { x: t.clientX, y: t.clientY } : null;
+      moving = false;
+    }, { passive: true });
+    document.addEventListener("touchmove", (e) => {
+      if (!t0) return;
+      const t = e.touches[0], dx = t.clientX - t0.x, dy = t.clientY - t0.y;
+      if (!moving) {
+        if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { t0 = null; return; }
+        if (dx > 12 && dx > Math.abs(dy) * 1.5) moving = true; else return;
+      }
+      page.style.transition = "none";
+      page.style.transform = `translateX(${Math.max(0, dx) * 0.6}px)`;
+      page.style.opacity = String(1 - Math.min(dx, 300) / 900);
+    }, { passive: true });
+    const end = (e) => {
+      if (!t0) return;
+      const dx = e.changedTouches[0].clientX - t0.x, go = moving && dx > 90;
+      t0 = null; moving = false;
+      if (!go) { reset(); return; }
+      page.style.transition = "transform .15s ease, opacity .15s ease";
+      page.style.transform = "translateX(100%)"; page.style.opacity = "0";
+      setTimeout(() => {
+        const sameOrigin = document.referrer && document.referrer.startsWith(location.origin + "/recettes/");
+        if (sameOrigin && history.length > 1) history.back(); else location.href = fallback || "./";
+        setTimeout(reset, 400);   // si la page reste affichée (bfcache)
+      }, 150);
+    };
+    document.addEventListener("touchend", end, { passive: true });
+    document.addEventListener("touchcancel", () => { if (t0) { t0 = null; moving = false; reset(); } }, { passive: true });
+    window.addEventListener("pageshow", reset);
+  }
+
   window.AR = { sb, cfg, $, $$, esc, norm, fmtDate, fmtDay, todayIso, parseDay, fmtQty, fmtUnit, fmtMin, host, safeUrl, errMsg, toast, setMsg, safeNext, getBookPref, setBookPref,
     signedUrls, compressImage, scaleQty: window.ARPure.scaleQty, portionFactor: window.ARPure.portionFactor, showOffline, clearOfflineData, uuid, extractUrl, alertText, diffLines, fmtLine, lineKey, getUser, loadBooks, boot, registerSW, ROLES, COURSES, DIFFICULTES, UNITES,
     VAPID_PUBLIC: AR_VAPID_PUBLIC, ALLERGENES, REGIMES, RAYONS, MOIS, JOURS, cap, addDays, weekdayOf, mondayOf, dayLabel, debounce, fmtShop, fnMessage,
-    RUBRIQUES, CRENEAUX, rubriqueDe, prenom, guestPills, loadCatalog, catalogFind, catalogByName, catalogPicker, fetchCards, plancheHtml, dedupeVersions, pickBook, isNetErr, push };
+    RUBRIQUES, CRENEAUX, rubriqueDe, prenom, guestPills, loadCatalog, catalogFind, catalogByName, catalogPicker, fetchCards, plancheHtml, dedupeVersions, pickBook, isNetErr, push, swipeBack };
 })();

@@ -1,6 +1,7 @@
 (async function () {
   const AR = window.AR, { sb, $, $$, esc, errMsg, toast, fmtDate } = AR;
   const ctx = await AR.boot("carnet");
+  AR.swipeBack("./");
   if (!ctx) return;
   const main = $("#main");
   const id = new URLSearchParams(location.search).get("id");

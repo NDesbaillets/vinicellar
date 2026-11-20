@@ -125,9 +125,9 @@ legend{padding:0}
 .note-avant ul{margin:0 0 12px;padding-left:20px}
 .ingredients{list-style:none;margin:0;padding:0}
 .ing{display:flex;align-items:baseline;gap:8px;padding:7px 0}
-.ing .nom{flex:0 1 auto;overflow-wrap:anywhere}
+.ing .nom{flex:0 1 auto;overflow-wrap:break-word}
 .ing .guide{flex:1 1 16px;min-width:16px;border-bottom:1px dotted var(--encre-3);transform:translateY(-4px)}
-.ing .qte{flex:none;font-family:var(--titre);font-weight:400;color:var(--or-texte);font-size:18px;text-align:right}
+.ing .qte{flex:0 1 auto;max-width:55%;overflow-wrap:break-word;font-family:var(--titre);font-weight:400;color:var(--or-texte);font-size:18px;text-align:right}
 .ing .qte.inconnue{font-family:var(--texte);font-style:italic;color:var(--encre-3);font-size:17px}
 .ing .prec{font-style:italic;color:var(--encre-3);font-size:15px}
 .groupe{font-family:var(--titre);font-weight:500;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--encre-3);margin:20px 0 4px}
