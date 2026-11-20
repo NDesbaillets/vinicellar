@@ -4,7 +4,7 @@
   if (!ctx) return;
   const main = $("#main");
   const editable = ctx.books.filter((b) => b.role === "owner" || b.role === "member");
-  const MAX_PAGES = 4;
+  const MAX_PAGES = 4, PDF_MAX = 8 * 1024 * 1024;
 
   main.setAttribute("aria-busy", "false");
   if (!editable.length) {
@@ -30,7 +30,7 @@
     <div class="onglets" role="tablist" aria-label="Source de la recette" style="margin-top:22px">
       <button type="button" class="onglet" role="tab" id="t-lien" aria-controls="p-lien" aria-selected="true">Lien</button>
       <button type="button" class="onglet" role="tab" id="t-note" aria-controls="p-note" aria-selected="false" tabindex="-1">Note</button>
-      <button type="button" class="onglet" role="tab" id="t-photo" aria-controls="p-photo" aria-selected="false" tabindex="-1">Photo de page</button>
+      <button type="button" class="onglet" role="tab" id="t-photo" aria-controls="p-photo" aria-selected="false" tabindex="-1">Photo ou PDF</button>
       <button type="button" class="onglet" role="tab" id="t-manuel" aria-controls="p-manuel" aria-selected="false" tabindex="-1">Saisie manuelle</button>
     </div>
     <section id="p-lien" role="tabpanel" aria-labelledby="t-lien" class="panneau">
@@ -66,9 +66,9 @@
     <section id="p-photo" role="tabpanel" aria-labelledby="t-photo" class="panneau" hidden>
       <form id="f-photo" class="champs" novalidate>
         <div>
-          <span class="etiquette" id="photo-lib">Photos de la page (1 à ${MAX_PAGES})</span>
-          <input type="file" id="pages-input" accept="image/*" multiple aria-labelledby="photo-lib" style="margin-top:6px">
-          <p class="aide">Page imprimée ou manuscrite. Les photos sont réduites à 2000 px puis lues dans l'ordre. L'écriture à la main sera à relire avant d'entrer au carnet.</p>
+          <span class="etiquette" id="photo-lib">Photos ou PDF de la recette (1 à ${MAX_PAGES} fichiers)</span>
+          <input type="file" id="pages-input" accept="image/*,application/pdf,.pdf" multiple aria-labelledby="photo-lib" style="margin-top:6px">
+          <p class="aide">Page imprimée ou manuscrite, ou PDF de 8 Mo au plus. Les photos sont réduites à 2000 px ; tout est lu dans l'ordre. L'écriture à la main sera à relire avant d'entrer au carnet.</p>
         </div>
         <ul class="vignettes" id="vignettes" aria-label="Photos choisies"></ul>
         <div><button class="btn" type="submit" id="go-photo">Lire la page</button></div>
@@ -237,7 +237,7 @@
   });
   nthumbs.addEventListener("click", (e) => {
     const rm = e.target.closest("[data-rm-np]"), mv = e.target.closest("[data-mv-np]");
-    if (rm) { const [x] = nphotos.splice(Number(rm.dataset.rmNp), 1); if (x) URL.revokeObjectURL(x.url); drawNoteThumbs(); }
+    if (rm) { const [x] = nphotos.splice(Number(rm.dataset.rmNp), 1); if (x && x.url) URL.revokeObjectURL(x.url); drawNoteThumbs(); }
     if (mv) {
       const i = Number(mv.dataset.mvNp), j = i + Number(mv.dataset.d);
       if (j >= 0 && j < nphotos.length) { [nphotos[i], nphotos[j]] = [nphotos[j], nphotos[i]]; drawNoteThumbs(); const b = $(`[data-mv-np="${j}"][data-d="${mv.dataset.d}"]`, nthumbs) || $(`[data-mv-np="${j}"]`, nthumbs); if (b && !b.disabled) b.focus(); }
@@ -283,15 +283,17 @@
   const fp = $("#f-photo"), files = [];
   const thumbs = $("#vignettes");
   function drawThumbs() {
-    thumbs.innerHTML = files.map((x, i) => `<li class="vignette"><img src="${esc(x.url)}" alt="Page ${i + 1}"><span class="libelle">Page ${i + 1}</span>
+    thumbs.innerHTML = files.map((x, i) => `<li class="vignette">${x.pdf ? `<span class="vignette-pdf" aria-hidden="true">PDF</span>` : `<img src="${esc(x.url)}" alt="Page ${i + 1}">`}<span class="libelle">${x.pdf ? esc(x.file.name) : `Page ${i + 1}`}</span>
       <button type="button" class="btn danger cible" data-rm-page="${i}" aria-label="Retirer la page ${i + 1}">×</button></li>`).join("");
   }
   $("#pages-input").addEventListener("change", (e) => {
     const out = $("#msg-photo"); setMsg(out, "");
     Array.from(e.target.files || []).forEach((f) => {
-      if (!/^image\//.test(f.type)) return setMsg(out, "Seules les images sont acceptées.", "erreur");
-      if (files.length >= MAX_PAGES) return setMsg(out, `${MAX_PAGES} photos au plus : les suivantes ont été ignorées.`, "erreur");
-      files.push({ file: f, url: URL.createObjectURL(f) });
+      const pdf = f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+      if (!pdf && !/^image\//.test(f.type)) return setMsg(out, "Seules les images et les PDF sont acceptés.", "erreur");
+      if (pdf && f.size > PDF_MAX) return setMsg(out, `« ${f.name} » dépasse 8 Mo : exportez-le en plus léger ou photographiez les pages.`, "erreur");
+      if (files.length >= MAX_PAGES) return setMsg(out, `${MAX_PAGES} fichiers au plus : les suivants ont été ignorés.`, "erreur");
+      files.push({ file: f, pdf, url: pdf ? "" : URL.createObjectURL(f) });
     });
     e.target.value = ""; drawThumbs();
   });
@@ -299,22 +301,23 @@
     const b = e.target.closest("[data-rm-page]");
     if (!b) return;
     const [x] = files.splice(Number(b.dataset.rmPage), 1);
-    if (x) URL.revokeObjectURL(x.url);
+    if (x && x.url) URL.revokeObjectURL(x.url);
     drawThumbs();
   });
   fp.addEventListener("submit", async (e) => {
     e.preventDefault();
     const out = $("#msg-photo");
-    if (!files.length) return setMsg(out, "Choisissez au moins une photo de la page.", "erreur");
+    if (!files.length) return setMsg(out, "Choisissez au moins une photo ou un PDF.", "erreur");
     const btn = $("#go-photo"); btn.disabled = true;
     const id = AR.uuid(), book = bookSel.value, paths = [];
     try {
       // Les photos partent avant la ligne d'import : la fonction les trouve toutes à son démarrage.
       for (let i = 0; i < files.length; i++) {
-        setMsg(out, `Préparation de la photo ${i + 1} sur ${files.length}…`);
-        const blob = await AR.compressImage(files[i].file, 2000, 0.85);
-        const path = `${book}/imports/${id}/${i + 1}.jpg`;
-        const up = await sb.storage.from("recipes").upload(path, blob, { contentType: "image/jpeg", upsert: false });
+        setMsg(out, `Préparation du fichier ${i + 1} sur ${files.length}…`);
+        const pdf = files[i].pdf;
+        const blob = pdf ? files[i].file : await AR.compressImage(files[i].file, 2000, 0.85);
+        const path = `${book}/imports/${id}/${i + 1}.${pdf ? "pdf" : "jpg"}`;
+        const up = await sb.storage.from("recipes").upload(path, blob, { contentType: pdf ? "application/pdf" : "image/jpeg", upsert: false });
         if (up.error) throw up.error;
         paths.push(path);
       }
@@ -323,8 +326,8 @@
       if (ins.error) { await sb.storage.from("recipes").remove(paths); throw ins.error; }
       upsert(ins.data);
       try { await callImport(id); }
-      catch (e2) { setMsg(out, e2.message + " L'import reste dans la liste : vous pourrez le relancer.", "erreur"); btn.disabled = false; files.splice(0).forEach((x) => URL.revokeObjectURL(x.url)); drawThumbs(); poll(); return; }
-      files.splice(0).forEach((x) => URL.revokeObjectURL(x.url)); drawThumbs();
+      catch (e2) { setMsg(out, e2.message + " L'import reste dans la liste : vous pourrez le relancer.", "erreur"); btn.disabled = false; files.splice(0).forEach((x) => x.url && URL.revokeObjectURL(x.url)); drawThumbs(); poll(); return; }
+      files.splice(0).forEach((x) => x.url && URL.revokeObjectURL(x.url)); drawThumbs();
       setMsg(out, "Lecture lancée. Vous pouvez quitter cette page : la fiche sera à relire avant d'entrer au carnet.", "ok");
       poll();
     } catch (err) {
@@ -338,7 +341,7 @@
   const rows = new Map();
   const box = $("#imports");
   const ACTIFS = ["en_attente", "en_cours"];
-  const label = (r) => r.kind === "texte" ? "Note" : r.kind === "photo_page" ? `Photo de page${(r.page_paths || []).length > 1 ? ` (${r.page_paths.length} photos)` : ""}`
+  const label = (r) => r.kind === "texte" ? "Note" : r.kind === "photo_page" ? `${(r.page_paths || []).some((p) => /\.pdf$/i.test(p)) ? "PDF" : "Photo de page"}${(r.page_paths || []).length > 1 ? ` (${r.page_paths.length} fichiers)` : ""}`
     : (r.kind === "instagram" ? "Reel Instagram" : "Site web") + (AR.host(r.source_url || "") ? " · " + AR.host(r.source_url) : "");
   const fmtHeure = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
   function etat(r) {

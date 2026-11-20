@@ -100,7 +100,7 @@
       const flags = r.family ? "De famille" : "";
       return `<li><a class="planche" href="/recettes/fiche.html?id=${encodeURIComponent(r.id)}">
         <div class="passe-partout"><div class="cadre">${u ? `<img src="${esc(u)}" alt="" loading="lazy">` : `<span class="vide">Sans photo</span>`}</div></div>
-        <div class="legende"><span class="planche-num">Planche ${String(i + 1).padStart(2, "0")}${flags ? " · " + esc(flags) : ""}</span>${r.review_state === "a_verifier" ? `<span class="planche-verif">À vérifier</span>` : ""}
+        <div class="legende">${flags ? `<span class="planche-num">${esc(flags)}</span>` : ""}
         <span class="planche-titre">${esc(r.title)}</span>${src ? `<span class="planche-source">${esc(src)}</span>` : ""}</div></a></li>`;
     }).join("")}</ol>`;
   }

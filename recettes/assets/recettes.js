@@ -378,7 +378,7 @@
     const src = r.source_author || host(r.source_url || "") || "";
     return `<a class="planche" href="/recettes/fiche.html?id=${encodeURIComponent(r.id)}">
       <div class="passe-partout"><div class="cadre">${r.cover ? `<img src="${esc(r.cover)}" alt="" loading="lazy">` : `<span class="vide">Sans photo</span>`}</div></div>
-      <div class="legende"><span class="planche-num">${num != null ? "Planche " + String(num).padStart(2, "0") : ""}${r.family ? (num != null ? " · " : "") + "De famille" : ""}</span>
+      <div class="legende">${r.family ? `<span class="planche-num">De famille</span>` : ""}
       <span class="planche-titre">${esc(r.title)}</span>${src ? `<span class="planche-source">${esc(src)}</span>` : ""}${extra || ""}</div></a>`;
   }
   // Une seule fiche par groupe de versions (la mieux classée).

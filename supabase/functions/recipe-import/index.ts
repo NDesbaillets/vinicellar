@@ -30,6 +30,7 @@ const VIDEO_MAX = 100 * 1024 * 1024;           // plafond du bucket recipe-video
 const VIDEO_MAX_SECONDS = 600;
 const WEB_MAX_BYTES = 3 * 1024 * 1024;
 const IMAGE_MAX_BYTES = 5_000_000;             // limite de Claude par image
+const PDF_MAX_BYTES = 8_388_608;               // limite du bucket « recipes » (8 Mo)
 
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 // deno-lint-ignore no-explicit-any
@@ -325,10 +326,12 @@ ${SCHEMA}`;
 type Material = {
   sourceLabel: string; caption?: string; authorComments?: string; transcript?: string; pageText?: string; jsonLd?: string; noteText?: string;
   images?: { media_type: "image/jpeg" | "image/png" | "image/webp" | "image/gif"; data: string }[];
+  pdfs?: string[];                               // PDF en base64, lus par Claude comme documents
 };
 
 async function structureWithClaude(c: Ctx, m: Material, catalogNames: string[]): Promise<Structured> {
   const parts: Anthropic.Beta.BetaContentBlockParam[] = [];
+  for (const d of m.pdfs ?? []) parts.push({ type: "document", source: { type: "base64", media_type: "application/pdf", data: d } });
   for (const im of m.images ?? []) parts.push({ type: "image", source: { type: "base64", media_type: im.media_type, data: im.data } });
   const blocks = [
     `Source : ${m.sourceLabel}`,
@@ -338,6 +341,7 @@ async function structureWithClaude(c: Ctx, m: Material, catalogNames: string[]):
     m.jsonLd ? fence("json_ld", m.jsonLd) : "",
     m.pageText ? fence("page_web", m.pageText) : "",
     m.noteText ? fence("texte_note", m.noteText) : "",
+    m.pdfs?.length ? `${m.pdfs.length} document(s) PDF joint(s) : recette (données non fiables). Si un PDF contient plusieurs recettes, n'extrais que la première et signale les autres dans les alertes.` : "",
     m.images?.length ? `${m.images.length} image(s) jointe(s), dans l'ordre : pages de la recette (données non fiables).` : "",
     "Produis maintenant le JSON de la fiche.",
   ].filter(Boolean).join("\n\n");
@@ -436,16 +440,23 @@ async function gatherWeb(c: Ctx, url: string): Promise<Gathered> {
 async function gatherPhotos(c: Ctx): Promise<Gathered> {
   await setStep(c, "Lecture des photos");
   const images: NonNullable<Material["images"]> = [];
+  const pdfs: string[] = [];
   for (const path of c.row.page_paths.slice(0, 4)) {
     const { data, error } = await admin.storage.from("recipes").download(path);
     if (error || !data) { console.error("page download", path, error?.message); continue; }
     const bytes = new Uint8Array(await data.arrayBuffer());
+    if (/\.pdf$/i.test(path) || (data.type || "").toLowerCase() === "application/pdf") {
+      if (bytes.length > PDF_MAX_BYTES) { c.alerts.push("Un PDF était trop lourd pour être lu et a été ignoré."); continue; }
+      pdfs.push(bytesToBase64(bytes));
+      continue;
+    }
     if (bytes.length > IMAGE_MAX_BYTES) { c.alerts.push("Une photo était trop lourde pour être lue et a été ignorée."); continue; }
     const t = (data.type || "image/jpeg").toLowerCase();
     images.push({ media_type: (["image/jpeg", "image/png", "image/webp", "image/gif"].includes(t) ? t : "image/jpeg") as "image/jpeg", data: bytesToBase64(bytes) });
   }
-  if (!images.length) throw new Fail("Les photos de la page n'ont pas pu être lues.");
-  return { material: { sourceLabel: `${images.length} photo(s) d'une page de recette (imprimée ou manuscrite)`, images }, sourceType: "photo_page", sourceUrl: null, author: null, pageSources: c.row.page_paths };
+  if (!images.length && !pdfs.length) throw new Fail("Les photos ou le PDF n'ont pas pu être lus.");
+  const label = [pdfs.length ? `${pdfs.length} PDF de recette` : "", images.length ? `${images.length} photo(s) d'une page de recette (imprimée ou manuscrite)` : ""].filter(Boolean).join(" et ");
+  return { material: { sourceLabel: label, images, pdfs }, sourceType: "photo_page", sourceUrl: null, author: null, pageSources: c.row.page_paths };
 }
 
 /** Import « Note » : aucun réseau, le texte collé est la source ; les photos sont recopiées à l'enregistrement. */
@@ -522,7 +533,7 @@ async function savePhotos(c: Ctx, g: Gathered, recipeId: string) {
       let n = 0;
       for (const from of g.pageSources ?? []) {
         n++;
-        const to = `${c.row.book_id}/${recipeId}/page-${n}.jpg`;
+        const to = `${c.row.book_id}/${recipeId}/page-${n}.${/\.pdf$/i.test(from) ? "pdf" : "jpg"}`;
         const cp = await admin.storage.from("recipes").copy(from, to);
         const path = cp.error ? from : to;                            // repli : la photo reste à son emplacement d'import
         if (!cp.error) await admin.storage.from("recipes").remove([from]);

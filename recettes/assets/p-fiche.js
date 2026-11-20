@@ -31,6 +31,7 @@
   const editor = !!book && (book.role === "owner" || book.role === "member");
   document.title = `${r.title} · ARÔMES V&N`;
 
+  const isPdf = (x) => /\.pdf$/i.test(x.storage_path || "");
   const pagePhotos = () => photos.filter((x) => x.kind === "page").sort((a, b) => a.storage_path.localeCompare(b.storage_path, "fr", { numeric: true }));
   let urls = {};
   async function loadUrls() { Object.assign(urls, await AR.signedUrls(photos.map((x) => x.storage_path).filter(Boolean))); }
@@ -197,8 +198,9 @@
 
   // ---- galerie
   function galleryHtml() {
-    const none = !photos.length;
-    const sorted = photos.slice().sort((a, b) => (b.is_cover ? 1 : 0) - (a.is_cover ? 1 : 0) || String(a.created_at).localeCompare(String(b.created_at)));
+    const imgs = photos.filter((x) => !isPdf(x));
+    const none = !imgs.length;
+    const sorted = imgs.slice().sort((a, b) => (b.is_cover ? 1 : 0) - (a.is_cover ? 1 : 0) || String(a.created_at).localeCompare(String(b.created_at)));
     let h = "";
     if (none && !editor) return "";
     h += `<h2 class="section">Galerie</h2><span class="filet" aria-hidden="true"></span>`;
@@ -292,8 +294,8 @@
     const cov = photos.find((x) => x.is_cover) || null;
     const photoUrl = cov ? urls[cov.storage_path] : null;
     const pagesHtml = r.source_type === "photo_page" && pp.some((x) => urls[x.storage_path])
-      ? `<h2 class="section">Page d'origine</h2><span class="filet" aria-hidden="true"></span>
-        <div class="pages-photo">${pp.filter((x) => urls[x.storage_path]).map((x, i) => `<figure><a href="${esc(urls[x.storage_path])}" target="_blank" rel="noopener noreferrer"><div class="passe-partout"><img src="${esc(urls[x.storage_path])}" alt="Photo de la page ${i + 1}" loading="lazy"></div></a><figcaption class="libelle">Page ${i + 1}</figcaption></figure>`).join("")}</div>` : "";
+      ? `<details class="pages-orig"><summary>${pp.length > 1 ? "Pages d'origine" : "Page d'origine"} <span class="muted">(${pp.length})</span></summary>
+        <div class="pages-photo">${pp.filter((x) => urls[x.storage_path]).map((x, i) => isPdf(x) ? `<p><a class="btn sec petit" href="${esc(urls[x.storage_path])}" target="_blank" rel="noopener noreferrer">Ouvrir le PDF${pp.length > 1 ? ` (${i + 1})` : ""}</a></p>` : `<figure><a href="${esc(urls[x.storage_path])}" target="_blank" rel="noopener noreferrer"><div class="passe-partout"><img src="${esc(urls[x.storage_path])}" alt="Photo de la page ${i + 1}" loading="lazy"></div></a><figcaption class="libelle">Page ${i + 1}</figcaption></figure>`).join("")}</div></details>` : "";
 
     const stepText = (st) => (orig ? st.text_original || st.text : st.text);
     const corps = view.tab === "versions" ? versionsHtml() : `${pagesHtml}
