@@ -100,6 +100,9 @@ create policy "own feedback delete" on public.recipe_feedback for delete to auth
 --
 -- security invoker : la RLS filtre les recettes, lignes et cuissons. Les profils des autres personnes passent par
 -- book_people_profiles() (membres du même carnet) ; p_for_users vide ou null = l'appelant seul.
+-- Si la phase 7 (invités) a déjà été appliquée, sa version à 7 paramètres est retirée ici pour éviter deux
+-- signatures ambiguës ; rejouer ensuite recettes-phase7.sql pour la rétablir.
+drop function if exists public.recipe_suggestions(uuid[], uuid[], int, int, boolean, uuid[], boolean);
 create or replace function public.recipe_suggestions(
   p_book_ids uuid[],
   p_for_users uuid[] default null,
