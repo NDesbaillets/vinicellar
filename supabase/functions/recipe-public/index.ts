@@ -16,7 +16,7 @@ const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE
 const headers = (extra: Record<string, string> = {}) => ({
   "Access-Control-Allow-Origin": "*",            // lecture publique : pas de cookie ni d'en-tête d'autorisation
   "Access-Control-Allow-Methods": "GET, OPTIONS",
-  "Access-Control-Allow-Headers": "content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "X-Robots-Tag": "noindex, nofollow",
   "Referrer-Policy": "no-referrer",
   "Content-Type": "application/json; charset=utf-8",
