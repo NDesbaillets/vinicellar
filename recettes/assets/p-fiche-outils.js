@@ -167,8 +167,9 @@
       const { data, error } = await sb.functions.invoke("sommelier", { body: { menu: menuText() } });
       if (error) {
         const st = error.context && error.context.status;
-        const m = await AR.fnMessage(error, "");
-        out = { error: m && !/non-2xx|Edge Function/i.test(m) ? m : st === 401 ? "Connectez-vous à Vinicellar pour consulter votre cave." : "Le sommelier ne répond pas pour le moment. Réessayez dans un instant." };
+        let m = "";
+        try { const j = await error.context.json(); m = (j && j.message) || ""; } catch { /* corps vide */ }
+        out = { error: m ? m : st === 401 ? "Connectez-vous à Vinicellar pour consulter votre cave." : "Le sommelier ne répond pas pour le moment. Réessayez dans un instant." };
       } else {
         const picks = (data.courses && data.courses.length ? data.courses.flatMap((c) => c.picks || []) : data.picks) || [];
         const seen = new Set(), uniq = picks.filter((p) => p && p.item_id && !seen.has(p.item_id) && seen.add(p.item_id)).slice(0, 8);

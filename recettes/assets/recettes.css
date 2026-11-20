@@ -567,3 +567,9 @@ body.pt main.wrap{padding-bottom:24px}
 .pf-case,.sa-personnes .case{overflow-wrap:anywhere;min-width:0;align-items:flex-start;padding:10px 0}
 .sa-personnes .case input,.pf-case input{margin-top:0}
 .pf-libre .po-saisie input{max-width:none}
+.fo-accord{margin-top:14px}
+@media print{.lv-etape p{font-size:11.5pt}}
+.sa-titre{display:flex;align-items:center;min-height:44px}
+.aide a{display:inline-block;padding:10px 0}
+.lv-som a{min-height:44px;align-items:center}
+@media print{.lv-som a{min-height:0}}
