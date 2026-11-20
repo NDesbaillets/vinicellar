@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Mode cuisine · ARÔMES V&amp;N</title>
+  <meta name="description" content="Cuisiner une recette pas à pas">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/recettes/assets/logo-aromes-vn-fond.svg" type="image/svg+xml">
+  <link rel="manifest" href="/recettes/manifest.webmanifest">
+  <meta name="theme-color" content="#FBF8F2">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap">
+  <link rel="stylesheet" href="/recettes/assets/recettes.css?v=20261120-r3">
+</head>
+<body class="cu">
+  <div class="cu-app" id="cu-app">
+    <header class="cu-bar" id="cu-bar">
+      <a class="cu-quit" id="cu-quit" href="/recettes/">Quitter</a>
+      <p class="cu-titre" id="cu-titre"></p>
+      <button type="button" class="cu-ing-btn" id="cu-ing-btn" aria-expanded="false" aria-controls="cu-ing" hidden>Ingrédients</button>
+    </header>
+    <div class="cu-timers" id="cu-timers" aria-live="polite"></div>
+    <main class="cu-main" id="main" aria-busy="true"><p class="chargement">Chargement de la recette…</p></main>
+    <nav class="cu-nav" id="cu-nav" aria-label="Étapes" hidden>
+      <button type="button" class="cu-nb" id="cu-prev">Précédent</button>
+      <span class="cu-pos" id="cu-pos" aria-hidden="true"></span>
+      <button type="button" class="cu-nb cu-suiv" id="cu-next">Suivant</button>
+    </nav>
+    <p class="cu-info" id="cu-info" role="status"></p>
+    <section class="cu-ing" id="cu-ing" role="dialog" aria-modal="true" aria-labelledby="cu-ing-t" hidden>
+      <div class="cu-ing-tete"><h2 id="cu-ing-t">Ingrédients</h2><button type="button" class="cu-nb cu-fermer" id="cu-ing-x">Fermer</button></div>
+      <div id="cu-ing-liste"></div>
+    </section>
+  </div>
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+  <script src="/assets/js/config.js"></script>
+  <script src="/recettes/assets/recettes.js?v=20261120-r3"></script>
+  <script src="/recettes/assets/p-cuisine.js?v=20261120-r3"></script>
+</body>
+</html>

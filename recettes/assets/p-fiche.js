@@ -135,13 +135,14 @@
   // ---- statut dérivé (À essayer / Cuisinée, plus De famille)
   function statutHtml() {
     const st = statusInfo();
-    const bits = [`<span class="libelle or">${st.cooked ? "Cuisinée" : "À essayer"}</span>`];
+    const bits = cooksOk || stat ? [`<span class="libelle or">${st.cooked ? "Cuisinée" : "À essayer"}</span>`] : []; // sans le journal (hors ligne), on n'affirme rien
+    if (!bits.length && !r.family) return "";
     if (r.family) bits.push(`<span class="libelle or">De famille</span>`);
     const det = [];
     if (st.count) det.push(`${st.count} fois`);
     if (st.last) det.push(`dernière le ${fmtDate_(st.last)}`);
     if (st.avg != null) det.push(`note moyenne ${String(st.avg).replace(".", ",")} / 5`);
-    return `<p class="statut-ligne">${bits.join('<span aria-hidden="true"> · </span>')}${det.length ? `<span class="muted"> — ${esc(det.join(" · "))}</span>` : ""}</p>`;
+    return `<p class="statut-ligne">${bits.join('<span aria-hidden="true">&nbsp;·&nbsp;</span>')}${det.length ? `<span class="muted"> — ${esc(det.join(" · "))}</span>` : ""}</p>`;
   }
   const fmtDate_ = (d) => AR.fmtDay(d);
 
@@ -160,8 +161,9 @@
       ${diff ? `<p class="po-note">Recette prévue pour ${r.servings}. <button type="button" class="btn lien" data-po="reset">Revenir à ${r.servings}</button></p>` : ""}</div>`;
   }
   function refreshPortions(focusKey) {
-    $("#po-zone").innerHTML = portionsHtml();
-    $("#ing-zone").innerHTML = ingredients();
+    const pz = $("#po-zone"), iz = $("#ing-zone"); if (!pz || !iz) return;
+    pz.innerHTML = portionsHtml();
+    iz.innerHTML = ingredients();
     const g = $("#go-cuisine"); if (g) g.href = cuisineHref();
     if (focusKey) { const b = $(`[data-po="${focusKey}"]`, main) || $(".po-b:not([disabled])", main); if (b) b.focus(); }
   }
@@ -183,7 +185,7 @@
         const act = editor && !r.deleted_at ? `<div class="ga-act">
           ${x.is_cover ? "" : `<button type="button" class="btn sec petit" data-ga="cover" data-id="${esc(x.id)}"${studioBusy.on ? " disabled" : ""}>Choisir comme couverture</button>`}
           ${x.kind === "perso" || x.kind === "cuisson" ? `<button type="button" class="btn sec petit" data-ga="studio" data-id="${esc(x.id)}"${studioBusy.on ? " disabled" : ""}>Photo studio</button>` : ""}</div>` : "";
-        return `<li class="ga-item"><figure class="ga-fig">${u ? `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer"><div class="passe-partout"><div class="cadre"><img src="${esc(u)}" alt="${esc(`Photo (${k.toLowerCase()}) de ${r.title}`)}" loading="lazy"></div></div></a>` : `<div class="passe-partout"><div class="cadre"><span class="vide">Photo indisponible</span></div></div>`}
+        return `<li class="ga-item"><figure class="ga-fig">${u ? `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer"><div class="passe-partout"><div class="cadre"><img src="${esc(u)}" crossorigin="anonymous" alt="${esc(`Photo (${k.toLowerCase()}) de ${r.title}`)}" loading="lazy"></div></div></a>` : `<div class="passe-partout"><div class="cadre"><span class="vide">Photo indisponible</span></div></div>`}
           <figcaption class="ga-leg"><span class="libelle">${esc(k)}</span>${x.is_cover ? `<span class="libelle or"> · Couverture</span>` : ""}${x.kind === "illustration" ? `<span class="ga-mention">illustration</span>` : ""}</figcaption></figure>${act}</li>`;
       }).join("")}</ul>`;
     }
@@ -214,17 +216,17 @@
       return `<li class="jr-item"><div class="jr-tete"><span class="jr-date">${esc(AR.fmtDay(c.cooked_on))}</span><span class="jr-qui">${esc(who(c.cooked_by))}</span></div>
         <p class="jr-meta">${c.rating != null ? `<span class="jr-rate">${c.rating} / 5</span>` : ""}${c.servings ? `<span>pour ${c.servings} convive${c.servings > 1 ? "s" : ""}</span>` : ""}</p>
         ${c.comment ? `<p class="jr-com">${esc(c.comment)}</p>` : ""}
-        ${u ? `<a class="jr-photo" href="${esc(u)}" target="_blank" rel="noopener noreferrer"><img src="${esc(u)}" alt="Photo de la cuisson du ${esc(AR.fmtDay(c.cooked_on))}" loading="lazy"></a>` : ""}
+        ${u ? `<a class="jr-photo" href="${esc(u)}" target="_blank" rel="noopener noreferrer"><img src="${esc(u)}" crossorigin="anonymous" alt="Photo de la cuisson du ${esc(AR.fmtDay(c.cooked_on))}" loading="lazy"></a>` : ""}
         ${mine ? `<div class="rangee"><button type="button" class="btn lien" data-cook="edit" data-id="${esc(c.id)}">Modifier</button><button type="button" class="btn lien" data-cook="del" data-id="${esc(c.id)}">Supprimer</button></div>` : ""}</li>`;
     }).join("");
     return `<h2 class="section" id="journal">Journal</h2><span class="filet" aria-hidden="true"></span>
       ${cooksOk ? "" : `<p class="msg erreur" role="alert">Le journal n'est pas disponible pour le moment.</p>`}
-      <p class="jr-resume"><span class="libelle or">${st.cooked ? "Cuisinée" : "À essayer"}</span>${r.family ? ` <span class="libelle or">· De famille</span>` : ""}${st.count ? `<span class="muted"> · ${st.count} fois${st.avg != null ? `, note moyenne ${esc(String(st.avg).replace(".", ","))} / 5` : ""}</span>` : ""}</p>
+      <p class="jr-resume"${cooksOk ? "" : " hidden"}><span class="libelle or">${st.cooked ? "Cuisinée" : "À essayer"}</span>${r.family ? ` <span class="libelle or">· De famille</span>` : ""}${st.count ? `<span class="muted"> · ${st.count} fois${st.avg != null ? `, note moyenne ${esc(String(st.avg).replace(".", ","))} / 5` : ""}</span>` : ""}</p>
       ${jr.open ? cookForm() : (!r.deleted_at && cooksOk ? `<p><button type="button" class="btn" data-cook="open">Je l'ai cuisinée</button></p>` : "")}
       ${cooks.length ? `<ul class="jr-liste">${items}</ul>` : (cooksOk ? `<p class="muted italique">Personne n'a encore cuisiné cette recette.</p>` : "")}`;
   }
-  const renderJournal = () => { $("#journal-zone").innerHTML = journalHtml(); $("#statut-zone").innerHTML = statutHtml(); };
-  const renderGallery = () => { $("#galerie-zone").innerHTML = galleryHtml(); };
+  const renderJournal = () => { const j = $("#journal-zone"), z = $("#statut-zone"); if (j) j.innerHTML = journalHtml(); if (z) z.innerHTML = statutHtml(); };
+  const renderGallery = () => { const g = $("#galerie-zone"); if (g) g.innerHTML = galleryHtml(); };
 
   function render() {
     const me = ctx.user.id;
@@ -288,7 +290,7 @@
     main.setAttribute("aria-busy", "false");
     main.innerHTML = `${trash}${dupHtml}
       <p><a href="/recettes/">← Le carnet</a></p>
-      <div class="fiche-photo"><div class="passe-partout"><div class="cadre">${photoUrl ? `<img src="${esc(photoUrl)}" alt="${esc(r.title)}">` : `<span class="vide">Sans photo</span>`}</div></div>${cov && cov.kind === "illustration" ? `<p class="ga-mention">illustration</p>` : ""}</div>
+      <div class="fiche-photo"><div class="passe-partout"><div class="cadre">${photoUrl ? `<img src="${esc(photoUrl)}" crossorigin="anonymous" alt="${esc(r.title)}">` : `<span class="vide">Sans photo</span>`}</div></div>${cov && cov.kind === "illustration" ? `<p class="ga-mention">illustration</p>` : ""}</div>
       ${meta ? `<p class="libelle or centre" style="margin:0 0 8px">${esc(meta)}</p>` : ""}
       <h1 class="fiche-titre"${orig && safeLang ? ` lang="${esc(safeLang)}"` : ""}>${esc(titre)}</h1>
       ${r.title_original && !orig ? `<p class="fiche-orig">${esc(r.title_original)}</p>` : ""}
@@ -399,4 +401,135 @@
     if (error) { btn.disabled = false; return AR.setMsg(out, errMsg(error, "Impossible d'ajouter la note."), "erreur"); }
     notes.push(data); render(); toast("Note ajoutée.");
   });
+
+  // ---- phase 3 : portions, galerie, journal
+  async function fnMessage(error) {
+    try {
+      const res = error && error.context;
+      if (res && typeof res.json === "function") { const j = await res.json(); if (j && j.message) return String(j.message); }
+    } catch { /* corps illisible */ }
+    return errMsg(error, "L'image n'a pas pu être créée. Réessayez dans un instant.");
+  }
+  async function studio(mode, photoId) {
+    if (studioBusy.on) return;
+    studioBusy.on = true; renderGallery();
+    let msg = "";
+    try {
+      const { data, error } = await sb.functions.invoke("recipe-studio", { body: { recipe_id: r.id, mode, photo_id: photoId || null } });
+      if (error) throw error;
+      if (!data || !data.photo_id) throw new Error("Réponse inattendue du service.");
+      const p = await sb.from("recipe_photos").select("*").eq("recipe_id", r.id);
+      if (!p.error) photos = p.data || [];
+      await loadUrls();
+      toast(mode === "studio" ? "Photo studio ajoutée à la galerie." : "Illustration ajoutée à la galerie.");
+    } catch (e) { msg = await fnMessage(e); }
+    studioBusy.on = false;
+    render();
+    if (msg) { const m = $("#ga-msg"); if (m) m.textContent = msg; toast(msg, "erreur"); const g = $("#galerie-zone"); if (g) g.scrollIntoView({ block: "center" }); }
+  }
+  async function setCover(photoId) {
+    const target = photos.find((x) => x.id === photoId); if (!target) return;
+    const old = photos.find((x) => x.is_cover);
+    if (old) { const u = await sb.from("recipe_photos").update({ is_cover: false }).eq("id", old.id); if (u.error) return toast(errMsg(u.error, "Changement de couverture impossible."), "erreur"); }
+    const n = await sb.from("recipe_photos").update({ is_cover: true }).eq("id", photoId);
+    if (n.error) {
+      if (old) await sb.from("recipe_photos").update({ is_cover: true }).eq("id", old.id);
+      return toast(errMsg(n.error, "Changement de couverture impossible."), "erreur");
+    }
+    photos.forEach((x) => { x.is_cover = x.id === photoId; });
+    render(); toast("Couverture modifiée.");
+  }
+
+  async function submitCook(f) {
+    const out = $("#ck-msg"), btn = f.querySelector("button[type=submit]");
+    const day = AR.parseDay(f.date.value);
+    if (!day) return AR.setMsg(out, "Date invalide : écrivez-la au format JJ.MM.AAAA.", "erreur");
+    if (day > AR.todayIso()) return AR.setMsg(out, "La date ne peut pas être dans le futur.", "erreur");
+    const conv = f.servings.value.trim() === "" ? null : Number(f.servings.value);
+    if (conv != null && (!Number.isInteger(conv) || conv < 1 || conv > 99)) return AR.setMsg(out, "Le nombre de convives doit être un entier entre 1 et 99.", "erreur");
+    const comment = f.comment.value.trim();
+    if (comment.length > 2000) return AR.setMsg(out, "Le commentaire est limité à 2000 caractères.", "erreur");
+    btn.disabled = true; AR.setMsg(out, "Enregistrement…");
+    try {
+      if (jr.editing) {
+        const u = await sb.from("recipe_cooks").update({ cooked_on: day, rating: jr.rating, comment: comment || null, servings: conv }).eq("id", jr.editing).select("*").single();
+        if (u.error) throw u.error;
+        cooks = cooks.map((c) => (c.id === jr.editing ? u.data : c)).sort(byDate);
+      } else {
+        let photo_path = null;
+        const file = f.photo && f.photo.files[0];
+        if (file) {
+          const blob = await AR.compressImage(file, 1600);
+          photo_path = `${r.book_id}/${r.id}/cuissons/${Date.now()}-${AR.uuid().slice(0, 8)}.jpg`;
+          const up = await sb.storage.from("recipes").upload(photo_path, blob, { contentType: "image/jpeg", upsert: false });
+          if (up.error) throw up.error;
+          const ph = await sb.from("recipe_photos").insert({ recipe_id: r.id, storage_path: photo_path, kind: "cuisson", is_cover: false, created_by: ctx.user.id }).select("*").single();
+          if (ph.error) { sb.storage.from("recipes").remove([photo_path]).catch(() => {}); throw ph.error; }
+          photos.push(ph.data); await loadUrls();
+        }
+        const ins = await sb.from("recipe_cooks").insert({ id: AR.uuid(), recipe_id: r.id, cooked_by: ctx.user.id, cooked_on: day, rating: jr.rating, comment: comment || null, servings: conv, photo_path }).select("*").single();
+        if (ins.error) throw ins.error;
+        cooks = [ins.data, ...cooks].sort(byDate);
+      }
+      const wasEdit = !!jr.editing;
+      jr.open = false; jr.editing = null; jr.rating = null;
+      await loadStatus();
+      renderJournal(); renderGallery();
+      toast(wasEdit ? "Cuisson modifiée." : "Cuisson ajoutée au journal.");
+    } catch (e) { btn.disabled = false; AR.setMsg(out, errMsg(e, "Impossible d'enregistrer la cuisson."), "erreur"); }
+  }
+
+  function openForm(editId) {
+    if (view.tab !== "fiche") { view.tab = "fiche"; render(); }
+    const c = editId ? cooks.find((x) => x.id === editId) : null;
+    jr.open = true; jr.editing = c ? c.id : null; jr.rating = c ? c.rating : null; renderJournal();
+    const f = $("#cook-form"); if (f) { f.scrollIntoView({ block: "center" }); f.date.focus({ preventScroll: true }); }
+  }
+  main.addEventListener("click", async (e) => {
+    const po = e.target.closest("[data-po]");
+    if (po && r.servings != null) {
+      const k = po.dataset.po, cur = wanted();
+      view.portions = k === "reset" ? null : Math.max(1, Math.min(99, cur + Number(k)));
+      return void refreshPortions(k === "reset" ? "1" : k);
+    }
+    const ga = e.target.closest("[data-ga]");
+    if (ga && editor) {
+      if (ga.dataset.ga === "cover") return void setCover(ga.dataset.id);
+      if (ga.dataset.ga === "studio") return void studio("studio", ga.dataset.id);
+      if (ga.dataset.ga === "illustration") return void studio("illustration", null);
+    }
+    const rt = e.target.closest("[data-rate]");
+    if (rt) {
+      const n = Number(rt.dataset.rate); jr.rating = jr.rating === n ? null : n;
+      $$("[data-rate]", main).forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.rate) === jr.rating)));
+      return;
+    }
+    const ck = e.target.closest("[data-cook]");
+    if (!ck) return;
+    const act = ck.dataset.cook;
+    if (act === "open") openForm(null);
+    else if (act === "edit") openForm(ck.dataset.id);
+    else if (act === "cancel") { jr.open = false; jr.editing = null; jr.rating = null; renderJournal(); }
+    else if (act === "del") {
+      if (!confirm("Supprimer cette cuisson du journal ?")) return;
+      ck.disabled = true;
+      const { error } = await sb.from("recipe_cooks").delete().eq("id", ck.dataset.id);
+      if (error) { ck.disabled = false; return toast(errMsg(error, "Suppression impossible."), "erreur"); }
+      cooks = cooks.filter((c) => c.id !== ck.dataset.id);
+      await loadStatus(); renderJournal(); toast("Cuisson supprimée.");
+    }
+  });
+  main.addEventListener("submit", async (e) => {
+    if (e.target.id === "cook-form") { e.preventDefault(); return void submitCook(e.target); }
+    if (e.target.id === "po-form") {
+      e.preventDefault();
+      const f = e.target, n = Number(f.n.value), out = $("#po-msg");
+      if (!Number.isInteger(n) || n < 1 || n > 99) return AR.setMsg(out, "Indiquez un nombre entier de portions, de 1 à 99.", "erreur");
+      const b = f.querySelector("button[type=submit]"); b.disabled = true;
+      const ok = await patch({ servings: n }, "Nombre de portions enregistré.");
+      if (!ok) b.disabled = false;
+    }
+  });
+  // Arrivée depuis le mode cuisine (« Terminé ») : le formulaire de cuisson s'ouvre directement.
+  if (jr.open) setTimeout(() => { const f = $("#cook-form"); if (f) f.scrollIntoView({ block: "center" }); }, 50);
 })();
