@@ -4,7 +4,7 @@
 export const UNITS = ["g", "kg", "ml", "cl", "l", "cas", "cac", "piece", "pincee", "botte", "gousse", "tranche"] as const;
 export type Unit = typeof UNITS[number];
 export const COURSES = ["entree", "plat", "dessert", "accompagnement", "boisson", "autre"] as const;
-export const SOURCES = ["legende", "parole", "ecran", "visuel", "page", "web"] as const;
+export const SOURCES = ["legende", "parole", "ecran", "visuel", "page", "web", "note"] as const;
 
 export type RawIngredient = {
   group: string | null; label: string; canonical: string; quantity: number | null;
@@ -574,7 +574,7 @@ export function htmlToText(html: string, max = 60000): { text: string; title: st
 // ---------------------------------------------------------------- contenu non fiable dans le prompt
 /** Entoure un contenu externe d'une balise ; toute balise du même nom déjà présente dans le contenu est neutralisée. */
 export function fence(tag: string, content: string): string {
-  const safe = content.replace(/<\s*\/?\s*(legende|commentaires_auteur|transcription_video|page_web|json_ld|catalogue|donnees)[^>]*>/gi, "[balise retirée]");
+  const safe = content.replace(/<\s*\/?\s*(legende|commentaires_auteur|transcription_video|page_web|json_ld|texte_note|catalogue|donnees)[^>]*>/gi, "[balise retirée]");
   return `<${tag}>\n${safe}\n</${tag}>`;
 }
 
@@ -603,3 +603,30 @@ export function overlapRatio(a: Iterable<string>, b: Iterable<string>, minSize =
 
 /** Première lettre en minuscule des noms de catalogue importés (« Oignon » → « oignon »), sauf sigles. */
 export const canonicalName = (s: string) => s.trim().replace(/\s+/g, " ").replace(/^(\p{Lu})(\p{Ll})/u, (_m, a: string, b: string) => a.toLowerCase() + b).slice(0, 120);
+
+// ---------------------------------------------------------------- import « Note » (texte collé depuis Apple Notes + photos)
+export const NOTE_TEXT_MAX = 20000;
+export const NOTE_PHOTOS_MAX = 6;
+
+/** Texte de la note nettoyé : fins de ligne unifiées, espaces insécables et caractères de contrôle retirés, bornes de longueur. */
+export function cleanNoteText(input: unknown): string {
+  if (typeof input !== "string") return "";
+  return input
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u00a0\u2007\u202f]/g, " ")
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u200b\ufeff\ufffc]/g, "")   // \ufffc : pièce jointe d'Apple Notes
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{4,}/g, "\n\n\n")
+    .trim()
+    .slice(0, NOTE_TEXT_MAX);
+}
+
+/** Chemins de photos d'une note valides : 0 à 6, tous dans <book_id>/imports/<import_id>/, sans « .. ». */
+export function validNotePhotoPaths(bookId: string, importId: string, paths: unknown): paths is string[] {
+  if (!Array.isArray(paths) || paths.length > NOTE_PHOTOS_MAX) return false;
+  const prefix = `${bookId}/imports/${importId}/`;
+  return paths.every((p) => typeof p === "string" && p.startsWith(prefix) && p.length > prefix.length && !p.includes(".."));
+}
+
+/** Destination d'une photo de note dans le dossier de la recette (n commence à 1). */
+export const notePhotoTarget = (bookId: string, recipeId: string, n: number) => `${bookId}/${recipeId}/note-${n}.jpg`;

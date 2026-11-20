@@ -77,3 +77,23 @@ Règles du prompt : aucune quantité, durée ou température inventée (absente 
 - Partage depuis le téléphone : `ajouter.html?url=…` préremplit le lien (raccourci iOS) ; `share_target` dans le manifest (Android).
 - Fiche : si `review_state = a_verifier`, encadré d'alertes en tête + bouton « C'est bon » ; pour `photo_page`, la photo de la page est affichée à côté du texte et la validation est obligatoire avant d'apparaître dans le carnet (filtrée de l'accueil tant que `a_relire`). Bloc « Doublon probable » avec les trois actions. Onglet « Versions » listant les recettes du même `version_group`, avec les écarts (ingrédients et quantités) ; « Fusionner » ouvre `fusion.html?a=&b=` : tableau côte à côte des conflits, choix par ligne, version absorbée `archived_at = now()`.
 - « Version originale » : bascule sur la fiche qui affiche `title_original` et `text_original`.
+
+## 5. Import « Note » (recette copiée depuis Apple Notes, avec photos)
+
+Migration : `supabase/recettes-note.sql` (rejouable, à appliquer après les phases 1 à 7). Edge function : même `recipe-import`, même appel `{ "import_id" }`.
+
+### Table `recipe_imports`
+- `kind` accepte aussi `'texte'`.
+- `source_text text` : le texte collé, 1 à 20 000 caractères.
+- `photo_paths text[] not null default '{}'` : 0 à 6 photos du bucket `recipes`, `<book_id>/imports/<import_id>/<n>.jpg` (téléversées avant l'insertion, comme `page_paths`).
+- Cohérence (`recipe_imports_source_chk`) : `texte` ⇒ `source_text` non vide, `source_url` null, `page_paths` vide ; `photo_page` ⇒ 1 à 4 `page_paths`, sans texte ni `photo_paths` ; `instagram`/`web` ⇒ `source_url`, sans texte ni `photo_paths`.
+- Droit d'insertion par colonnes : `id, book_id, created_by, kind, source_url, page_paths, source_text, photo_paths`. Envoyer `status` (ou `step`, `error`, `recipe_id`…) est refusé (`permission denied`).
+- Policy d'insertion : contrôles de la phase 2, et chaque élément de `photo_paths` doit commencer par `<book_id>/imports/<id>/` (sans `..`) ; sinon refus RLS.
+- `recipes.source_type` accepte aussi `'note'`.
+
+### Fonction
+- Pas de récupération réseau : `source_text` (nettoyé : fins de ligne, espaces insécables, pièces jointes Notes) est transmis à Claude dans `<texte_note>…</texte_note>`, donnée non fiable comme les autres sources. `source` des lignes et étapes = `note`. Les photos ne sont pas lues par Claude.
+- Fiche : `source_type = 'note'`, `source_url`/`source_author` null, `review_state = 'a_verifier'`, alertes, catalogue, conversions et doublon par titre comme les autres imports. Statut final `termine`.
+- Photos : chaque fichier de `photo_paths` est copié (API Storage, service_role) vers `<book_id>/<recipe_id>/note-<n>.jpg` (n dès 1, dans l'ordre) et inscrit dans `recipe_photos` avec `kind = 'perso'` ; la première copiée avec succès est `is_cover = true`. Une copie en échec est ignorée (journalisée), la fiche est créée quand même. Les fichiers d'origine restent dans le dossier d'import.
+- Erreurs 400 (« Note invalide. », « Photos de la note invalides. ») ; quota inchangé : 50 imports / 24 h, `ai_calls.kind = 'recipe-import'`.
+- Le front ne passe pas par `page_paths` pour ce type : le laisser vide.
