@@ -641,5 +641,8 @@ body.pt main.wrap{padding-bottom:24px}
 .compteur{margin-top:-8px;font-variant-numeric:tabular-nums}
 .compteur.erreur{color:var(--erreur)}
 .vignette .ordre{display:flex;justify-content:center;gap:8px;margin-top:8px}
-.vignette .ordre .cible{font-size:22px;width:48px}
-.vignette .ordre .cible:disabled{opacity:.35;cursor:default}
+.ordre-btn{width:48px;min-height:48px;padding:0;font-size:22px;letter-spacing:0}
+.ordre-btn:disabled{opacity:.35;cursor:default}
+.coller{display:flex;flex-direction:column;gap:10px;align-items:stretch}
+.coller-zone{min-height:88px;padding:14px;border:1px dashed var(--or-texte);background:var(--papier);display:flex;flex-direction:column;justify-content:center;text-align:center;gap:4px;cursor:pointer;caret-color:transparent}
+.coller-zone:focus-visible,.coller-zone:focus{outline:2px solid var(--or-texte);outline-offset:1px;background:var(--note)}

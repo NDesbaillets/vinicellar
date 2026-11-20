@@ -21,7 +21,7 @@
   // Texte sans aucune adresse (partage d'une note) : onglet Note ; avec adresse : onglet Lien comme avant.
   const noteText = [qTitle.trim(), qText.trim()].filter((x, i, a) => x && !(i === 1 && a[0] && x.startsWith(a[0]))).join("\n\n");
   const toNote = forceNote || (!shared && !!noteText);
-  const MAX_NOTE = 20000, MAX_PHOTOS = 6, PDF_MAX = 20 * 1024 * 1024;
+  const MAX_NOTE = 20000, MAX_PHOTOS = 6;
   const pref = AR.getBookPref();
   const bookId0 = (editable.find((b) => b.id === pref) || editable[0]).id;
 
@@ -43,18 +43,20 @@
     </section>
     <section id="p-note" role="tabpanel" aria-labelledby="t-note" class="panneau" hidden>
       <form id="f-note" class="champs" novalidate>
-        <div>
-          <button type="button" class="btn sec" id="pdf-btn">Importer le PDF d'une note</button>
-          <input type="file" id="pdf-input" accept="application/pdf" hidden>
-          <p class="aide">Facultatif : le texte et les photos du PDF sont repris ici. Le PDF reste sur votre appareil, il n'est pas envoyé.</p>
-          <p class="msg" id="msg-pdf" role="status" aria-live="polite"></p>
-        </div>
         <label>Texte de la note<textarea name="texte" id="note-texte" rows="10" title="Collez le texte de votre note : titre, ingrédients, étapes" placeholder="Collez le texte de votre note : titre, ingrédients, étapes" autocomplete="off" spellcheck="false"></textarea></label>
         <p class="aide compteur" id="note-compteur" aria-live="polite"></p>
         <div>
           <span class="etiquette" id="note-photo-lib">Photos (0 à ${MAX_PHOTOS})</span>
           <input type="file" id="note-input" accept="image/*" multiple aria-labelledby="note-photo-lib" style="margin-top:6px">
           <p class="aide">Depuis votre photothèque. La première devient la couverture ; les flèches changent l'ordre. Photos réduites à 1600 px.</p>
+        </div>
+        <div class="coller">
+          <div id="coller-zone" class="coller-zone" contenteditable="true" inputmode="none" tabindex="0" role="textbox" aria-label="Coller une photo : touchez puis collez" spellcheck="false" autocapitalize="off">
+            <span class="libelle">Coller une photo</span>
+            <span class="aide">Touchez ici puis « Coller ». Sur iPhone : appui long sur la photo dans la note, Copier.</span>
+          </div>
+          <button type="button" class="btn sec" id="coller-btn">Coller depuis le presse-papiers</button>
+          <p class="msg" id="msg-coller" role="status" aria-live="polite"></p>
         </div>
         <ul class="vignettes" id="note-vignettes" aria-label="Photos de la note"></ul>
         <div><button class="btn" type="submit" id="go-note">Créer la fiche</button></div>
@@ -159,7 +161,7 @@
     btn.disabled = false;
   });
 
-  // ---- note (texte collé, PDF d'une note, photos)
+  // ---- note (texte collé, photos)
   const fn = $("#f-note"), nt = fn.texte, nthumbs = $("#note-vignettes"), nphotos = [];
   const fmtN = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, "\u202f");
   function drawCount() {
@@ -173,7 +175,7 @@
   function drawNoteThumbs() {
     nthumbs.innerHTML = nphotos.map((x, i) => `<li class="vignette"><img src="${esc(x.url)}" alt="Photo ${i + 1}"><span class="libelle">Photo ${i + 1}${i === 0 ? " · couverture" : ""}</span>
       <button type="button" class="btn danger cible" data-rm-np="${i}" aria-label="Retirer la photo ${i + 1}">×</button>
-      <span class="ordre"><button type="button" class="btn sec cible" data-mv-np="${i}" data-d="-1" aria-label="Avancer la photo ${i + 1}"${i === 0 ? " disabled" : ""}>‹</button><button type="button" class="btn sec cible" data-mv-np="${i}" data-d="1" aria-label="Reculer la photo ${i + 1}"${i === nphotos.length - 1 ? " disabled" : ""}>›</button></span></li>`).join("");
+      <span class="ordre"><button type="button" class="btn sec ordre-btn" data-mv-np="${i}" data-d="-1" aria-label="Avancer la photo ${i + 1}"${i === 0 ? " disabled" : ""}>‹</button><button type="button" class="btn sec ordre-btn" data-mv-np="${i}" data-d="1" aria-label="Reculer la photo ${i + 1}"${i === nphotos.length - 1 ? " disabled" : ""}>›</button></span></li>`).join("");
   }
   function addNotePhoto(blob, done) {
     if (nphotos.length >= MAX_PHOTOS) return false;
@@ -188,6 +190,51 @@
     });
     e.target.value = ""; drawNoteThumbs();
   });
+  // ---- collage de photos (zone dédiée, bouton presse-papiers, collage dans le texte)
+  const cmsg = $("#msg-coller");
+  function addPasted(blobs) {
+    let n = 0, full = false;
+    blobs.forEach((b) => { if (addNotePhoto(b)) n++; else full = true; });
+    drawNoteThumbs();
+    setMsg(cmsg, n ? `${n} photo${n > 1 ? "s" : ""} ajoutée${n > 1 ? "s" : ""}.` + (full ? ` ${MAX_PHOTOS} photos au plus : les suivantes ont été ignorées.` : "")
+      : full ? `${MAX_PHOTOS} photos au plus : retirez-en une avant d'en coller une autre.` : "Aucune photo dans ce qui a été collé.", n ? "ok" : "erreur");
+    return n;
+  }
+  const dataUrlBlob = (u) => { const m = /^data:(image\/[\w.+-]+)(;base64)?,(.*)$/is.exec(u); if (!m) return null;
+    try { const bin = m[2] ? atob(decodeURIComponent(m[3])) : decodeURIComponent(m[3]); const a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return new Blob([a], { type: m[1] }); } catch { return null; } };
+  // Images d'un collage : fichiers image, sinon <img src="data:…"> du HTML collé.
+  function pastedImages(dt) {
+    const out = [];
+    Array.from(dt.files || []).forEach((f) => { if (/^image\//.test(f.type)) out.push(f); });
+    if (!out.length) Array.from(dt.items || []).forEach((it) => { if (it.kind === "file" && /^image\//.test(it.type)) { const f = it.getAsFile(); if (f) out.push(f); } });
+    if (!out.length) {
+      const html = dt.getData ? dt.getData("text/html") : "";
+      if (html) new DOMParser().parseFromString(html, "text/html").querySelectorAll("img").forEach((im) => { const b = dataUrlBlob(im.getAttribute("src") || ""); if (b) out.push(b); });
+    }
+    return out;
+  }
+  const zone = $("#coller-zone");
+  zone.addEventListener("paste", (e) => { e.preventDefault(); if (e.clipboardData) addPasted(pastedImages(e.clipboardData)); });
+  zone.addEventListener("beforeinput", (e) => e.preventDefault());
+  zone.addEventListener("drop", (e) => e.preventDefault());
+  nt.addEventListener("paste", (e) => {
+    if (!e.clipboardData) return;
+    const imgs = pastedImages(e.clipboardData);
+    if (!imgs.length) return;
+    if (!e.clipboardData.getData("text/plain")) e.preventDefault(); // image seule : rien à mettre dans le texte
+    addPasted(imgs);
+  });
+  $("#coller-btn").addEventListener("click", async () => {
+    if (!navigator.clipboard || !navigator.clipboard.read) return setMsg(cmsg, "Ce navigateur ne permet pas le collage direct : touchez la zone « Coller une photo » puis choisissez Coller.", "erreur");
+    try {
+      const items = await navigator.clipboard.read(), blobs = [];
+      for (const it of items) { const t = it.types.find((x) => /^image\//.test(x)); if (t) blobs.push(await it.getType(t)); }
+      if (!blobs.length) return setMsg(cmsg, "Le presse-papiers ne contient pas de photo. Copiez d'abord une photo (appui long, Copier).", "erreur");
+      addPasted(blobs);
+    } catch (err) {
+      setMsg(cmsg, err && err.name === "NotAllowedError" ? "Accès au presse-papiers refusé : touchez plutôt la zone « Coller une photo »." : "Impossible de lire le presse-papiers : touchez la zone « Coller une photo ».", "erreur");
+    }
+  });
   nthumbs.addEventListener("click", (e) => {
     const rm = e.target.closest("[data-rm-np]"), mv = e.target.closest("[data-mv-np]");
     if (rm) { const [x] = nphotos.splice(Number(rm.dataset.rmNp), 1); if (x) URL.revokeObjectURL(x.url); drawNoteThumbs(); }
@@ -197,111 +244,6 @@
     }
   });
 
-  // ---- PDF d'une note : pdf.js (CDN, version exacte), tout se passe dans le navigateur
-  const PDFJS = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/";
-  let pdfLoading = null;
-  function loadPdfJs() {
-    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
-    if (pdfLoading) return pdfLoading;
-    pdfLoading = new Promise((ok, ko) => {
-      const s = document.createElement("script");
-      s.src = PDFJS + "pdf.min.js"; s.integrity = "sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e"; s.crossOrigin = "anonymous";
-      s.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + "pdf.worker.min.js"; ok(window.pdfjsLib); };
-      s.onerror = () => { pdfLoading = null; ko(new Error("Le lecteur de PDF n'a pas pu être chargé. Vérifiez votre réseau.")); };
-      document.head.appendChild(s);
-    });
-    return pdfLoading;
-  }
-  // Reconstitue les lignes : un saut quand la hauteur change ou que le texte l'indique.
-  function pageText(items) {
-    let out = "", lastY = null;
-    for (const it of items) {
-      if (typeof it.str !== "string") continue;
-      const y = it.transform ? it.transform[5] : null, h = Math.abs(it.height || (it.transform && it.transform[3]) || 10);
-      if (lastY !== null && y !== null && Math.abs(y - lastY) > h * 0.5 && !out.endsWith("\n")) out += "\n";
-      out += it.str;
-      if (it.hasEOL && !out.endsWith("\n")) out += "\n";
-      if (y !== null) lastY = y;
-    }
-    return out;
-  }
-  const getObj = (store, name) => new Promise((ok) => { let d = false; const t = setTimeout(() => { if (!d) { d = true; ok(null); } }, 4000); try { store.get(name, (o) => { if (!d) { d = true; clearTimeout(t); ok(o); } }); } catch { clearTimeout(t); ok(null); } });
-  async function imageToBlob(img) {
-    const w = img.width, h = img.height;
-    if (!w || !h || Math.min(w, h) < 120) return null;
-    const src = document.createElement("canvas"); src.width = w; src.height = h;
-    const c = src.getContext("2d");
-    if (img.bitmap) c.drawImage(img.bitmap, 0, 0);
-    else if (img.data) {
-      const px = w * h, d = img.data, rgba = new Uint8ClampedArray(px * 4);
-      if (img.kind === 3 || d.length === px * 4) rgba.set(d.subarray ? d.subarray(0, px * 4) : d);
-      else if (img.kind === 2 || d.length === px * 3) for (let i = 0, j = 0; i < px; i++) { rgba[j++] = d[i * 3]; rgba[j++] = d[i * 3 + 1]; rgba[j++] = d[i * 3 + 2]; rgba[j++] = 255; }
-      else if (d.length === px) for (let i = 0, j = 0; i < px; i++) { rgba[j++] = d[i]; rgba[j++] = d[i]; rgba[j++] = d[i]; rgba[j++] = 255; }
-      else if (img.kind === 1) { const rb = Math.ceil(w / 8); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const v = (d[y * rb + (x >> 3)] >> (7 - (x & 7))) & 1 ? 255 : 0, j = (y * w + x) * 4; rgba[j] = rgba[j + 1] = rgba[j + 2] = v; rgba[j + 3] = 255; } }
-      else return null;
-      c.putImageData(new ImageData(rgba, w, h), 0, 0);
-    } else return null;
-    const k = Math.min(1, 1600 / Math.max(w, h)), o = document.createElement("canvas");
-    o.width = Math.max(1, Math.round(w * k)); o.height = Math.max(1, Math.round(h * k));
-    const oc = o.getContext("2d"); oc.fillStyle = "#fff"; oc.fillRect(0, 0, o.width, o.height); oc.drawImage(src, 0, 0, o.width, o.height);
-    const sig = (() => { const t = c.getImageData(0, 0, Math.min(w, 16), Math.min(h, 16)).data; let a = 0; for (let i = 0; i < t.length; i += 7) a = (a * 31 + t[i]) | 0; return `${w}x${h}:${a}`; })();
-    return new Promise((ok) => o.toBlob((b) => ok(b ? { blob: b, sig } : null), "image/jpeg", 0.85));
-  }
-  async function pdfImages(pdf, lib, want) {
-    const found = [], seen = new Set();
-    for (let n = 1; n <= pdf.numPages && found.length < want; n++) {
-      const page = await pdf.getPage(n), ops = await page.getOperatorList(), O = lib.OPS;
-      for (let i = 0; i < ops.fnArray.length && found.length < want; i++) {
-        const fnc = ops.fnArray[i], arg = ops.argsArray[i];
-        let img = null, key = null;
-        if (fnc === O.paintImageXObject || fnc === O.paintJpegXObject) {
-          key = arg[0]; if (seen.has(n + ":" + key)) continue; seen.add(n + ":" + key);
-          img = await getObj(String(key).startsWith("g_") ? page.commonObjs : page.objs, key);
-        } else if (fnc === O.paintInlineImageXObject) img = arg[0];
-        if (!img) continue;
-        const r = await imageToBlob(img);
-        if (!r || seen.has(r.sig)) continue;
-        seen.add(r.sig); found.push(r.blob);
-      }
-      page.cleanup();
-    }
-    return found;
-  }
-  $("#pdf-btn").addEventListener("click", () => $("#pdf-input").click());
-  $("#pdf-input").addEventListener("change", async (e) => {
-    const out = $("#msg-pdf"), f = (e.target.files || [])[0];
-    e.target.value = "";
-    if (!f) return;
-    if (f.type !== "application/pdf" && !/\.pdf$/i.test(f.name)) return setMsg(out, "Choisissez un fichier PDF.", "erreur");
-    if (f.size > PDF_MAX) return setMsg(out, "Ce PDF dépasse 20 Mo : exportez-le plus léger ou collez le texte à la main.", "erreur");
-    const btn = $("#pdf-btn"); btn.disabled = true; setMsg(out, "Lecture du PDF…");
-    try {
-      const lib = await loadPdfJs();
-      const pdf = await lib.getDocument({ data: new Uint8Array(await f.arrayBuffer()) }).promise;
-      let txt = "";
-      for (let n = 1; n <= pdf.numPages; n++) { const p = await pdf.getPage(n); txt += pageText((await p.getTextContent()).items) + "\n"; }
-      txt = txt.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
-      if (txt) {
-        if (nt.value.trim() && !confirm("Remplacer le texte déjà saisi par celui du PDF ?")) { /* on garde le texte */ }
-        else { nt.value = txt; drawCount(); }
-      }
-      let msg = txt ? "Texte repris. " : "Aucun texte trouvé dans ce PDF. ";
-      const room = MAX_PHOTOS - nphotos.length;
-      if (room <= 0) msg += "Déjà 6 photos : aucune ajoutée.";
-      else {
-        let imgs = null;
-        try { imgs = await pdfImages(pdf, lib, room); } catch (err) { console.warn(err); }
-        if (imgs && imgs.length) { imgs.forEach((b) => addNotePhoto(b, true)); drawNoteThumbs(); msg += `${imgs.length} photo${imgs.length > 1 ? "s" : ""} reprise${imgs.length > 1 ? "s" : ""}.`; }
-        else msg += "Photos non extraites : ajoutez-les à la main.";
-      }
-      setMsg(out, msg + " Relisez avant de créer la fiche.", "ok");
-      pdf.destroy();
-    } catch (err) {
-      console.warn(err);
-      setMsg(out, err && err.name === "PasswordException" ? "Ce PDF est protégé par un mot de passe." : (err && err.message && /chargé/.test(err.message) ? err.message : "Ce PDF n'a pas pu être lu. Collez le texte à la main."), "erreur");
-    }
-    btn.disabled = false;
-  });
   fn.addEventListener("submit", async (e) => {
     e.preventDefault();
     const out = $("#msg-note"), text = nt.value.trim();
