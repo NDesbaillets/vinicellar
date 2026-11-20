@@ -278,7 +278,7 @@
     const noteHtml = verif
       ? `<aside class="note-avant" aria-labelledby="nav-t"><h2 id="nav-t">Note avant de cuisiner</h2>
         ${alerts.length ? `<ul>${alerts.map((a) => `<li>${esc(a)}</li>`).join("")}</ul>` : ""}
-        <p>${r.source_type === "photo_page" ? "Comparez le texte avec la photo de la page, puis validez : la fiche n'entre au carnet qu'après relecture." : "Cette fiche a été importée : relisez-la avant de cuisiner."}</p>
+        <p>${r.source_type === "photo_page" ? "Comparez le texte avec la page d'origine (ci-dessous), puis validez : la fiche n'entre au carnet qu'après relecture." : "Cette fiche a été importée : relisez-la avant de cuisiner."}</p>
         ${editor ? `<button type="button" class="btn" data-act="verify">C'est bon</button>` : ""}</aside>`
       : alerts.length ? `<details class="note-avant repliee"><summary>Note avant de cuisiner <span class="muted">(${alerts.length})</span></summary><ul>${alerts.map((a) => `<li>${esc(a)}</li>`).join("")}</ul></details>` : "";
     const dupHtml = dup ? `<aside class="doublon" aria-labelledby="dup-t"><h2 id="dup-t">Doublon probable</h2>
