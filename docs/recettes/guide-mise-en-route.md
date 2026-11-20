@@ -42,6 +42,8 @@ Dans cet ordre, chacune testée au préalable sur PostgreSQL et rejouable sans r
 3. `supabase/recettes-phase3.sql` : journal des cuissons, photos de cuisson.
 4. `supabase/recettes-phase4.sql` : profils, suggestions, recherche.
 5. `supabase/recettes-phase5.sql` : planning, courses, notifications (après la phase 2, pour le déclencheur de fin d'import).
+6. `supabase/recettes-phase6.sql` : liens de partage public, recettes transmises.
+7. `supabase/recettes-phase7.sql` : invités, réceptions, « déjà servi » (remplace la fonction de suggestions de la phase 4 : toujours l'appliquer après elle).
 
 Claude vérifie ensuite les alertes de sécurité Supabase.
 
@@ -53,6 +55,8 @@ Claude vérifie ensuite les alertes de sécurité Supabase.
 | `recipe-studio` | photo studio, illustration (fal.ai) | oui |
 | `recipe-search` | recherche en langage naturel | oui |
 | `recipe-notify` | envoi des notifications | non (appelée par la base, protégée par un secret partagé) |
+| `recipe-transmit` | transmettre une recette à un autre carnet | oui |
+| `recipe-public` | page de partage public, sans compte | non (accès anonyme voulu, ne lit qu'une recette liée à un jeton valide) |
 
 Variable conseillée : `RECIPE_IMPORT_MAX_SECONDS = 380` (plan Pro).
 
@@ -74,6 +78,8 @@ Sur un serveur local pointant vers la base réelle :
 3. Import : un reel avec recette dans la légende, un reel sans (vidéo), une page web, une photo de page manuscrite.
 4. Cuisiner : journal, portions, mode cuisine et minuteurs.
 5. Suggestions, planning, liste de courses (à deux appareils pour le temps réel).
+6. Invités : créer un invité avec une allergie, une réception, vérifier « Déjà servi » et les suggestions « Pour qui ? ».
+7. Partage public, transmission, accord Vinicellar, livre PDF.
 
 Claude te présente les résultats réels, y compris les échecs.
 
@@ -93,4 +99,6 @@ Fusion de `recettes` dans `main` : `vinicellar.ch/recettes/` devient accessible 
 
 1. Un lecteur peut-il cocher la liste de courses (utile s'il fait les courses) ? Actuellement : non.
 2. « Reprendre le rythme de la semaine dernière » recopie aussi le nombre de convives : à garder ?
-3. Les suggestions peuvent montrer deux versions d'une même recette : regrouper par version ?
+3. Réception créée depuis le planning : le nombre de membres présents est déduit en retirant les invités du nombre de convives de la case. D'accord ?
+4. Un menu passé compte comme « déjà servi » même si ses plats n'ont pas été inscrits au journal. D'accord ?
+5. Livre PDF : les notes en marge affichent le prénom et le nom de leur auteur. À garder si le livre est offert ?
