@@ -92,5 +92,5 @@ Deno.serve(async (req) => {
     steps: steps ?? [],
     photos: pics,
     photos_expire_in: SIGNED_SECONDS,
-  }, { "Cache-Control": "public, max-age=60" });
+  }, { "Cache-Control": "no-store" });
 });

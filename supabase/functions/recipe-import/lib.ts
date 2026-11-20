@@ -198,8 +198,81 @@ export function normalizeLine(l: LineInput): LineOutput {
       return q === null ? { quantity: null, unit: null, precision: l.precision, alerts } : { quantity: q, unit, precision: l.precision, alerts };
     }
   }
+  // Quantité fractionnaire sans aucune unité (« 1/4 de chou blanc ») : un morceau de pièce.
+  if (!candidates.length && q !== null && q > 0 && !Number.isInteger(q)) return { quantity: q, unit: "piece", precision: l.precision, alerts };
   // Unité inconnue : on garde le mot d'origine, sans rien convertir.
   return { quantity: q, unit: null, precision: q !== null && candidates[0] ? joinPrecision(candidates[0].slice(0, 40), l.precision) : l.precision, alerts };
+}
+
+// ---------------------------------------------------------------- libellé : nom seul
+const LEAD_NUM = String.raw`\d+(?:[.,]\d+)?\s*[½¼¾⅓⅔⅛⅜⅝⅞]|\d+\s+\d+\s*\/\s*\d+|\d+\s*\/\s*\d+|[½¼¾⅓⅔⅛⅜⅝⅞]|\d+(?:[.,]\d+)?`;
+const LEAD_UNIT = [
+  String.raw`c\.?\s*à\.?\s*(?:soupe|café|cafe|s|c)`, String.raw`cuill?[eè]res?\s+(?:à|a)\s+(?:soupe|caf[eé]|moka)`,
+  "càs", "càc", "cs", "cc", "tbsp", "tsp", "kg", "gr", "g", "ml", "cl", "dl", "l", "litres?", "grammes?", "kilos?",
+  "pinc[ée]es?", "gousses?", "bottes?", "tranches?", "pi[eè]ces?", "cups?", "oz", "lbs?",
+].join("|");
+// Unités non convertibles : retirées du nom, mais gardées dans la précision.
+const LEAD_KEEP = "pouces?|verres?|poign[ée]es?|bo[iî]tes?|sachets?|brins?|feuilles?|morceaux?|pots?|branches?|cubes?|bouteilles?";
+const LEAD_RE = new RegExp(
+  String.raw`^\s*(?:(${LEAD_NUM})\s*|(une?)\s+)(?:(?:(${LEAD_UNIT})|(${LEAD_KEEP}))(?![\p{L}\d])\.?\s*)?(de\s+|du\s+|des\s+|d['’]\s*)?`, "iu");
+
+/**
+ * Retire d'un libellé la quantité et l'unité de tête (« 4 c. à soupe de vinaigre de riz » → « vinaigre de riz »)
+ * quand la quantité est déjà renseignée à part. Une unité non convertible (pouce, verre, poignée…) est renvoyée dans `extraUnit`.
+ */
+export function stripLeadingQuantity(label: string, quantity: number | null): { label: string; extraUnit: string | null } {
+  if (quantity === null) return { label, extraUnit: null };
+  const m = LEAD_RE.exec(label);
+  if (!m || !m[0].trim()) return { label, extraUnit: null };
+  if (m[2] && quantity !== 1) return { label, extraUnit: null };
+  const fraction = !!m[1] && /[\/½¼¾⅓⅔⅛⅜⅝⅞]/.test(m[1]);
+  const hasUnit = !!(m[3] || m[4]);
+  // L'article « de / d' » n'est retiré qu'après une unité, une fraction ou « un / une ».
+  const keepArticle = !!m[5] && !(hasUnit || fraction || m[2]);
+  const cut = m[0].length - (keepArticle ? m[5].length : 0);
+  const rest = label.slice(cut).trim();
+  if (rest.length < 2) return { label, extraUnit: null };
+  return { label: rest, extraUnit: m[4] ? m[4].toLowerCase() : null };
+}
+
+// ---------------------------------------------------------------- minuteur : borne basse d'un intervalle
+const RANGE_RE = /(\d+(?:[.,]\d+)?)\s*(heures?|h|minutes?|min|mn|secondes?|sec|s)?\s*(?:-|–|—|à|a|ou|to)\s*(\d+(?:[.,]\d+)?)\s*(heures?|h|minutes?|min|mn|secondes?|sec|s)(?![\p{L}\d])/iu;
+const unitSeconds = (u: string) => (/^h/i.test(u) ? 3600 : /^(m|mn)/i.test(u) ? 60 : 1);
+/** « 30-40 minutes », « 30 à 40 min », « 1 à 2 h » → { low, high } en secondes ; sinon null. */
+export function durationRange(text: string): { low: number; high: number } | null {
+  const m = RANGE_RE.exec(text);
+  if (!m) return null;
+  const hi = unitSeconds(m[4]), lo = m[2] ? unitSeconds(m[2]) : hi;
+  const low = Math.round(Number(m[1].replace(",", ".")) * lo), high = Math.round(Number(m[3].replace(",", ".")) * hi);
+  return low > 0 && low <= high ? { low, high } : null;
+}
+
+/** Image d'un JSON-LD Recipe : chaîne, tableau (chaînes ou objets) ou objet { url } ; URL absolue publique, sinon null. */
+export function recipeJsonLdImage(r: Record<string, unknown>, base: string): string | null {
+  const pick = (v: unknown, depth = 0): string | null => {
+    if (depth > 3 || v == null) return null;
+    if (typeof v === "string") return v.trim() || null;
+    if (Array.isArray(v)) { for (const x of v) { const p = pick(x, depth + 1); if (p) return p; } return null; }
+    if (typeof v === "object") { const o = v as Record<string, unknown>; return pick(o.url ?? o.contentUrl ?? o["@id"], depth + 1); }
+    return null;
+  };
+  const raw = pick(r.image) ?? pick(r.thumbnailUrl);
+  if (!raw || raw.length > 3000) return null;
+  try {
+    const abs = new URL(raw, base).toString();
+    return isPublicHttpUrl(abs) ? abs : null;
+  } catch { return null; }
+}
+
+/** Retire des alertes « hors catalogue » celles qui visent un ingrédient finalement rattaché (ou toutes si tout est rattaché). */
+export function dropCatalogAlerts(alerts: string[], attachedNames: string[], allAttached: boolean): string[] {
+  const names = attachedNames.map(norm).filter((n) => n.length >= 3);
+  return alerts.filter((a) => {
+    if (!/catalogue/i.test(a)) return true;
+    if (allAttached) return false;
+    const na = norm(a);
+    return !names.some((n) => na.includes(n));
+  });
 }
 
 // ---------------------------------------------------------------- températures
@@ -262,11 +335,15 @@ export function sanitizeStructured(raw: Record<string, unknown>): Structured {
   const ingredients: RawIngredient[] = (Array.isArray(raw.ingredients) ? raw.ingredients : []).slice(0, 150).flatMap((x) => {
     if (!x || typeof x !== "object") return [];
     const o = x as Record<string, unknown>;
-    const label = str(o.libelle, 300) ?? str(o.nom_canonique, 300);
-    if (!label) return [];
+    const rawLabel = str(o.libelle, 300) ?? str(o.nom_canonique, 300);
+    if (!rawLabel) return [];
+    const quantity = parseQuantity(o.quantite);
+    const unit = str(o.unite, 40);
+    const cut = stripLeadingQuantity(rawLabel, quantity);
+    const label = cut.label;
     return [{
       group: str(o.groupe, 120), label, canonical: str(o.nom_canonique, 120) ?? label.slice(0, 120),
-      quantity: parseQuantity(o.quantite), unit: str(o.unite, 40), unitOrigin: str(o.unite_origine, 40),
+      quantity, unit, unitOrigin: str(o.unite_origine, 40) ?? (unit ? null : cut.extraUnit),
       precision: str(o.precision, 200), optional: bool(o.facultatif),
       source: (SOURCES as readonly string[]).includes(String(o.source)) ? String(o.source) : null,
     }];
@@ -276,8 +353,12 @@ export function sanitizeStructured(raw: Record<string, unknown>): Structured {
     const o = x as Record<string, unknown>;
     const text = str(o.texte, 3000);
     if (!text) return [];
+    let timer = intOrNull(o.minuteur_s, 1, 86400);
+    const range = durationRange(text);
+    // Intervalle (« 30-40 minutes ») : borne basse, même si le modèle a donné la borne haute ou la moyenne.
+    if (range && (timer === null || timer === range.high || timer === Math.round((range.low + range.high) / 2))) timer = range.low;
     return [{
-      text, textOriginal: str(o.texte_original, 3000), timerSeconds: intOrNull(o.minuteur_s, 1, 86400),
+      text, textOriginal: str(o.texte_original, 3000), timerSeconds: timer,
       source: (SOURCES as readonly string[]).includes(String(o.source)) ? String(o.source) : null,
     }];
   });

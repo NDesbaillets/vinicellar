@@ -1,7 +1,7 @@
 // Tests des fonctions pures de recipe-import. Lancer : deno test supabase/functions/recipe-import/lib_test.ts
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import {
-  buildCatalogIndex, bytesToBase64, captionSignals, cleanUrl, convertTemperaturesInText, extractJsonLdRecipe, fahrenheitToCelsius, fence,
+  buildCatalogIndex, bytesToBase64, dropCatalogAlerts, durationRange, recipeJsonLdImage, stripLeadingQuantity, captionSignals, cleanUrl, convertTemperaturesInText, extractJsonLdRecipe, fahrenheitToCelsius, fence,
   findCatalog, htmlToText, isoDurationToMinutes, isPublicHttpUrl, matchKey, normalizeLine, normalizeUnit, overlapRatio, parseInstagramUrl,
   parseModelJson, parseQuantity, recipeJsonLdToText, sanitizeStructured,
 } from "./lib.ts";
@@ -278,4 +278,89 @@ Deno.test("overlapRatio et base64", () => {
   let ref = "";
   for (let i = 0; i < big.length; i++) ref += String.fromCharCode(big[i]);
   assertEquals(bytesToBase64(big), btoa(ref));
+});
+
+// ---------------------------------------------------------------- correctifs production
+Deno.test("libellé : quantité et unité de tête retirées quand la quantité est renseignée", () => {
+  const s = (l: string, q: number | null) => stripLeadingQuantity(l, q);
+  assertEquals(s("4 c. à soupe de vinaigre de riz", 4).label, "vinaigre de riz");
+  assertEquals(s("2 càs d'huile d'olive", 2).label, "huile d'olive");
+  assertEquals(s("1 cs de miel", 1).label, "miel");
+  assertEquals(s("2 c. à café de sel", 2).label, "sel");
+  assertEquals(s("200 g de farine", 200).label, "farine");
+  assertEquals(s("200g de farine", 200).label, "farine");
+  assertEquals(s("1,5 kg de pommes de terre", 1.5).label, "pommes de terre");
+  assertEquals(s("25 cl de crème", 25).label, "crème");
+  assertEquals(s("1 l de lait", 1).label, "lait");
+  assertEquals(s("1 pincée de sel", 1).label, "sel");
+  assertEquals(s("2 gousses d'ail", 2).label, "ail");
+  assertEquals(s("1 botte de persil", 1).label, "persil");
+  assertEquals(s("3 tranches de jambon", 3).label, "jambon");
+  assertEquals(s("1/4 de chou blanc", 0.25).label, "chou blanc");
+  assertEquals(s("½ citron", 0.5).label, "citron");
+  assertEquals(s("1 1/2 oignon", 1.5).label, "oignon");
+  assertEquals(s("2 oignons émincés", 2).label, "oignons émincés");
+  assertEquals(s("une pincée de sel", 1).label, "sel");
+  // Sans quantité renseignée, ou sans quantité en tête : rien ne change.
+  assertEquals(s("4 c. à soupe de vinaigre", null).label, "4 c. à soupe de vinaigre");
+  assertEquals(s("vinaigre de riz", 4).label, "vinaigre de riz");
+  assertEquals(s("grosses tomates", 2).label, "grosses tomates");
+  assertEquals(s("gros sel", 1).label, "gros sel");
+  assertEquals(s("2 g", 2).label, "2 g");
+  // Unité non convertible : retirée du nom, rendue pour la précision.
+  assertEquals(s("2 pouces de gingembre", 2), { label: "gingembre", extraUnit: "pouces" });
+  assertEquals(s("1 verre de vin blanc", 1), { label: "vin blanc", extraUnit: "verre" });
+  assertEquals(s("1 poignée de noix", 1), { label: "noix", extraUnit: "poignée" });
+});
+
+Deno.test("sanitizeStructured : nom seul, pouce en précision, fraction en pièce", () => {
+  const r = sanitizeStructured({
+    ingredients: [
+      { libelle: "4 c. à soupe de vinaigre de riz", nom_canonique: "vinaigre de riz", quantite: 4, unite: "cas", source: "web" },
+      { libelle: "2 pouces de gingembre", nom_canonique: "gingembre", quantite: 2, unite: null },
+      { libelle: "1/4 de chou blanc", nom_canonique: "chou blanc", quantite: "1/4", unite: null },
+    ],
+  });
+  assertEquals(r.ingredients.map((i) => i.label), ["vinaigre de riz", "gingembre", "chou blanc"]);
+  const [a, b, c] = r.ingredients.map((i) => normalizeLine({ name: i.canonical, quantity: i.quantity, unit: i.unit, unitOrigin: i.unitOrigin, precision: i.precision }));
+  assertEquals([a.quantity, a.unit, a.precision], [4, "cas", null]);
+  assertEquals([b.quantity, b.unit, b.precision], [2, null, "pouces"]);
+  assertEquals([c.quantity, c.unit], [0.25, "piece"]);
+});
+
+Deno.test("fraction sans unité : pièce ; entier sans unité : inchangé", () => {
+  assertEquals(line({ name: "chou", quantity: 0.25 }).unit, "piece");
+  assertEquals(line({ name: "oignon", quantity: 2 }).unit, null);
+  assertEquals(line({ name: "farine", quantity: 0.5, unitOrigin: "cup" }).unit, "ml");
+});
+
+Deno.test("minuteur : borne basse d'un intervalle", () => {
+  assertEquals(durationRange("Cuire 30-40 minutes"), { low: 1800, high: 2400 });
+  assertEquals(durationRange("Cuire 30 à 40 min."), { low: 1800, high: 2400 });
+  assertEquals(durationRange("Laisser lever 1 à 2 heures"), { low: 3600, high: 7200 });
+  assertEquals(durationRange("Cuire 10 minutes"), null);
+  const mk = (texte: string, minuteur_s: unknown) => sanitizeStructured({ etapes: [{ texte, minuteur_s }] }).steps[0].timerSeconds;
+  assertEquals(mk("Cuire 30-40 minutes au four.", null), 1800);
+  assertEquals(mk("Cuire 30-40 minutes au four.", 2400), 1800);
+  assertEquals(mk("Cuire 30 à 40 min.", 2100), 1800);
+  assertEquals(mk("Cuire 12 minutes.", 720), 720);
+  assertEquals(mk("Mélanger.", null), null);
+});
+
+Deno.test("JSON-LD : image en chaîne, tableau ou objet, anti-SSRF", () => {
+  const base = "https://exemple.ch/recette/x";
+  assertEquals(recipeJsonLdImage({ image: "https://cdn.exemple.ch/a.jpg" }, base), "https://cdn.exemple.ch/a.jpg");
+  assertEquals(recipeJsonLdImage({ image: ["https://cdn.exemple.ch/a.jpg", "https://cdn.exemple.ch/b.jpg"] }, base), "https://cdn.exemple.ch/a.jpg");
+  assertEquals(recipeJsonLdImage({ image: { "@type": "ImageObject", url: "https://cdn.exemple.ch/a.jpg" } }, base), "https://cdn.exemple.ch/a.jpg");
+  assertEquals(recipeJsonLdImage({ image: [{ url: "/img/a.jpg" }] }, base), "https://exemple.ch/img/a.jpg");
+  assertEquals(recipeJsonLdImage({ image: "http://169.254.169.254/latest" }, base), null);
+  assertEquals(recipeJsonLdImage({ image: "http://localhost/a.jpg" }, base), null);
+  assertEquals(recipeJsonLdImage({ image: "file:///etc/passwd" }, base), null);
+  assertEquals(recipeJsonLdImage({}, base), null);
+});
+
+Deno.test("alertes « hors catalogue » : retirées pour un ingrédient rattaché", () => {
+  const a = ["Ingrédient hors catalogue : chou blanc", "Ingrédient hors catalogue : yuzu kosho", "Thermomètre requis"];
+  assertEquals(dropCatalogAlerts(a, ["chou blanc"], false), ["Ingrédient hors catalogue : yuzu kosho", "Thermomètre requis"]);
+  assertEquals(dropCatalogAlerts(a, [], true), ["Thermomètre requis"]);
 });

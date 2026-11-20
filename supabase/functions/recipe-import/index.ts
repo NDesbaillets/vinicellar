@@ -11,8 +11,8 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.121.0";
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import {
   bytesToBase64, buildCatalogIndex, canonicalName, captionSignals, cleanUrl, convertTemperaturesInText, extractJsonLdRecipe, fence,
-  findCatalog, htmlToText, isPublicHttpUrl, normalizeLine, overlapRatio, parseInstagramUrl, parseModelJson, recipeJsonLdToText,
-  sanitizeStructured, str, type CatalogIndex, type CatalogRow, type Structured,
+  dropCatalogAlerts, findCatalog, htmlToText, isPublicHttpUrl, normalizeLine, overlapRatio, parseInstagramUrl, parseModelJson, recipeJsonLdImage,
+  recipeJsonLdToText, sanitizeStructured, str, type CatalogIndex, type CatalogRow, type Structured,
 } from "./lib.ts";
 
 const SITE = "https://vinicellar.ch";
@@ -307,12 +307,14 @@ RÈGLES
 - Aucune quantité, durée ou température inventée : ce qui est absent vaut null (« à l'œil » : quantite null, precision « à l'œil »). Ne complète rien de mémoire.
 - Quantités : recopie le nombre et l'unité TELS QU'ILS SONT ÉCRITS, sans rien convertir (cups, oz, lb, sticks, °F restent tels quels : la conversion métrique est faite ensuite par un autre programme). Fractions en décimal (1/2 = 0.5). Fourchette (« 2 à 3 ») : quantite null, precision « 2 à 3 ».
 - « unite_origine » : l'unité écrite dans la source (« cups », « oz », « càs », « tbsp », « boîte »…), ou null. « unite » : l'unité de la liste autorisée si l'unité écrite en est une ou un synonyme direct (tbsp = cas, tsp = cac, clove = gousse…), sinon null. Un ingrédient compté (2 oignons) : unite « piece » ou null.
-- « nom_canonique » : nom courant de l'ingrédient, au singulier, en minuscules, sans quantité ni préparation (« oignon », « farine de blé », « huile d'olive »). Si un nom de la liste <catalogue> convient, reprends-le exactement. « libelle » : la ligne d'ingrédient en français, lisible (« 2 oignons émincés »).
+- « nom_canonique » : nom courant de l'ingrédient, au singulier, en minuscules, sans quantité ni préparation (« oignon », « farine de blé », « huile d'olive »). Si un nom de la liste <catalogue> convient, reprends-le exactement. « libelle » : le NOM de l'ingrédient seul, en français, avec sa préparation éventuelle, SANS la quantité ni l'unité (« oignons émincés », « vinaigre de riz », « chou blanc » ; jamais « 4 c. à soupe de vinaigre de riz » ni « 1/4 de chou blanc ») : quantité et unité vont dans « quantite », « unite » et « unite_origine ». Une unité non convertible (pouce, verre, poignée…) va dans « unite_origine », pas dans « libelle ».
 - Étapes : en français clair, une action principale par étape, dans l'ordre. Si la source n'est pas en français, « texte_original » reprend l'étape d'origine ; sinon null. Ne convertis pas les températures.
 - « titre_original » et « langue_originale » : seulement si la source n'est pas en français (titre_original quand le nom d'origine est d'usage, sinon null).
-- « minuteur_s » : seulement si une durée explicite figure dans l'étape (en secondes), sinon null.
+- « minuteur_s » : seulement si une durée explicite figure dans l'étape (en secondes), sinon null. Pour un intervalle (« 30-40 minutes », « 30 à 40 min »), prends la borne basse (1800).
 - Portions et temps : estimés seulement s'ils se déduisent de la source ; alors « estime »: true et la déduction est expliquée dans « alertes ». Sinon valeur null.
 - « alertes » (français, une phrase chacune) : contradictions entre sources (parole et texte à l'écran, légende et vidéo), ingrédients utilisés mais non listés, quantités manquantes, matériel particulier (thermomètre, siphon, four à pizza…), passages illisibles. Quand la parole et l'écrit divergent sur un chiffre, retiens le texte écrit et signale la divergence.
+- N'émets jamais d'alerte au sujet du catalogue d'ingrédients (« hors catalogue », etc.) : le rattachement est fait ensuite par un autre programme.
+- Fraction sans unité pour une pièce (« 1/4 de chou blanc ») : quantite 0.25, unite « piece ».
 - « source » de chaque ligne et étape : d'où vient l'information (legende, parole, ecran, visuel pour un reel ; web ; page pour des photos).
 - « completude » : complete (ingrédients avec quantités et étapes), partielle (manques signalés), insuffisante (presque rien d'exploitable).
 - Si la source ne contient pas de recette, renvoie ingrédients et étapes vides, completude « insuffisante » et explique-le dans alertes.
@@ -426,7 +428,8 @@ async function gatherWeb(c: Ctx, url: string): Promise<Gathered> {
   }
   if ((m.jsonLd?.length ?? 0) + (m.pageText?.length ?? 0) < 200) throw new Fail("La page ne contient pas de texte exploitable (contenu chargé dynamiquement ou protégé).");
   const author = ldText?.author ?? doc.siteName ?? host;
-  return { material: m, sourceType: "web", sourceUrl: cleanUrl(page.finalUrl) ?? url, author };
+  const imageUrl = ld ? recipeJsonLdImage(ld, page.finalUrl) : null;
+  return { material: m, sourceType: "web", sourceUrl: cleanUrl(page.finalUrl) ?? url, author, imageUrl };
 }
 
 async function gatherPhotos(c: Ctx): Promise<Gathered> {
@@ -485,7 +488,7 @@ async function findDuplicates(c: Ctx, title: string, sourceUrl: string | null, a
 // ---------------------------------------------------------------- photos de la fiche
 async function savePhotos(c: Ctx, g: Gathered, recipeId: string) {
   try {
-    if (g.sourceType === "instagram" && g.imageUrl) {
+    if ((g.sourceType === "instagram" || g.sourceType === "web") && g.imageUrl) {
       const img = await fetchLimited(g.imageUrl, { maxBytes: 8 * 1024 * 1024, timeoutMs: 15_000, accept: "image/*" });
       if (!/^image\/(jpeg|png|webp|avif|gif)$/.test(img.type)) return;
       const ext = img.type.split("/")[1].replace("jpeg", "jpg");
@@ -532,7 +535,9 @@ async function pipeline(c: Ctx): Promise<Outcome> {
   let index = cat.index;
   const lineRows: Record<string, unknown>[] = [];
   const catalogIds = new Set<string>();
-  const alerts: string[] = [...s.alerts, ...c.alerts];
+  const alerts: string[] = [...c.alerts];
+  const attachedNames: string[] = [];
+  let unattached = 0;
   let created = 0;
   for (const [i, ing] of s.ingredients.entries()) {
     let hit = findCatalog(index, ing.canonical, ing.label);
@@ -546,12 +551,13 @@ async function pipeline(c: Ctx): Promise<Outcome> {
     }
     const n = normalizeLine({ name: hit?.name ?? ing.canonical, quantity: ing.quantity, unit: ing.unit, unitOrigin: ing.unitOrigin, precision: ing.precision, density: hit?.density_g_per_ml ?? null, aisle: hit?.aisle ?? null });
     alerts.push(...n.alerts);
-    if (hit) catalogIds.add(hit.id);
+    if (hit) { catalogIds.add(hit.id); attachedNames.push(hit.name, ing.canonical, ing.label); } else unattached++;
     lineRows.push({
       position: i, group_label: ing.group, catalog_id: hit?.id ?? null, label_original: ing.label, quantity: n.quantity, unit: n.unit,
       precision: n.precision, optional: ing.optional,
     });
   }
+  alerts.unshift(...dropCatalogAlerts(s.alerts, attachedNames, unattached === 0));
   let tempConverted = false;
   const stepRows = s.steps.map((st, i) => {
     const t = convertTemperaturesInText(st.text);
