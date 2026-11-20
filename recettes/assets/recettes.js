@@ -1,6 +1,81 @@
 // ARÔMES V&N : socle commun (client Supabase, garde d'authentification, navigation, helpers).
 // Ne dépend ni de /assets/css/app.css ni de /assets/js/core.js.
+
+// ---- phase 3 : ajustement des portions (fonctions pures, testables sous Node : tests/portions.test.js).
+// Règles : docs/recettes/03-cuisiner-contrat.md §5. On part toujours de la quantité d'origine ; seul l'affichage est arrondi.
+(function (root) {
+  const EPS = 1e-9;
+  const roundHalfUp = (x) => Math.floor(x + 0.5 + EPS);
+  const dec = (n) => String(Math.round(n * 100) / 100).replace(".", ",");
+  const dec1 = (n) => String(Math.round(n * 10) / 10).replace(".", ",");
+  function fmtHalf(n) {
+    const w = Math.floor(n + EPS), h = n - w > 0.25;
+    return h ? (w ? w + " ½" : "½") : String(w);
+  }
+  function plural(u, q) {
+    const p = q > 1;
+    if (u === "piece") return p ? "pièces" : "pièce";
+    if (u === "pincee") return p ? "pincées" : "pincée";
+    if (u === "botte") return p ? "bottes" : "botte";
+    if (u === "gousse") return p ? "gousses" : "gousse";
+    if (u === "tranche") return p ? "tranches" : "tranche";
+    if (u === "cas") return "c. à soupe";
+    if (u === "cac") return "c. à café";
+    return u || "";
+  }
+  const isQb = (p) => /^\s*q\.?\s?b\.?\s*$/i.test(String(p || ""));
+  const mk = (num, unit, unitKey) => ({ text: num + (unit ? " " + unit : ""), num, unit: unit || "", unitKey: unitKey || "", changed: true });
+  // Masse/volume (g, ml) : arrondi à 5 sous 100, à 10 dès 100 ; au-delà de 1000 : kg / l à une décimale.
+  function metric(Q, big, small, smallKey, bigKey) {
+    let v = Q < 100 ? Math.round(Q / 5 + EPS) * 5 : Math.round(Q / 10 + EPS) * 10;
+    if (v <= 0) v = Math.max(1, Math.round(Q));
+    if (v >= 1000) return mk(dec1(v / 1000), big, bigKey);
+    return mk(String(v), small, smallKey);
+  }
+  // Quantité affichée pour une ligne : { text, num, unit, changed }. `changed` faux = valeur d'origine telle quelle.
+  function scaleQty(quantity, unit, precision, factor) {
+    const q = quantity == null || quantity === "" ? null : Number(quantity);
+    const f = Number(factor);
+    const orig = () => {
+      if (q == null || isNaN(q)) return { text: precision || "q.b.", num: "", unit: "", changed: false, vide: true };
+      const u = plural(unit, q), n = dec(q);
+      return { text: n + (u ? " " + u : ""), num: n, unit: u, changed: false };
+    };
+    if (q == null || isNaN(q) || !(f > 0) || Math.abs(f - 1) < EPS || unit === "pincee" || isQb(precision)) return orig();
+    const Q = q * f;
+    if (unit === "piece" || unit === "gousse" || unit === "botte" || unit === "tranche") {
+      let n = roundHalfUp(Q);
+      if (q > 0 && n < 1) n = 1;
+      return mk(String(n), plural(unit, n), unit);
+    }
+    if (unit === "cas" || unit === "cac") {
+      if (Q < 0.25) return { text: "une pointe", num: "une pointe", unit: "", changed: true };
+      const h = roundHalfUp(Q * 2) / 2;
+      return mk(fmtHalf(h), plural(unit, h), unit);
+    }
+    if (unit === "g") return metric(Q, "kg", "g", "g", "kg");
+    if (unit === "ml") return metric(Q, "l", "ml", "ml", "l");
+    if (unit === "cl") {
+      const r = metric(Q * 10, "l", "ml", "ml", "l");
+      if (r.unit === "ml" && Number(r.num) % 10 === 0) return mk(String(Number(r.num) / 10), "cl", "cl");
+      return r;
+    }
+    if (unit === "kg" || unit === "l") {
+      if (Q < 1) return metric(Q * 1000, unit, unit === "kg" ? "g" : "ml", unit === "kg" ? "g" : "ml", unit);
+      return mk(dec1(Q), unit, unit);
+    }
+    // Sans unité (« 3 » œufs saisis sans unité) ou unité inconnue : entier si la quantité d'origine l'est, sinon deux décimales.
+    if (!unit && Number.isInteger(q)) { const n = Math.max(1, roundHalfUp(Q)); return mk(String(n), "", ""); }
+    return mk(dec(Q), plural(unit, Q), unit);
+  }
+  const portionFactor = (wanted, servings) => (Number(servings) > 0 && Number(wanted) > 0 ? Number(wanted) / Number(servings) : 1);
+  const api = { scaleQty, portionFactor, fmtHalf, roundHalfUp };
+  root.ARPure = api;
+  if (typeof module !== "undefined" && module.exports) module.exports = api;
+})(typeof window !== "undefined" ? window : globalThis);
+
 (function () {
+  if (typeof window === "undefined") return; // chargé sous Node pour tester les fonctions pures
   const cfg = window.VC_CONFIG || {};
   const sb = window.supabase && cfg.supabaseUrl && cfg.supabaseAnonKey
     ? window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey) // même stockage de session que Vinicellar
@@ -12,6 +87,18 @@
   const norm = (s) => String(s == null ? "" : s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
   const pad = (n) => String(n).padStart(2, "0");
   const fmtDate = (iso) => { if (!iso) return ""; const d = new Date(iso); return isNaN(d) ? "" : `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`; };
+
+  // Date sans heure (colonne « date » : AAAA-MM-JJ) en JJ.MM.AAAA, sans passer par le fuseau horaire.
+  const fmtDay = (v) => { const m = String(v || "").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}.${m[2]}.${m[1]}` : fmtDate(v); };
+  const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  // « JJ.MM.AAAA » (ou / ou -) saisi à la main -> AAAA-MM-JJ, ou null si la date n'existe pas.
+  function parseDay(txt) {
+    const m = String(txt || "").trim().match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+    if (!m) return null;
+    const d = +m[1], mo = +m[2], y = +m[3], dt = new Date(y, mo - 1, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+    return `${y}-${pad(mo)}-${pad(d)}`;
+  }
 
   const ROLES = { owner: "Propriétaire", member: "Membre", reader: "Lecteur" };
   const COURSES = { entree: "Entrée", plat: "Plat", dessert: "Dessert", accompagnement: "Accompagnement", boisson: "Boisson", autre: "Autre" };
@@ -54,14 +141,21 @@
   // URL signées des photos (bucket privé « recipes »).
   const urlCache = new Map();
   async function signedUrls(paths) {
+    const fallback = {};
     const need = [...new Set(paths.filter((p) => p && !urlCache.has(p)))];
     if (need.length && sb) {
-      const { data, error } = await sb.storage.from("recipes").createSignedUrls(need, 3600);
-      if (error) console.error(error);
-      (data || []).forEach((d) => { if (d.signedUrl && d.path) urlCache.set(d.path, d.signedUrl); });
+      let failed = false;
+      try {
+        const { data, error } = await sb.storage.from("recipes").createSignedUrls(need, 3600);
+        if (error) { failed = true; console.error(error); }
+        (data || []).forEach((d) => { if (d.signedUrl && d.path) urlCache.set(d.path, d.signedUrl); });
+      } catch (e) { failed = true; console.error(e); }
+      // Hors ligne : la signature est impossible. On construit l'adresse sans jeton ; le service worker sert alors la
+      // copie enregistrée de l'image (clé = chemin, sans le jeton). En ligne, cette adresse serait refusée : repli réservé à l'échec.
+      if (failed && cfg.supabaseUrl) need.forEach((p) => { if (!urlCache.has(p)) fallback[p] = `${cfg.supabaseUrl}/storage/v1/object/sign/recipes/${p.split("/").map(encodeURIComponent).join("/")}?token=hors-ligne`; });
     }
     const out = {};
-    paths.forEach((p) => { if (urlCache.has(p)) out[p] = urlCache.get(p); });
+    paths.forEach((p) => { if (urlCache.has(p)) out[p] = urlCache.get(p); else if (fallback[p]) out[p] = fallback[p]; });
     return out;
   }
 
@@ -180,7 +274,7 @@
     const btn = $("#account-btn"), panel = $("#account-panel");
     btn.addEventListener("click", () => { panel.hidden = !panel.hidden; btn.setAttribute("aria-expanded", String(!panel.hidden)); });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); btn.focus(); } });
-    $("#logout").addEventListener("click", async () => { await sb.auth.signOut(); location.href = "/recettes/connexion.html"; });
+    $("#logout").addEventListener("click", async () => { await sb.auth.signOut(); await clearOfflineData(); location.href = "/recettes/connexion.html"; });
   }
 
   // Démarrage d'une page protégée : renvoie { user, books } ou null (redirection en cours).
@@ -200,12 +294,27 @@
     return { user, books };
   }
 
+  // Copies hors ligne des recettes (service worker) : effacées à la déconnexion, pour ne rien laisser sur un appareil partagé.
+  async function clearOfflineData() {
+    try { const ks = await caches.keys(); await Promise.all(ks.filter((k) => /^aromes-.*-data$/.test(k)).map((k) => caches.delete(k))); } catch { /* cache indisponible */ }
+  }
+  // Bandeau « Hors ligne » : le service worker prévient la page quand il répond avec une copie enregistrée.
+  function showOffline() {
+    if (document.getElementById("hors-ligne")) return;
+    const b = document.createElement("div");
+    b.id = "hors-ligne"; b.className = "hors-ligne"; b.setAttribute("role", "status");
+    b.textContent = "Hors ligne : version enregistrée";
+    const h = document.getElementById("site-header");
+    if (h && h.parentNode) h.parentNode.insertBefore(b, h.nextSibling); else document.body.prepend(b);
+  }
+  if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", (e) => { if (e.data && e.data.type === "ar-hors-ligne") showOffline(); });
+
   function registerSW() {
     if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
       window.addEventListener("load", () => { navigator.serviceWorker.register("/recettes/sw.js", { scope: "/recettes/" }).catch(() => {}); });
     }
   }
 
-  window.AR = { sb, cfg, $, $$, esc, norm, fmtDate, fmtQty, fmtUnit, fmtMin, host, safeUrl, errMsg, toast, setMsg, safeNext, getBookPref, setBookPref,
-    signedUrls, compressImage, uuid, extractUrl, alertText, diffLines, fmtLine, lineKey, getUser, loadBooks, boot, registerSW, ROLES, COURSES, DIFFICULTES, UNITES };
+  window.AR = { sb, cfg, $, $$, esc, norm, fmtDate, fmtDay, todayIso, parseDay, fmtQty, fmtUnit, fmtMin, host, safeUrl, errMsg, toast, setMsg, safeNext, getBookPref, setBookPref,
+    signedUrls, compressImage, scaleQty: window.ARPure.scaleQty, portionFactor: window.ARPure.portionFactor, showOffline, clearOfflineData, uuid, extractUrl, alertText, diffLines, fmtLine, lineKey, getUser, loadBooks, boot, registerSW, ROLES, COURSES, DIFFICULTES, UNITES };
 })();

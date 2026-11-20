@@ -20,8 +20,9 @@
       sb.from("recipe_photos").select("*").eq("recipe_id", id),
       sb.rpc("book_people", { b: rr.data.book_id })
     ]);
-    for (const x of [l, s, n, p]) if (x.error) throw x.error;
-    lines = l.data || []; steps = s.data || []; notes = n.data || []; photos = p.data || [];
+    for (const x of [l, s, p]) if (x.error) throw x.error;
+    if (n.error) console.error(n.error); // les notes ne bloquent pas l'affichage (hors ligne, par exemple)
+    lines = l.data || []; steps = s.data || []; notes = n.error ? [] : n.data || []; photos = p.data || [];
     (pe.data || []).forEach((x) => (people[x.user_id] = x.full_name || x.email || "Membre"));
   } catch (e) { return fail(errMsg(e, "Impossible de charger la recette.")); }
 
@@ -29,10 +30,32 @@
   const editor = !!book && (book.role === "owner" || book.role === "member");
   document.title = `${r.title} · ARÔMES V&N`;
 
-  const cov = photos.find((x) => x.is_cover) || null;
-  const pagePhotos = photos.filter((x) => x.kind === "page").sort((a, b) => a.storage_path.localeCompare(b.storage_path, "fr", { numeric: true }));
-  const urls = await AR.signedUrls([cov && cov.storage_path, ...pagePhotos.map((x) => x.storage_path)].filter(Boolean));
-  const photoUrl = cov ? urls[cov.storage_path] : null;
+  const pagePhotos = () => photos.filter((x) => x.kind === "page").sort((a, b) => a.storage_path.localeCompare(b.storage_path, "fr", { numeric: true }));
+  let urls = {};
+  async function loadUrls() { Object.assign(urls, await AR.signedUrls(photos.map((x) => x.storage_path).filter(Boolean))); }
+  await loadUrls();
+
+  // Phase 3 : journal des cuissons et statut dérivé. Une erreur ici (migration non appliquée, hors ligne) ne bloque jamais la fiche.
+  let cooks = [], stat = null, cooksOk = true;
+  const byDate = (a, b) => String(b.cooked_on).localeCompare(String(a.cooked_on)) || String(b.created_at).localeCompare(String(a.created_at));
+  async function loadStatus() {
+    try { const s = await sb.from("recipe_status").select("*").eq("recipe_id", id).maybeSingle(); stat = s.error ? null : s.data; } catch { stat = null; }
+  }
+  async function loadCooks() {
+    try {
+      const c = await sb.from("recipe_cooks").select("*").eq("recipe_id", id).order("cooked_on", { ascending: false });
+      if (c.error) throw c.error;
+      cooks = (c.data || []).slice().sort(byDate); cooksOk = true;
+    } catch (e) { console.error(e); cooks = []; cooksOk = false; }
+    await loadStatus();
+  }
+  await loadCooks();
+  // Statut : la vue recipe_status fait foi ; à défaut, on le déduit du journal chargé.
+  function statusInfo() {
+    if (stat) return { count: stat.cook_count, last: stat.last_cooked_on, avg: stat.avg_rating, cooked: stat.status === "cuisinee" };
+    const rated = cooks.filter((c) => c.rating != null);
+    return { count: cooks.length, last: cooks.length ? cooks[0].cooked_on : null, avg: rated.length ? Math.round(rated.reduce((a, c) => a + c.rating, 0) / rated.length * 10) / 10 : null, cooked: cooks.length > 0 };
+  }
 
   // Phase 2 : doublon proposé par l'import et versions. Une erreur ici ne bloque jamais la fiche.
   const DUP_KEY = (id) => "ar.doublon." + id;
@@ -69,7 +92,13 @@
     } catch (e) { console.error(e); }
   }
   await Promise.all([loadDup(), loadVersions()]);
-  const view = { tab: "fiche", lang: "fr" };
+  const view = { tab: "fiche", lang: "fr", portions: null };
+  const qs = new URLSearchParams(location.search);
+  if (+qs.get("p") > 0) view.portions = Math.min(99, Math.round(+qs.get("p")));
+  const jr = { open: qs.get("journal") === "1", editing: null, rating: null, busy: false };
+  const studioBusy = { on: false };
+  const wanted = () => (r.servings != null ? (view.portions || r.servings) : null);
+  const factor = () => (r.servings != null ? AR.portionFactor(wanted(), r.servings) : 1);
 
   const alertText = AR.alertText;
   const alerts = (Array.isArray(r.alerts) ? r.alerts : []).map(alertText).filter(Boolean);
@@ -78,9 +107,9 @@
 
   function ingHtml(l) {
     const hasQty = l.quantity != null;
-    const unit = AR.fmtUnit(l.unit, l.quantity);
+    const sc = AR.scaleQty(l.quantity, l.unit, l.precision, factor());
     const qte = hasQty
-      ? `<span class="qte">${esc(AR.fmtQty(l.quantity))}${unit ? " " + esc(unit) : ""}</span>`
+      ? `<span class="qte${sc.changed ? " ajustee" : ""}">${esc(sc.text)}</span>`
       : `<span class="qte inconnue">${esc(l.precision || "q.b.")}</span>`;
     const prec = hasQty && l.precision ? ` <span class="prec">(${esc(l.precision)})</span>` : "";
     const opt = l.optional ? ` <span class="prec">(facultatif)</span>` : "";
@@ -97,6 +126,105 @@
     });
     return groups.map((g) => `${g.g ? `<h3 class="groupe">${esc(g.g)}</h3>` : ""}<ul class="ingredients">${g.items.map(ingHtml).join("")}</ul>`).join("");
   }
+
+
+  const cuisineHref = () => `/recettes/cuisine.html?id=${encodeURIComponent(r.id)}${r.servings != null && view.portions ? "&p=" + view.portions : ""}`;
+  const KIND = { origine: "Origine", perso: "Personnelle", cuisson: "Cuisson", studio: "Studio", illustration: "Illustration", page: "Page" };
+  const who = (uid) => (uid === ctx.user.id ? "Vous" : people[uid] || "Un membre");
+
+  // ---- statut dérivé (À essayer / Cuisinée, plus De famille)
+  function statutHtml() {
+    const st = statusInfo();
+    const bits = [`<span class="libelle or">${st.cooked ? "Cuisinée" : "À essayer"}</span>`];
+    if (r.family) bits.push(`<span class="libelle or">De famille</span>`);
+    const det = [];
+    if (st.count) det.push(`${st.count} fois`);
+    if (st.last) det.push(`dernière le ${fmtDate_(st.last)}`);
+    if (st.avg != null) det.push(`note moyenne ${String(st.avg).replace(".", ",")} / 5`);
+    return `<p class="statut-ligne">${bits.join('<span aria-hidden="true"> · </span>')}${det.length ? `<span class="muted"> — ${esc(det.join(" · "))}</span>` : ""}</p>`;
+  }
+  const fmtDate_ = (d) => AR.fmtDay(d);
+
+  // ---- portions
+  function portionsHtml() {
+    if (r.servings == null) {
+      return editor && !r.deleted_at
+        ? `<form id="po-form" class="po po-vide" novalidate><label for="po-n">Indiquez le nombre de portions</label><div class="po-saisie"><input id="po-n" name="n" type="number" inputmode="numeric" min="1" max="99" step="1" autocomplete="off"><button class="btn" type="submit">Enregistrer</button></div><p class="aide">Les quantités pourront alors être ajustées au nombre de convives.</p><p class="msg" id="po-msg" role="status" aria-live="polite"></p></form>`
+        : `<p class="muted italique">Nombre de portions non indiqué : les quantités ne peuvent pas être ajustées.</p>`;
+    }
+    const w = wanted(), diff = w !== r.servings;
+    return `<div class="po"><span class="libelle" id="po-lib">Portions</span><div class="po-ctrl" role="group" aria-labelledby="po-lib">
+      <button type="button" class="po-b" data-po="-1" aria-label="Une portion de moins"${w <= 1 ? " disabled" : ""}>−</button>
+      <output class="po-val" id="po-val" aria-live="polite">${w}</output>
+      <button type="button" class="po-b" data-po="1" aria-label="Une portion de plus"${w >= 99 ? " disabled" : ""}>+</button></div>
+      ${diff ? `<p class="po-note">Recette prévue pour ${r.servings}. <button type="button" class="btn lien" data-po="reset">Revenir à ${r.servings}</button></p>` : ""}</div>`;
+  }
+  function refreshPortions(focusKey) {
+    $("#po-zone").innerHTML = portionsHtml();
+    $("#ing-zone").innerHTML = ingredients();
+    const g = $("#go-cuisine"); if (g) g.href = cuisineHref();
+    if (focusKey) { const b = $(`[data-po="${focusKey}"]`, main) || $(".po-b:not([disabled])", main); if (b) b.focus(); }
+  }
+
+  // ---- galerie
+  function galleryHtml() {
+    const none = !photos.length;
+    const sorted = photos.slice().sort((a, b) => (b.is_cover ? 1 : 0) - (a.is_cover ? 1 : 0) || String(a.created_at).localeCompare(String(b.created_at)));
+    let h = "";
+    if (none && !editor) return "";
+    h += `<h2 class="section">Galerie</h2><span class="filet" aria-hidden="true"></span>`;
+    if (studioBusy.on) h += `<p class="ga-attente" role="status"><span class="imp-point" aria-hidden="true"></span>Création en cours, de 10 à 40 secondes. Ne quittez pas la page.</p>`;
+    if (none) {
+      h += `<p class="muted italique">Cette recette n'a pas encore de photo.</p>`;
+      if (!r.deleted_at) h += `<p><button type="button" class="btn sec" data-ga="illustration"${studioBusy.on ? " disabled" : ""}>Créer une illustration</button></p><p class="aide">Une image générée à partir du titre et des ingrédients, signalée comme « illustration ».</p>`;
+    } else {
+      h += `<ul class="ga-liste">${sorted.map((x) => {
+        const u = urls[x.storage_path], k = KIND[x.kind] || x.kind;
+        const act = editor && !r.deleted_at ? `<div class="ga-act">
+          ${x.is_cover ? "" : `<button type="button" class="btn sec petit" data-ga="cover" data-id="${esc(x.id)}"${studioBusy.on ? " disabled" : ""}>Choisir comme couverture</button>`}
+          ${x.kind === "perso" || x.kind === "cuisson" ? `<button type="button" class="btn sec petit" data-ga="studio" data-id="${esc(x.id)}"${studioBusy.on ? " disabled" : ""}>Photo studio</button>` : ""}</div>` : "";
+        return `<li class="ga-item"><figure class="ga-fig">${u ? `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer"><div class="passe-partout"><div class="cadre"><img src="${esc(u)}" alt="${esc(`Photo (${k.toLowerCase()}) de ${r.title}`)}" loading="lazy"></div></div></a>` : `<div class="passe-partout"><div class="cadre"><span class="vide">Photo indisponible</span></div></div>`}
+          <figcaption class="ga-leg"><span class="libelle">${esc(k)}</span>${x.is_cover ? `<span class="libelle or"> · Couverture</span>` : ""}${x.kind === "illustration" ? `<span class="ga-mention">illustration</span>` : ""}</figcaption></figure>${act}</li>`;
+      }).join("")}</ul>`;
+    }
+    return h + `<p class="msg" id="ga-msg" role="alert"></p>`;
+  }
+
+  // ---- journal
+  function cookForm() {
+    const e = jr.editing ? cooks.find((c) => c.id === jr.editing) : null;
+    const date = e ? AR.fmtDay(e.cooked_on) : AR.fmtDay(AR.todayIso());
+    const conv = e ? (e.servings || "") : (r.servings != null ? wanted() : "");
+    return `<form id="cook-form" class="jr-form champs" novalidate>
+      <h3 class="jr-titre">${e ? "Modifier la cuisson" : "Je l'ai cuisinée"}</h3>
+      <label for="ck-date">Date (JJ.MM.AAAA)<input id="ck-date" name="date" inputmode="numeric" placeholder="JJ.MM.AAAA" autocomplete="off" value="${esc(date)}"></label>
+      <fieldset><legend class="etiquette" id="ck-note-l">Note sur 5 (facultative)</legend>
+        <div class="jr-notes" role="group" aria-labelledby="ck-note-l">${[1, 2, 3, 4, 5].map((n) => `<button type="button" class="jr-n" data-rate="${n}" aria-pressed="${jr.rating === n}" aria-label="${n} sur 5">${n}</button>`).join("")}</div></fieldset>
+      <label for="ck-conv">Nombre de convives<input id="ck-conv" name="servings" type="number" inputmode="numeric" min="1" max="99" step="1" value="${esc(conv)}"></label>
+      <label for="ck-com">Commentaire<textarea id="ck-com" name="comment" maxlength="2000" rows="3">${esc(e ? e.comment || "" : "")}</textarea></label>
+      ${e ? "" : `<label for="ck-photo">Photo (facultative)<input id="ck-photo" name="photo" type="file" accept="image/*"></label>`}
+      <div class="rangee"><button class="btn" type="submit">Enregistrer</button><button type="button" class="btn sec" data-cook="cancel">Annuler</button></div>
+      <p class="msg" id="ck-msg" role="status" aria-live="polite"></p></form>`;
+  }
+  function journalHtml() {
+    const st = statusInfo();
+    const items = cooks.map((c) => {
+      const mine = c.cooked_by === ctx.user.id;
+      const u = c.photo_path ? urls[c.photo_path] : null;
+      return `<li class="jr-item"><div class="jr-tete"><span class="jr-date">${esc(AR.fmtDay(c.cooked_on))}</span><span class="jr-qui">${esc(who(c.cooked_by))}</span></div>
+        <p class="jr-meta">${c.rating != null ? `<span class="jr-rate">${c.rating} / 5</span>` : ""}${c.servings ? `<span>pour ${c.servings} convive${c.servings > 1 ? "s" : ""}</span>` : ""}</p>
+        ${c.comment ? `<p class="jr-com">${esc(c.comment)}</p>` : ""}
+        ${u ? `<a class="jr-photo" href="${esc(u)}" target="_blank" rel="noopener noreferrer"><img src="${esc(u)}" alt="Photo de la cuisson du ${esc(AR.fmtDay(c.cooked_on))}" loading="lazy"></a>` : ""}
+        ${mine ? `<div class="rangee"><button type="button" class="btn lien" data-cook="edit" data-id="${esc(c.id)}">Modifier</button><button type="button" class="btn lien" data-cook="del" data-id="${esc(c.id)}">Supprimer</button></div>` : ""}</li>`;
+    }).join("");
+    return `<h2 class="section" id="journal">Journal</h2><span class="filet" aria-hidden="true"></span>
+      ${cooksOk ? "" : `<p class="msg erreur" role="alert">Le journal n'est pas disponible pour le moment.</p>`}
+      <p class="jr-resume"><span class="libelle or">${st.cooked ? "Cuisinée" : "À essayer"}</span>${r.family ? ` <span class="libelle or">· De famille</span>` : ""}${st.count ? `<span class="muted"> · ${st.count} fois${st.avg != null ? `, note moyenne ${esc(String(st.avg).replace(".", ","))} / 5` : ""}</span>` : ""}</p>
+      ${jr.open ? cookForm() : (!r.deleted_at && cooksOk ? `<p><button type="button" class="btn" data-cook="open">Je l'ai cuisinée</button></p>` : "")}
+      ${cooks.length ? `<ul class="jr-liste">${items}</ul>` : (cooksOk ? `<p class="muted italique">Personne n'a encore cuisiné cette recette.</p>` : "")}`;
+  }
+  const renderJournal = () => { $("#journal-zone").innerHTML = journalHtml(); $("#statut-zone").innerHTML = statutHtml(); };
+  const renderGallery = () => { $("#galerie-zone").innerHTML = galleryHtml(); };
 
   function render() {
     const me = ctx.user.id;
@@ -130,17 +258,23 @@
       ${versions.length ? `<div class="onglets" role="group" aria-label="Affichage de la fiche"><button type="button" class="onglet" data-view="fiche" aria-pressed="${view.tab === "fiche"}">Fiche</button><button type="button" class="onglet" data-view="versions" aria-pressed="${view.tab === "versions"}">Versions (${versions.length + 1})</button></div>` : ""}
       ${hasOrig && view.tab === "fiche" ? `<div class="onglets" role="group" aria-label="Langue du texte"><button type="button" class="onglet" data-lang="fr" aria-pressed="${!orig}">Traduction</button><button type="button" class="onglet" data-lang="orig" aria-pressed="${orig}">Version originale</button></div>` : ""}</div>` : "";
 
-    const pagesHtml = r.source_type === "photo_page" && pagePhotos.some((x) => urls[x.storage_path])
+    const pp = pagePhotos();
+    const cov = photos.find((x) => x.is_cover) || null;
+    const photoUrl = cov ? urls[cov.storage_path] : null;
+    const pagesHtml = r.source_type === "photo_page" && pp.some((x) => urls[x.storage_path])
       ? `<h2 class="section">Page d'origine</h2><span class="filet" aria-hidden="true"></span>
-        <div class="pages-photo">${pagePhotos.filter((x) => urls[x.storage_path]).map((x, i) => `<figure><a href="${esc(urls[x.storage_path])}" target="_blank" rel="noopener noreferrer"><div class="passe-partout"><img src="${esc(urls[x.storage_path])}" alt="Photo de la page ${i + 1}" loading="lazy"></div></a><figcaption class="libelle">Page ${i + 1}</figcaption></figure>`).join("")}</div>` : "";
+        <div class="pages-photo">${pp.filter((x) => urls[x.storage_path]).map((x, i) => `<figure><a href="${esc(urls[x.storage_path])}" target="_blank" rel="noopener noreferrer"><div class="passe-partout"><img src="${esc(urls[x.storage_path])}" alt="Photo de la page ${i + 1}" loading="lazy"></div></a><figcaption class="libelle">Page ${i + 1}</figcaption></figure>`).join("")}</div>` : "";
 
     const stepText = (st) => (orig ? st.text_original || st.text : st.text);
     const corps = view.tab === "versions" ? versionsHtml() : `${pagesHtml}
       <h2 class="section">Ingrédients</h2><span class="filet" aria-hidden="true"></span>
-      ${ingredients()}
+      <div id="po-zone">${portionsHtml()}</div>
+      <div id="ing-zone">${ingredients()}</div>
       <h2 class="section">Préparation</h2><span class="filet" aria-hidden="true"></span>
       ${orig ? `<p class="muted italique">Texte d'origine${safeLang ? ` (${esc(safeLang)})` : ""}. Les ingrédients restent en français.</p>` : ""}
       ${steps.length ? `<ol class="etapes">${steps.map((s, i) => `<li class="etape"><span class="num" aria-hidden="true">${i + 1}</span><div><p${orig && safeLang ? ` lang="${esc(safeLang)}"` : ""}><span class="sr-only">Étape ${i + 1}. </span>${esc(stepText(s))}</p>${s.timer_seconds ? `<span class="libelle or minuteur">Minuteur : ${esc(AR.fmtMin(Math.round(s.timer_seconds / 60)))}</span>` : ""}</div></li>`).join("")}</ol>` : `<p class="muted italique">Aucune étape saisie.</p>`}
+      <div id="galerie-zone">${galleryHtml()}</div>
+      <div id="journal-zone">${journalHtml()}</div>
       <h2 class="section">En marge</h2><span class="filet" aria-hidden="true"></span>
       ${visibles.length ? visibles.map((n) => `<div class="marge"><p>${esc(n.body)}</p><span class="meta">${esc(n.author_id === me ? "Vous" : people[n.author_id] || "Un membre")} · ${esc(fmtDate(n.created_at))}${n.private ? " · Privée" : ""}</span>
         ${n.author_id === me ? ` <button type="button" class="btn lien" data-del-note="${esc(n.id)}" aria-label="Supprimer cette note">Supprimer</button>` : ""}</div>`).join("") : `<p class="muted italique">Aucune note pour l'instant.</p>`}
@@ -154,15 +288,18 @@
     main.setAttribute("aria-busy", "false");
     main.innerHTML = `${trash}${dupHtml}
       <p><a href="/recettes/">← Le carnet</a></p>
-      <div class="fiche-photo"><div class="passe-partout"><div class="cadre">${photoUrl ? `<img src="${esc(photoUrl)}" alt="${esc(r.title)}">` : `<span class="vide">Sans photo</span>`}</div></div></div>
+      <div class="fiche-photo"><div class="passe-partout"><div class="cadre">${photoUrl ? `<img src="${esc(photoUrl)}" alt="${esc(r.title)}">` : `<span class="vide">Sans photo</span>`}</div></div>${cov && cov.kind === "illustration" ? `<p class="ga-mention">illustration</p>` : ""}</div>
       ${meta ? `<p class="libelle or centre" style="margin:0 0 8px">${esc(meta)}</p>` : ""}
       <h1 class="fiche-titre"${orig && safeLang ? ` lang="${esc(safeLang)}"` : ""}>${esc(titre)}</h1>
       ${r.title_original && !orig ? `<p class="fiche-orig">${esc(r.title_original)}</p>` : ""}
       ${source ? `<p class="fiche-source">${source}</p>` : ""}
+      <div id="statut-zone">${statutHtml()}</div>
       <span class="filet" style="margin:18px auto 0" aria-hidden="true"></span>
       ${tabsHtml}
       ${chiffres.length ? `<div class="chiffres">${chiffres.map(([l, v, est]) => `<div><span class="libelle">${esc(l)}</span><span class="valeur">${esc(v)}</span>${est ? `<span class="est">estimé</span>` : ""}</div>`).join("")}</div>` : ""}
-      ${r.family || editor ? `<div class="actions"><button type="button" class="btn sec ${r.family ? "actif" : ""}" id="family" aria-pressed="${r.family}" ${editor ? "" : "disabled"}>De famille</button></div>` : ""}
+      <div class="actions">${r.family || editor ? `<button type="button" class="btn sec ${r.family ? "actif" : ""}" id="family" aria-pressed="${r.family}" ${editor ? "" : "disabled"}>De famille</button>` : ""}
+        ${steps.length && !r.deleted_at ? `<a class="btn" id="go-cuisine" href="${esc(cuisineHref())}">Mode cuisine</a>` : ""}
+        ${!r.deleted_at ? `<button type="button" class="btn sec" data-cook="open">Je l'ai cuisinée</button>` : ""}</div>
       ${noteHtml}
       ${corps}
       ${editor ? `<div class="actions-bas">${r.deleted_at ? "" : `<a class="btn" href="/recettes/editer.html?id=${encodeURIComponent(r.id)}">Modifier</a><button type="button" class="btn danger" data-act="trash">Mettre à la corbeille</button>`}</div>` : ""}`;
