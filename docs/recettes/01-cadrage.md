@@ -67,3 +67,12 @@ Chaque phase est utilisable avant de commencer la suivante, sur `/recettes/` non
 4. **Suggérer** : profil, saisons, suggestions, « Avec ce que j'ai », recherche en langage naturel.
 5. **Organiser** : planning, liste de courses partagée, notifications.
 6. **Transmettre** : lien public, transmettre, accord Vinicellar, livre PDF, export.
+
+## 9. Invités et réceptions (ajouté le 20.11.2026)
+
+- **Invités** : fiches propres au carnet (nom, foyer facultatif, allergies parmi les 14 codes UE, régime, aversions, préférences et remarques libres, lien facultatif vers un compte existant). Visibles et modifiables par owner et member, visibles par les lecteurs. Jamais dans le lien public, le livre PDF ni l'export JSON par défaut (données de santé de tiers).
+- **Réception** : date, créneau (midi, soir), invités, menu de plusieurs plats (entrée, plat, dessert…), note, photo. Se crée depuis le planning (case « invités ») ou après coup. Chaque plat servi s'inscrit dans le journal de la recette (« Cuisiné pour Marie, Paul »).
+- **Fiche invité** : profil, historique des réceptions avec leurs menus, plats déjà servis.
+- **Fiche recette** : dans l'historique, pour qui elle a déjà été cuisinée et quand.
+- **Suggestions « Pour qui ? »** : les invités s'y choisissent comme les membres ; leurs contraintes s'appliquent ; les plats déjà servis à ces invités sont relégués en fin de liste avec la mention « Déjà servi à Marie le 12.03.2026 », un interrupteur permet de les masquer.
+- **Vins servis** (plus tard) : lors d'une réception, vins choisis parmi les sorties de cave Vinicellar du jour, visibles sur la fiche invité. Le modèle prévoit la place dès maintenant.
