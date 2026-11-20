@@ -10,9 +10,43 @@
   "orientation": "portrait",
   "background_color": "#FBF8F2",
   "theme_color": "#FBF8F2",
-  "share_target": { "action": "/recettes/ajouter.html", "method": "GET", "params": { "title": "title", "text": "text", "url": "url" } },
-  "categories": ["food", "lifestyle"],
+  "share_target": {
+    "action": "/recettes/ajouter.html",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "categories": [
+    "food",
+    "lifestyle"
+  ],
   "icons": [
-    { "src": "/recettes/assets/logo-aromes-vn-fond.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    {
+      "src": "/recettes/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/recettes/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/recettes/assets/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/recettes/assets/logo-aromes-vn-fond.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
   ]
 }
