@@ -411,6 +411,7 @@ export function extractJsonLdRecipe(html: string): Record<string, unknown> | nul
     const body = m[1].replace(/^\s*<!--/, "").replace(/-->\s*$/, "").replace(/^\s*\/\/\s*<!\[CDATA\[|\/\/\s*\]\]>\s*$/g, "").trim();
     let data: unknown;
     try { data = JSON.parse(body); } catch {
+      // deno-lint-ignore no-control-regex
       try { data = JSON.parse(body.replace(/[\u0000-\u001f]+/g, " ")); } catch { continue; }
     }
     const r = findRecipeNode(data);

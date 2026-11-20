@@ -172,7 +172,7 @@ async function geminiUploadFile(key: string, bytes: Uint8Array, mime: string, ti
   const up = await fetch(uploadUrl, {
     method: "POST",
     headers: { "Content-Length": String(bytes.length), "X-Goog-Upload-Offset": "0", "X-Goog-Upload-Command": "upload, finalize" },
-    body: bytes, signal: AbortSignal.timeout(timeoutMs),
+    body: bytes as unknown as BodyInit, signal: AbortSignal.timeout(timeoutMs),
   });
   if (!up.ok) { await up.body?.cancel(); throw new Error(`files upload ${up.status}`); }
   let file = (await up.json()).file as { name: string; uri: string; state?: string };
