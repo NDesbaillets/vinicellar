@@ -59,6 +59,12 @@
       <label>Titre<input name="title" maxlength="200" required value="${esc(v(tip && tip.title))}" placeholder="ex. Garder les herbes fraîches"></label>
       <label>Catégorie<select name="category">${Object.entries(AR.TIP_CATS).map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join("")}</select></label>
       <label>Texte<textarea name="body" id="body" rows="10" maxlength="${MAX_BODY}" placeholder="Le conseil, avec les quantités, températures et durées utiles.">${esc(v(tip && tip.body))}</textarea></label>
+      <fieldset class="source-bloc">
+        <legend class="etiquette">Source</legend>
+        <label>Créateur ou auteur<input name="source_author" maxlength="120" placeholder="ex. @chef, Mamie" value="${esc(v(tip && tip.source_author))}"></label>
+        <label>Lien<input name="source_url" type="url" inputmode="url" maxlength="500" placeholder="https://" value="${esc(v(tip && tip.source_url))}"></label>
+        <button type="button" class="btn lien" id="src-clear">Retirer la source</button>
+      </fieldset>
       <p class="aide compteur" id="compteur" aria-live="polite"></p>
       <div>
         <h2 class="section" style="margin-top:12px">Ingrédients liés</h2>
@@ -180,10 +186,11 @@
     const title = f.title.value.trim(), body = f.body.value.trim();
     if (!title) return setMsg(out, "Indiquez le titre de l'astuce.", "erreur");
     if (!body) return setMsg(out, "Écrivez le texte de l'astuce.", "erreur");
+    if (f.source_url.value.trim() && !AR.safeUrl(f.source_url.value.trim())) return setMsg(out, "Le lien de la source doit commencer par https://.", "erreur");
     if (f.body.value.length > MAX_BODY) return setMsg(out, `Le texte dépasse ${fmtN(MAX_BODY)} caractères : raccourcissez-le.`, "erreur");
     const btn = $("#save"); btn.disabled = true; setMsg(out, "Enregistrement…");
     try {
-      const fields = { title, body, category: f.category.value };
+      const fields = { title, body, category: f.category.value, ...AR.sourceFields(f) };
       if (!state.id) {
         const id = AR.uuid(), book = f.book.value;
         const { error } = await sb.from("recipe_tips").insert({ id, ...fields, book_id: book, source_type: "manuel", created_by: ctx.user.id });

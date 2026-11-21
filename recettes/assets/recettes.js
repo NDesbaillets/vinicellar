@@ -644,8 +644,22 @@
     throw new Error("Le changement de type prend plus de temps que prévu. Revenez dans un instant : la nouvelle fiche arrivera dans votre carnet.");
   }
 
+  // Source d'une fiche (formulaires recette et astuce) : champs vides = source retirée.
+  function sourceFields(f) {
+    const u = f.source_url.value.trim();
+    return { source_author: f.source_author.value.trim() || null, source_url: u ? safeUrl(u) || null : null };
+  }
+  // Bouton « Retirer la source » : vide les deux champs ; l'enregistrement les met à null.
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest && e.target.closest("#src-clear");
+    if (!b) return;
+    const f = b.form; if (!f) return;
+    f.source_author.value = ""; f.source_url.value = "";
+    toast("Source retirée : enregistrez pour confirmer.");
+  });
+
   window.AR = { TIP_CATS, tipErr, relatedTips, tipReason, tipsListHtml, callImport, retype, sb, cfg, $, $$, esc, norm, fmtDate, fmtDay, todayIso, parseDay, fmtQty, fmtUnit, fmtMin, host, safeUrl, errMsg, toast, setMsg, safeNext, getBookPref, setBookPref,
     signedUrls, compressImage, scaleQty: window.ARPure.scaleQty, portionFactor: window.ARPure.portionFactor, showOffline, clearOfflineData, uuid, extractUrl, alertText, diffLines, fmtLine, lineKey, getUser, loadBooks, boot, registerSW, ROLES, COURSES, DIFFICULTES, UNITES,
     VAPID_PUBLIC: AR_VAPID_PUBLIC, ALLERGENES, REGIMES, RAYONS, MOIS, JOURS, cap, addDays, weekdayOf, mondayOf, dayLabel, debounce, fmtShop, fnMessage,
-    RUBRIQUES, CRENEAUX, rubriqueDe, prenom, guestPills, loadCatalog, catalogFind, catalogByName, catalogPicker, fetchCards, plancheHtml, dedupeVersions, pickBook, isNetErr, push, swipeBack };
+    RUBRIQUES, CRENEAUX, rubriqueDe, prenom, guestPills, loadCatalog, catalogFind, catalogByName, catalogPicker, fetchCards, plancheHtml, dedupeVersions, pickBook, isNetErr, push, swipeBack, sourceFields };
 })();

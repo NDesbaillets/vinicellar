@@ -50,6 +50,12 @@
         <label>Temps actif (min)<input name="time_active_min" type="number" inputmode="numeric" min="0" max="9999" value="${esc(v(rec && rec.time_active_min))}"></label>
         <label>Temps total (min)<input name="time_total_min" type="number" inputmode="numeric" min="0" max="99999" value="${esc(v(rec && rec.time_total_min))}"></label>
       </div>
+      <fieldset class="source-bloc">
+        <legend class="etiquette">Source</legend>
+        <label>Créateur ou auteur<input name="source_author" maxlength="120" placeholder="ex. @chef, Mamie" value="${esc(v(rec && rec.source_author))}"></label>
+        <label>Lien<input name="source_url" type="url" inputmode="url" maxlength="500" placeholder="https://" value="${esc(v(rec && rec.source_url))}"></label>
+        <button type="button" class="btn lien" id="src-clear">Retirer la source</button>
+      </fieldset>
       <div>
         <span class="etiquette">Photo de couverture</span>
         <div id="photo-prev" class="apercu-photo" style="margin-top:8px" hidden><div class="passe-partout"><div class="cadre"><img id="photo-img" alt="Aperçu de la couverture"></div></div></div>
@@ -180,13 +186,15 @@
   f.addEventListener("submit", async (e) => {
     e.preventDefault();
     const { err, title, ls, ss } = read();
+    if (f.source_url.value.trim() && !AR.safeUrl(f.source_url.value.trim())) err.push("Le lien de la source doit commencer par https://.");
     if (err.length) return setMsg(out, err.join(" "), "erreur");
     const btn = $("#save"); btn.disabled = true; setMsg(out, "Enregistrement…");
     try {
       const servings = num(f.servings.value), ta = num(f.time_active_min.value), tt = num(f.time_total_min.value);
       const fields = {
         title, title_original: f.title_original.value.trim() || null, course: f.course.value || null, cuisine: f.cuisine.value.trim() || null,
-        servings, time_active_min: ta, time_total_min: tt, difficulty: num(f.difficulty.value)
+        servings, time_active_min: ta, time_total_min: tt, difficulty: num(f.difficulty.value),
+        ...AR.sourceFields(f)
       };
       // Une valeur modifiée à la main n'est plus « estimée ».
       if (rec) {
