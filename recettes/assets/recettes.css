@@ -655,3 +655,40 @@ body.pt main.wrap{padding-bottom:24px}
 .coller-zone:focus-visible,.coller-zone:focus{outline:2px solid var(--or-texte);outline-offset:1px;background:var(--note)}
 
 .vignette-pdf{display:flex;align-items:center;justify-content:center;aspect-ratio:4/5;background:var(--fond);font-family:var(--titre);font-weight:500;letter-spacing:.2em;color:var(--or-texte)}
+
+/* ---- astuces (contrat 08-astuces-contrat.md) */
+.type-bascule .onglets{max-width:300px}
+.importer-comme .onglet{letter-spacing:.08em;padding:0 4px}
+.liste-astuces{list-style:none;margin:0;padding:0;border-top:1px solid var(--filet)}
+.liste-astuces li{border-bottom:1px solid var(--filet)}
+.astuce-carte{display:flex;gap:14px;align-items:flex-start;padding:16px 0;min-height:44px;text-decoration:none;color:var(--encre)}
+.astuce-carte:hover .astuce-titre{color:var(--or-fonce)}
+.astuce-vignette{flex:none;width:76px;height:76px;object-fit:cover;border:1px solid var(--filet);background:var(--note)}
+.astuce-bloc{display:block;min-width:0;flex:1 1 auto}
+.astuce-titre{display:block;font-family:var(--titre);font-weight:300;font-size:20px;line-height:1.25;overflow-wrap:anywhere}
+.astuce-extrait{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:4px;color:var(--encre-2);font-size:16px;line-height:1.4;overflow-wrap:anywhere}
+.astuce-corps{font-family:var(--texte);font-size:20px;line-height:1.6;white-space:pre-line;overflow-wrap:anywhere;margin:24px 0}
+.tip-puces{list-style:none;margin:10px 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.tip-puce{display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border:1px solid var(--or-texte);background:var(--note);overflow-wrap:anywhere}
+.tip-recettes{list-style:none;margin:10px 0;padding:0}
+.tip-recettes li{border-bottom:1px solid var(--filet)}
+.tip-recettes a{display:flex;align-items:center;min-height:48px;font-size:19px;overflow-wrap:anywhere}
+.tips-liste{list-style:none;margin:0;padding:0}
+.tip-item{border-top:1px solid var(--filet)}
+.tip-item>details>summary{cursor:pointer;min-height:56px;padding:8px 0;list-style:none;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.tip-item>details>summary::-webkit-details-marker{display:none}
+.tip-titre{font-family:var(--titre);font-weight:300;font-size:19px;line-height:1.25;color:var(--encre);overflow-wrap:anywhere}
+.tip-meta{font-family:var(--titre);font-weight:500;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--encre-3);overflow-wrap:anywhere}
+.tip-meta:empty{display:none}
+.tip-corps{padding:0 0 14px}
+.tip-corps p{margin:0 0 12px;white-space:pre-line;overflow-wrap:anywhere}
+.pf-prop{border-style:dashed;padding-left:4px}
+.pf-add{background:none;border:0;min-height:44px;padding:0 6px 0 10px;font-family:var(--titre);font-weight:400;font-size:14px;letter-spacing:.04em;color:var(--or-texte);cursor:pointer;text-align:left;overflow-wrap:anywhere}
+.cu-bar .cu-ing-btn{padding:0 10px;font-size:11px;letter-spacing:.08em}
+.cu-tips .tip-titre{font-size:26px}
+.cu-tips .tip-meta{font-size:12px}
+.cu-tips .tip-corps p{font-size:24px;line-height:1.4}
+.cu-tips .tip-item>details>summary{min-height:64px}
+.cu-bar-2{flex-wrap:wrap;padding-bottom:6px;padding-top:6px}
+.cu-bar-2 .cu-quit{margin-right:auto}
+.cu-bar-2 .cu-titre{order:5;flex:1 0 100%;-webkit-line-clamp:1}

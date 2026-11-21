@@ -1,7 +1,7 @@
 // Service worker ARÔMES V&N (scope /recettes/). Fichiers statiques de /recettes/ et bibliothèques versionnées des CDN en cache ;
 // pages : réseau d'abord. Supabase : seules les lectures (GET) nécessaires à l'affichage d'une recette déjà consultée sont gardées
 // (réseau d'abord, repli sur la copie) ; écritures, authentification, fonctions et signatures ne sont jamais mises en cache.
-const VERSION = "aromes-20261120-r9";
+const VERSION = "aromes-20261121-r10";
 const STATIC = VERSION + "-static";
 const PAGES = VERSION + "-pages";
 const DATA = VERSION + "-data";
@@ -65,10 +65,10 @@ async function immutable(req) {
 }
 
 // ---- lecture des recettes hors ligne (phase 3)
-const SB_LECTURE = /^\/rest\/v1\/(recipes|recipe_ingredient_lines|recipe_steps|recipe_photos)$/;
+const SB_LECTURE = /^\/rest\/v1\/(recipes|recipe_ingredient_lines|recipe_steps|recipe_photos|recipe_tips|recipe_tip_ingredients|recipe_tip_recipes|recipe_tip_photos)$/;
 const SB_IMAGE = /^\/storage\/v1\/object\/sign\/recipes\//;
-// Une seule recette à la fois (id= ou recipe_id=) : on ne garde jamais de listes entières.
-function recipeQuery(url) { return /^eq\.[0-9a-f-]{36}$/i.test(url.searchParams.get("id") || url.searchParams.get("recipe_id") || ""); }
+// Une seule recette ou astuce à la fois (id=, recipe_id= ou tip_id=) : on ne garde jamais de listes entières.
+function recipeQuery(url) { return /^eq\.[0-9a-f-]{36}$/i.test(url.searchParams.get("id") || url.searchParams.get("recipe_id") || url.searchParams.get("tip_id") || ""); }
 async function prevenir(e) {
   try {
     const c = (e.clientId && await self.clients.get(e.clientId)) || null;

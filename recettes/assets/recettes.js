@@ -573,7 +573,78 @@
     window.addEventListener("pageshow", reset);
   }
 
-  window.AR = { sb, cfg, $, $$, esc, norm, fmtDate, fmtDay, todayIso, parseDay, fmtQty, fmtUnit, fmtMin, host, safeUrl, errMsg, toast, setMsg, safeNext, getBookPref, setBookPref,
+  // ---- astuces (contrat 08-astuces-contrat.md)
+  const TIP_CATS = { cuisson: "Cuisson", technique: "Technique", conservation: "Conservation", produit: "Produit", materiel: "Matériel", patisserie: "Pâtisserie", accord: "Accord", autre: "Autre" };
+  // Message d'erreur d'une requête sur les astuces : si la migration n'est pas appliquée, on le dit simplement.
+  function tipErr(e, fallback) {
+    const m = String((e && (e.message || "")) || "") + String((e && e.code) || "");
+    if (/recipe_tip|PGRST20\d|42P01|42883|schema cache|does not exist|Could not find/i.test(m)) { console.error(e); return "Les astuces ne sont pas encore disponibles sur ce serveur."; }
+    return errMsg(e, fallback);
+  }
+  // Astuces liées à une recette (RPC recipe_related_tips) : jamais bloquant, [] si indisponible.
+  async function relatedTips(recipeId) {
+    try {
+      const { data, error } = await sb.rpc("recipe_related_tips", { p_recipe: recipeId });
+      if (error) throw error;
+      return data || [];
+    } catch (e) { console.error(e); return []; }
+  }
+  const tipReason = (r) => (r === "liee" ? "liée à cette recette" : /^ingredient:/.test(r || "") ? "à propos de : " + String(r).slice(11) : "");
+  // Liste d'astuces dépliables (fiche et mode cuisine). opts.link : lien vers la fiche de l'astuce.
+  function tipsListHtml(list, opts = {}) {
+    return `<ul class="tips-liste">${list.map((t) => `<li class="tip-item"><details${opts.open ? " open" : ""}><summary><span class="tip-titre">${esc(t.title)}</span>
+      <span class="tip-meta">${esc([TIP_CATS[t.category] || "", tipReason(t.reason)].filter(Boolean).join(" · "))}</span></summary>
+      <div class="tip-corps"><p>${esc(t.body)}</p>${opts.link === false ? "" : `<a class="btn sec petit" href="/recettes/astuce.html?id=${encodeURIComponent(t.id)}">Ouvrir l'astuce</a>`}</div></details></li>`).join("")}</ul>`;
+  }
+  // Appel de la fonction d'import. extra : { retype: "recette" | "astuce" }. Lève une Error au message lisible.
+  async function callImport(importId, extra) {
+    const { data } = await sb.auth.getSession();
+    const token = data.session && data.session.access_token;
+    if (!token) throw new Error("Votre session a expiré. Reconnectez-vous.");
+    let res;
+    try {
+      res = await fetch(`${cfg.supabaseUrl}/functions/v1/recipe-import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, apikey: cfg.supabaseAnonKey },
+        body: JSON.stringify({ import_id: importId, ...(extra || {}) })
+      });
+    } catch (e) { throw new Error("Connexion impossible. Vérifiez votre réseau et réessayez."); }
+    if (!res.ok) {
+      let m = "";
+      try { const j = await res.json(); m = (j && (j.message || j.error)) || ""; } catch { /* corps non JSON */ }
+      const fallback = res.status === 429 ? "Limite quotidienne atteinte : 50 imports par 24 heures."
+        : res.status === 401 ? "Votre session a expiré. Reconnectez-vous."
+        : res.status === 403 ? "Cette action n'est pas permise avec votre rôle dans ce carnet."
+        : res.status === 409 ? "Un traitement est déjà en cours pour cette source."
+        : "Le changement de type n'a pas pu démarrer. Réessayez dans un instant.";
+      const e = new Error(m || fallback); e.status = res.status; throw e;
+    }
+  }
+  // Changer de type : relit la même source avec la cible forcée, puis attend la nouvelle fiche et renvoie son adresse.
+  //   to : "recette" | "astuce" ; current : id de l'objet actuel (pour reconnaître le nouveau) ; onStep(texte) facultatif.
+  async function retype(importId, to, current, onStep) {
+    const prior = await sb.from("recipe_imports").select("recipe_id,tip_id").eq("id", importId).maybeSingle();
+    const before = prior.data ? (to === "astuce" ? prior.data.tip_id : prior.data.recipe_id) : null; // d'un éventuel changement antérieur
+    await callImport(importId, { retype: to });
+    const t0 = Date.now();
+    while (Date.now() - t0 < 180000) {
+      await new Promise((ok) => setTimeout(ok, 2500));
+      const { data, error } = await sb.from("recipe_imports").select("status,step,error,recipe_id,tip_id").eq("id", importId).maybeSingle();
+      if (error || !data) continue;
+      if (data.status === "echec") throw new Error(data.error || "Le changement de type a échoué. L'objet d'origine est conservé.");
+      if (onStep && data.step) onStep(data.step);
+      const nid = to === "astuce" ? data.tip_id : data.recipe_id, autre = to === "astuce" ? data.recipe_id : data.tip_id;
+      if (data.status === "termine" || data.status === "a_relire") {
+        // Succès : nouvel identifiant rempli, l'autre à null. Échec : statut revenu avec error non nul et liens inchangés.
+        if (nid && !autre && nid !== current && nid !== before)
+          return (to === "astuce" ? "/recettes/astuce.html?id=" : "/recettes/fiche.html?id=") + encodeURIComponent(nid);
+        if (data.error) throw new Error(data.error);
+      }
+    }
+    throw new Error("Le changement de type prend plus de temps que prévu. Revenez dans un instant : la nouvelle fiche arrivera dans votre carnet.");
+  }
+
+  window.AR = { TIP_CATS, tipErr, relatedTips, tipReason, tipsListHtml, callImport, retype, sb, cfg, $, $$, esc, norm, fmtDate, fmtDay, todayIso, parseDay, fmtQty, fmtUnit, fmtMin, host, safeUrl, errMsg, toast, setMsg, safeNext, getBookPref, setBookPref,
     signedUrls, compressImage, scaleQty: window.ARPure.scaleQty, portionFactor: window.ARPure.portionFactor, showOffline, clearOfflineData, uuid, extractUrl, alertText, diffLines, fmtLine, lineKey, getUser, loadBooks, boot, registerSW, ROLES, COURSES, DIFFICULTES, UNITES,
     VAPID_PUBLIC: AR_VAPID_PUBLIC, ALLERGENES, REGIMES, RAYONS, MOIS, JOURS, cap, addDays, weekdayOf, mondayOf, dayLabel, debounce, fmtShop, fnMessage,
     RUBRIQUES, CRENEAUX, rubriqueDe, prenom, guestPills, loadCatalog, catalogFind, catalogByName, catalogPicker, fetchCards, plancheHtml, dedupeVersions, pickBook, isNetErr, push, swipeBack };

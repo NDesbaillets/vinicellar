@@ -27,7 +27,13 @@
 
   main.innerHTML = `<h1 class="chapitre">Ajouter</h1><span class="filet" aria-hidden="true"></span>
     <label>Carnet de destination<select id="book">${editable.map((b) => `<option value="${esc(b.id)}">${esc(b.name)}</option>`).join("")}</select></label>
-    <div class="onglets" role="tablist" aria-label="Source de la recette" style="margin-top:22px">
+    <div class="importer-comme" style="margin-top:22px"><span class="etiquette" id="imp-lib">Importer comme</span>
+      <div class="onglets" role="group" aria-labelledby="imp-lib" style="margin-top:6px">
+        <button type="button" class="onglet" data-target="auto" aria-pressed="true">Automatique</button>
+        <button type="button" class="onglet" data-target="recette" aria-pressed="false">Recette</button>
+        <button type="button" class="onglet" data-target="astuce" aria-pressed="false">Astuce</button></div>
+      <p class="aide" id="imp-aide">La source est lue puis rangée comme recette ou comme astuce, selon ce qu'elle contient.</p></div>
+    <div class="onglets" role="tablist" aria-label="Source de la recette ou de l'astuce" style="margin-top:22px">
       <button type="button" class="onglet" role="tab" id="t-lien" aria-controls="p-lien" aria-selected="true">Lien</button>
       <button type="button" class="onglet" role="tab" id="t-note" aria-controls="p-note" aria-selected="false" tabindex="-1">Note</button>
       <button type="button" class="onglet" role="tab" id="t-photo" aria-controls="p-photo" aria-selected="false" tabindex="-1">Photo ou PDF</button>
@@ -76,8 +82,8 @@
       </form>
     </section>
     <section id="p-manuel" role="tabpanel" aria-labelledby="t-manuel" class="panneau" hidden>
-      <p>Écrivez la recette vous-même : titre, ingrédients, étapes et photo.</p>
-      <a class="btn" id="go-manuel" href="/recettes/editer.html">Écrire une recette</a>
+      <p>Écrivez vous-même une recette (titre, ingrédients, étapes, photo) ou une astuce (un conseil, une technique).</p>
+      <div class="rangee"><a class="btn" id="go-manuel" href="/recettes/editer.html">Nouvelle recette</a><a class="btn sec" id="go-astuce" href="/recettes/editer-astuce.html">Nouvelle astuce</a></div>
     </section>
     <h2 class="section">En cours</h2><span class="filet" aria-hidden="true"></span>
     <div id="imports" aria-live="polite"><p class="chargement">Chargement…</p></div>`;
@@ -102,6 +108,15 @@
   });
 
   if (toNote) selectTab($("#t-note"));
+
+  // ---- « Importer comme » : envoyé dans la colonne target de recipe_imports (jamais status)
+  let target = "auto";
+  const AIDE = { auto: "La source est lue puis rangée comme recette ou comme astuce, selon ce qu'elle contient.", recette: "La source est lue comme une recette complète.", astuce: "La source est lue comme un conseil ou une technique, sans ingrédients ni étapes." };
+  $$("[data-target]", main).forEach((b) => b.addEventListener("click", () => {
+    target = b.dataset.target;
+    $$("[data-target]", main).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    $("#imp-aide").textContent = AIDE[target];
+  }));
 
   // ---- appel de la fonction d'import (le front crée la ligne, la fonction travaille en arrière-plan)
   async function callImport(importId) {
@@ -149,7 +164,7 @@
     const btn = $("#go-lien"); btn.disabled = true; setMsg(out, "Envoi…");
     try {
       const id = AR.uuid();
-      const ins = await sb.from("recipe_imports").insert({ id, book_id: bookSel.value, kind: d.kind, source_url: d.url, created_by: ctx.user.id }).select("*").single();
+      const ins = await sb.from("recipe_imports").insert({ id, book_id: bookSel.value, kind: d.kind, target, source_url: d.url, created_by: ctx.user.id }).select("*").single();
       if (ins.error) throw ins.error;
       upsert(ins.data);
       try { await callImport(id); }
@@ -264,7 +279,7 @@
         paths.push(path);
       }
       setMsg(out, "Envoi…");
-      const ins = await sb.from("recipe_imports").insert({ id, book_id: book, kind: "texte", source_url: null, source_text: text, photo_paths: paths, created_by: ctx.user.id }).select("*").single();
+      const ins = await sb.from("recipe_imports").insert({ id, book_id: book, kind: "texte", target, source_url: null, source_text: text, photo_paths: paths, created_by: ctx.user.id }).select("*").single();
       if (ins.error) { if (paths.length) await sb.storage.from("recipes").remove(paths); throw ins.error; }
       upsert(ins.data);
       nt.value = ""; drawCount(); clear();
@@ -322,7 +337,7 @@
         paths.push(path);
       }
       setMsg(out, "Envoi…");
-      const ins = await sb.from("recipe_imports").insert({ id, book_id: book, kind: "photo_page", page_paths: paths, created_by: ctx.user.id }).select("*").single();
+      const ins = await sb.from("recipe_imports").insert({ id, book_id: book, kind: "photo_page", target, page_paths: paths, created_by: ctx.user.id }).select("*").single();
       if (ins.error) { await sb.storage.from("recipes").remove(paths); throw ins.error; }
       upsert(ins.data);
       try { await callImport(id); }
@@ -348,7 +363,7 @@
     if (r.status === "en_attente") return { t: "En attente de démarrage…", c: "" };
     if (r.status === "en_cours") return { t: r.step || "Import en cours…", c: "" };
     if (r.status === "a_relire") return { t: "À relire avant d'entrer au carnet", c: "or" };
-    if (r.status === "termine") return { t: "Fiche prête", c: "or" };
+    if (r.status === "termine") return { t: r.tip_id && !r.recipe_id ? "Astuce prête" : "Fiche prête", c: "or" };
     return { t: r.error || "L'import a échoué.", c: "erreur" };
   }
   function draw() {
@@ -361,7 +376,8 @@
         <span class="meta">${esc(fmtDate(r.created_at))} · ${esc(fmtHeure(r.created_at))}${multi ? " · " + esc(bookName(r.book_id)) : ""}</span></div>
         <p class="imp-etat ${e.c}"${r.status === "echec" ? ' role="alert"' : ""}>${actif ? '<span class="imp-point" aria-hidden="true"></span>' : ""}${esc(e.t)}</p>
         <div class="rangee">
-          ${r.recipe_id ? `<a class="btn petit" href="/recettes/fiche.html?id=${encodeURIComponent(r.recipe_id)}">${r.status === "a_relire" ? "Relire la fiche" : "Ouvrir la fiche"}</a>` : ""}
+          ${r.recipe_id ? `<a class="btn petit" href="/recettes/fiche.html?id=${encodeURIComponent(r.recipe_id)}">${r.status === "a_relire" ? "Relire la fiche" : "Ouvrir la fiche"}</a>`
+            : r.tip_id ? `<a class="btn petit" href="/recettes/astuce.html?id=${encodeURIComponent(r.tip_id)}">Ouvrir l'astuce</a>` : ""}
           ${r.status === "en_attente" ? `<button type="button" class="btn sec petit" data-retry="${esc(r.id)}">Relancer</button>` : ""}
           ${r.status === "termine" || r.status === "echec" ? `<button type="button" class="btn sec petit" data-remove="${esc(r.id)}">Retirer de la liste</button>` : ""}
         </div></li>`;
@@ -370,7 +386,7 @@
   function upsert(r) {
     const old = rows.get(r.id);
     rows.set(r.id, r);
-    if (old && ACTIFS.includes(old.status) && r.status === "termine") toast("Une fiche est prête.");
+    if (old && ACTIFS.includes(old.status) && r.status === "termine") toast(r.tip_id && !r.recipe_id ? "Une astuce est prête." : "Une fiche est prête.");
     draw(); poll();
   }
   async function load() {

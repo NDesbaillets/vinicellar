@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap">
-  <link rel="stylesheet" href="/recettes/assets/recettes.css?v=20261120-r9">
+  <link rel="stylesheet" href="/recettes/assets/recettes.css?v=20261121-r10">
 </head>
 <body>
   <a class="skip" href="#main">Aller au contenu</a>
@@ -34,7 +34,10 @@
       <input type="search" id="q" placeholder="Une recette, un ingrédient…" autocomplete="off" enterkeyhint="search">
       <button class="btn" type="submit">Chercher</button>
     </form>
-    <div class="nl-mode"><div class="onglets" role="group" aria-label="Mode de recherche">
+    <div class="nl-mode type-bascule"><div class="onglets" role="group" aria-label="Contenu du carnet">
+      <button type="button" class="onglet" data-type="recettes" aria-pressed="true">Recettes</button>
+      <button type="button" class="onglet" data-type="astuces" aria-pressed="false">Astuces</button></div></div>
+    <div class="nl-mode" id="nl-mode"><div class="onglets" role="group" aria-label="Mode de recherche">
       <button type="button" class="onglet" data-mode="mots" aria-pressed="true">Mots</button>
       <button type="button" class="onglet" data-mode="question" aria-pressed="false">Question</button></div>
       <p class="aide" id="nl-aide" hidden>Posez votre question comme à voix haute : « un dessert rapide sans crème pour cet automne ». Vous vérifiez ensuite ce qui a été compris.</p></div>
@@ -46,7 +49,8 @@
     </div>
     <div class="ligne-filtres" id="ligne-filtres">
       <label>Carnet<select id="book"></select></label>
-      <label>Type de plat<select id="course"><option value="">Tous</option></select></label>
+      <label id="course-l">Type de plat<select id="course"><option value="">Tous</option></select></label>
+      <label id="cat-l" hidden>Catégorie<select id="cat"><option value="">Toutes</option></select></label>
     </div>
     <p class="msg" id="msg" role="status" aria-live="polite"></p>
     <div id="liste" aria-busy="true"><p class="chargement">Chargement du carnet…</p></div>
@@ -54,7 +58,7 @@
   <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
   <script src="/assets/js/config.js"></script>
-  <script src="/recettes/assets/recettes.js?v=20261120-r9"></script>
-  <script src="/recettes/assets/p-index.js?v=20261120-r9"></script>
+  <script src="/recettes/assets/recettes.js?v=20261121-r10"></script>
+  <script src="/recettes/assets/p-index.js?v=20261121-r10"></script>
 </body>
 </html>

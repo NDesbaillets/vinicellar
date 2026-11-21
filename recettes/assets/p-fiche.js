@@ -117,7 +117,20 @@
     if (!r.transmitted_from) return;
     try { const o = await sb.from("recipes").select("id,title,deleted_at").eq("id", r.transmitted_from).maybeSingle(); if (!o.error && o.data && !o.data.deleted_at) origin = o.data; } catch { /* sans accès : masqué */ }
   }
-  await Promise.all([loadDup(), loadVersions(), loadOrigin()]);
+  // Astuces liées (RPC recipe_related_tips) et import d'origine (pour « C'est plutôt une astuce »). Une erreur ici ne bloque jamais la fiche.
+  let tips = [], impId = null;
+  async function loadTips() { tips = await AR.relatedTips(r.id); }
+  async function loadImportId() {
+    if (!editor || r.deleted_at) return;
+    try {
+      const im = await sb.from("recipe_imports").select("id").eq("recipe_id", r.id).in("status", ["termine", "a_relire"]).limit(1);
+      if (im.error) throw im.error;
+      impId = im.data && im.data[0] ? im.data[0].id : null;
+    } catch (e) { console.error(e); }
+  }
+  await Promise.all([loadDup(), loadVersions(), loadOrigin(), loadTips(), loadImportId()]);
+  let retyping = false;
+  const tipsHtml = () => !tips.length ? "" : `<details class="pages-orig tips-liees"><summary>Astuces liées <span class="muted">(${tips.length})</span></summary>${AR.tipsListHtml(tips)}</details>`;
   const view = { tab: "fiche", lang: "fr", portions: null };
   const qs = new URLSearchParams(location.search);
   if (+qs.get("p") > 0) view.portions = Math.min(99, Math.round(+qs.get("p")));
@@ -305,6 +318,7 @@
       <h2 class="section">Préparation</h2><span class="filet" aria-hidden="true"></span>
       ${orig ? `<p class="muted italique">Texte d'origine${safeLang ? ` (${esc(safeLang)})` : ""}. Les ingrédients restent en français.</p>` : ""}
       ${steps.length ? `<ol class="etapes">${steps.map((s, i) => `<li class="etape"><span class="num" aria-hidden="true">${i + 1}</span><div><p${orig && safeLang ? ` lang="${esc(safeLang)}"` : ""}><span class="sr-only">Étape ${i + 1}. </span>${esc(stepText(s))}</p>${s.timer_seconds ? `<span class="libelle or minuteur">Minuteur : ${esc(AR.fmtMin(Math.round(s.timer_seconds / 60)))}</span>` : ""}</div></li>`).join("")}</ol>` : `<p class="muted italique">Aucune étape saisie.</p>`}
+      ${tipsHtml()}
       <div id="galerie-zone">${galleryHtml()}</div>
       <div id="journal-zone">${journalHtml()}</div>
       <h2 class="section">En marge</h2><span class="filet" aria-hidden="true"></span>
@@ -336,7 +350,8 @@
       <div id="outils-zone" class="fo-zone"></div>
       ${noteHtml}
       ${corps}
-      ${editor ? `<div class="actions-bas">${r.deleted_at ? "" : `<a class="btn" href="/recettes/editer.html?id=${encodeURIComponent(r.id)}">Modifier</a><button type="button" class="btn danger" data-act="trash">Mettre à la corbeille</button>`}</div>` : ""}`;
+      ${editor ? `<div class="actions-bas">${r.deleted_at ? "" : `<a class="btn" href="/recettes/editer.html?id=${encodeURIComponent(r.id)}">Modifier</a><button type="button" class="btn danger" data-act="trash">Mettre à la corbeille</button>`}</div>
+        ${r.deleted_at ? "" : `<div class="actions-bas astuces-actions"><a class="btn sec" href="/recettes/editer-astuce.html?recette=${encodeURIComponent(r.id)}">Ajouter une astuce à cette recette</a>${impId ? `<button type="button" class="btn sec" data-act="to-tip">C'est plutôt une astuce</button>` : ""}</div><p class="msg" id="retype-msg" role="status" aria-live="polite"></p>`}` : ""}`;
     mountOutils();
   }
 
@@ -417,6 +432,20 @@
     const b = e.target.closest("button[data-act]");
     if (!b || !editor) return;
     if (b.dataset.act === "as-version" || b.dataset.act === "keep-apart") return void resolveDup(b);
+    if (b.dataset.act === "to-tip") {
+      if (retyping || !impId) return;
+      if (!confirm("Relire la source comme une astuce ? Cette recette ira à la corbeille et une astuce sera créée.")) return;
+      retyping = true; $$(".astuces-actions .btn, .actions-bas .btn", main).forEach((x) => { x.disabled = true; x.setAttribute("aria-disabled", "true"); });
+      const out = $("#retype-msg"); AR.setMsg(out, "Nouvelle lecture en cours, de 10 à 60 secondes. Ne quittez pas la page.");
+      try {
+        const href = await AR.retype(impId, "astuce", null, (t) => AR.setMsg(out, t));
+        toast("Astuce créée."); location.assign(href);
+      } catch (err) {
+        retyping = false; $$(".astuces-actions .btn, .actions-bas .btn", main).forEach((x) => { x.disabled = false; x.removeAttribute("aria-disabled"); });
+        AR.setMsg(out, err.message || "Le changement de type a échoué.", "erreur");
+      }
+      return;
+    }
     if (b.dataset.act === "verify") return void patch({ review_state: "valide" }, "Fiche validée. Les alertes restent consultables.");
     if (b.dataset.act === "restore") return void patch({ deleted_at: null }, "Recette restaurée.");
     if (b.dataset.act === "trash") {

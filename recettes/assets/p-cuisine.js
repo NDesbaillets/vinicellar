@@ -103,8 +103,9 @@
   $("#cu-prev").addEventListener("click", () => go(i - 1));
   $("#cu-next").addEventListener("click", () => go(i + 1));
   document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !$("#cu-tips").hidden) return void closeTips();
     if (e.key === "Escape" && !$("#cu-ing").hidden) return void closeIng();
-    if ($("#cu-ing").hidden && !/INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName || "")) {
+    if ($("#cu-ing").hidden && $("#cu-tips").hidden && !/INPUT|TEXTAREA|SELECT/.test((e.target || {}).tagName || "")) {
       if (e.key === "ArrowRight") go(i + 1);
       if (e.key === "ArrowLeft") go(i - 1);
     }
@@ -148,6 +149,26 @@
   }
   $("#cu-ing-btn").addEventListener("click", () => ($("#cu-ing").hidden ? openIng() : closeIng()));
   $("#cu-ing-x").addEventListener("click", closeIng);
+
+  // ---- astuces liées (contrat 08 §3) : bouton « Astuces (n) » quand n > 0, panneau plein écran, textes dépliés
+  const PANELS = ["cu-bar", "cu-timers", "main", "cu-nav"];
+  function openTips() {
+    $("#cu-tips").hidden = false; $("#cu-tips-btn").setAttribute("aria-expanded", "true");
+    PANELS.forEach((x) => { const el = document.getElementById(x); if (el) el.inert = true; });
+    $("#cu-tips-x").focus();
+  }
+  function closeTips() {
+    $("#cu-tips").hidden = true; $("#cu-tips-btn").setAttribute("aria-expanded", "false");
+    PANELS.forEach((x) => { const el = document.getElementById(x); if (el) el.inert = false; });
+    $("#cu-tips-btn").focus();
+  }
+  $("#cu-tips-btn").addEventListener("click", () => ($("#cu-tips").hidden ? openTips() : closeTips()));
+  $("#cu-tips-x").addEventListener("click", closeTips);
+  AR.relatedTips(r.id).then((tips) => {
+    if (!tips.length) return;
+    $("#cu-tips-liste").innerHTML = AR.tipsListHtml(tips, { open: true, link: false });
+    $("#cu-tips-btn").textContent = `Astuces (${tips.length})`; $("#cu-tips-btn").hidden = false; $("#cu-bar").classList.add("cu-bar-2");
+  });
 
   // ---- son (Web Audio, bip généré), vibration
   let actx = null;

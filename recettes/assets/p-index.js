@@ -3,11 +3,13 @@
   const ctx = await AR.boot("carnet");
   if (!ctx) return;
   let books = ctx.books;
-  const st = { statut: "toutes", course: "", q: "", book: AR.getBookPref(), mode: "mots" };
+  const TYPE_KEY = "ar.type";
+  const st = { statut: "toutes", course: "", cat: "", q: "", book: AR.getBookPref(), mode: "mots", type: (() => { try { return localStorage.getItem(TYPE_KEY) === "astuces" ? "astuces" : "recettes"; } catch { return "recettes"; } })() };
   const msg = $("#msg"), liste = $("#liste");
 
   // ---- sélecteurs
   $("#course").insertAdjacentHTML("beforeend", Object.entries(AR.COURSES).map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join(""));
+  $("#cat").insertAdjacentHTML("beforeend", Object.entries(AR.TIP_CATS).map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join(""));
   function fillBooks() {
     if (st.book !== "all" && !books.some((b) => b.id === st.book)) st.book = "all";
     $("#book").innerHTML = `<option value="all">Tous</option>` + books.map((b) => `<option value="${esc(b.id)}">${esc(b.name)}</option>`).join("");
@@ -48,7 +50,8 @@
   const cover = (r) => { const p = (r.recipe_photos || []).find((x) => x.is_cover); return p ? p.storage_path : null; };
   const sourceOf = (r) => r.source_author || AR.host(r.source_url || "") || "";
   let seq = 0;
-  async function load() {
+  function load() { return st.type === "astuces" ? loadTips() : loadRecipes(); }
+  async function loadRecipes() {
     const my = ++seq;
     liste.setAttribute("aria-busy", "true");
     setMsg(msg, "");
@@ -106,8 +109,71 @@
   }
 
   function resetFilters() {
-    st.q = ""; st.course = ""; st.statut = "toutes"; $("#q").value = ""; $("#course").value = ""; syncStatut(); load();
+    st.q = ""; st.course = ""; st.cat = ""; st.statut = "toutes"; $("#q").value = ""; $("#course").value = ""; $("#cat").value = ""; syncStatut(); load();
   }
+
+  // ---- astuces (contrat 08 §3) : liste compacte, recherche via recipe_tip_search
+  async function loadTips() {
+    const my = ++seq;
+    liste.setAttribute("aria-busy", "true");
+    setMsg(msg, "");
+    if (!books.length) { liste.innerHTML = `<div class="vide-etat"><p>Vous n'appartenez à aucun carnet pour le moment.</p></div>`; liste.setAttribute("aria-busy", "false"); return; }
+    const ids = st.book === "all" ? books.map((b) => b.id) : [st.book];
+    let q = sb.rpc("recipe_tip_search", { p_book_ids: ids, p_texte: st.q || null, p_category: st.cat || null, p_limit: 60 });
+    if (st.statut === "a_verifier") q = q.eq("review_state", "a_verifier");
+    const res = await q;
+    if (my !== seq) return;
+    if (res.error) { liste.innerHTML = ""; liste.setAttribute("aria-busy", "false"); setMsg(msg, AR.tipErr(res.error, "Impossible de charger les astuces."), "erreur"); return; }
+    const rows = res.data || [];
+    if (!rows.length) {
+      liste.setAttribute("aria-busy", "false");
+      const filtre = st.q || st.cat || st.statut !== "toutes";
+      liste.innerHTML = filtre
+        ? `<div class="vide-etat"><p>Aucune astuce ne correspond à votre recherche.</p><button type="button" class="btn sec petit" id="reset">Effacer les filtres</button></div>`
+        : `<div class="vide-etat"><p class="italique">Ce carnet attend sa première astuce.</p><a class="btn" href="/recettes/editer-astuce.html">Écrire une astuce</a></div>`;
+      const r = $("#reset"); if (r) r.addEventListener("click", resetFilters);
+      return;
+    }
+    // Vignettes : couvertures des astuces affichées (une erreur ici ne bloque pas la liste).
+    let covers = {};
+    try {
+      const ph = await sb.from("recipe_tip_photos").select("tip_id,storage_path").in("tip_id", rows.map((t) => t.id)).eq("is_cover", true);
+      if (ph.error) throw ph.error;
+      const urls = await AR.signedUrls((ph.data || []).map((p) => p.storage_path));
+      (ph.data || []).forEach((p) => { if (urls[p.storage_path]) covers[p.tip_id] = urls[p.storage_path]; });
+    } catch (e) { console.error(e); }
+    if (my !== seq) return;
+    liste.setAttribute("aria-busy", "false");
+    const multi = books.length > 1 && st.book === "all";
+    const bookName = (id) => (books.find((b) => b.id === id) || {}).name || "";
+    liste.innerHTML = `<ul class="liste-astuces">${rows.map((t) => {
+      const src = [AR.TIP_CATS[t.category] || "", t.source_author || AR.host(t.source_url || ""), multi ? bookName(t.book_id) : ""].filter(Boolean).join(" · ");
+      return `<li><a class="astuce-carte" href="/recettes/astuce.html?id=${encodeURIComponent(t.id)}">
+        ${covers[t.id] ? `<img class="astuce-vignette" src="${esc(covers[t.id])}" alt="" loading="lazy">` : ""}
+        <span class="astuce-bloc">${t.review_state === "a_verifier" ? `<span class="planche-num">À vérifier</span>` : ""}
+        <span class="astuce-titre">${esc(t.title)}</span>${src ? `<span class="planche-source">${esc(src)}</span>` : ""}
+        <span class="astuce-extrait">${esc(t.body)}</span></span></a></li>`;
+    }).join("")}</ul>`;
+  }
+  // Bascule Recettes / Astuces : mémorisée par appareil.
+  function syncType(reload) {
+    const tips = st.type === "astuces";
+    $$("[data-type]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.type === st.type)));
+    if (tips && st.mode === "question") setMode("mots");
+    $("#nl-mode").hidden = tips;
+    $("[data-statut=famille]").hidden = tips;
+    if (tips && st.statut === "famille") { st.statut = "toutes"; syncStatut(); }
+    $("#course-l").hidden = tips; $("#cat-l").hidden = !tips;
+    $("#q").placeholder = tips ? "Une astuce, un ingrédient…" : "Une recette, un ingrédient…";
+    $("label[for=q]").textContent = tips ? "Rechercher une astuce" : "Rechercher une recette";
+    if (reload) { clearTimeout(load.t); setMsg(msg, ""); load(); }
+  }
+  $$("[data-type]").forEach((b) => b.addEventListener("click", () => {
+    if (st.type === b.dataset.type) return;
+    st.type = b.dataset.type;
+    try { localStorage.setItem(TYPE_KEY, st.type); } catch { /* stockage indisponible */ }
+    syncType(true);
+  }));
   function syncStatut() { $$("[data-statut]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.statut === st.statut))); }
 
 
@@ -220,8 +286,10 @@
   $("#q").addEventListener("input", () => { if (st.mode === "question") return; clearTimeout(load.t); load.t = setTimeout(() => { const v = $("#q").value.trim(); if (v !== st.q) { st.q = v; load(); } }, 350); });
   $$("[data-statut]").forEach((b) => b.addEventListener("click", () => { st.statut = b.dataset.statut; syncStatut(); load(); }));
   $("#course").addEventListener("change", (e) => { st.course = e.target.value; load(); });
+  $("#cat").addEventListener("change", (e) => { st.cat = e.target.value; load(); });
   $("#book").addEventListener("change", (e) => { st.book = e.target.value; AR.setBookPref(st.book); if (st.mode === "question") { if (nl.f) runFilters(); return; } load(); });
 
   loadInvites();
+  syncType(false);
   load();
 })();
