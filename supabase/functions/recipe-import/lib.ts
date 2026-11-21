@@ -7,6 +7,8 @@ const SPACE_RUN_RE = new RegExp("[" + cc(0x20, 0x09, 0xa0) + "]+", "g");
 const NBSP_RE = new RegExp("[" + cc(0xa0, 0x2007, 0x202f) + "]", "g");
 const INVISIBLE_RE = new RegExp("[" + span(0x00, 0x08) + cc(0x0b, 0x0c) + span(0x0e, 0x1f) + cc(0x7f, 0x200b, 0xfeff, 0xfffc) + "]", "g");
 const COMBINING_RE = new RegExp("[" + span(0x300, 0x36f) + "]", "g");
+const CTRL_RUN_RE = new RegExp("[" + span(0x00, 0x1f) + "]+", "g");
+const EN_DASH_RE = new RegExp(cc(0x2013), "g");
 
 // ---------------------------------------------------------------- types
 export const UNITS = ["g", "kg", "ml", "cl", "l", "cas", "cac", "piece", "pincee", "botte", "gousse", "tranche"] as const;
@@ -501,7 +503,7 @@ export function extractJsonLdRecipe(html: string): Record<string, unknown> | nul
     let data: unknown;
     try { data = JSON.parse(body); } catch {
       // deno-lint-ignore no-control-regex
-      try { data = JSON.parse(body.replace(/[\u0000-\u001f]+/g, " ")); } catch { continue; }
+      try { data = JSON.parse(body.replace(CTRL_RUN_RE, " ")); } catch { continue; }
     }
     const r = findRecipeNode(data);
     if (r) return r;
@@ -797,7 +799,7 @@ export function normalizePages(raw: unknown, pageCount: number): number[] {
     if (typeof it === "number") { add(it); continue; }
     if (typeof it !== "string") continue;
     for (const part of it.split(/[,;\s]+/)) {
-      const range = /^(\d{1,4})[-\u2013](\d{1,4})$/.exec(part);
+      const range = /^(\d{1,4})-(\d{1,4})$/.exec(part.replace(EN_DASH_RE, "-"));
       if (range) {
         const a = Number(range[1]), b = Number(range[2]);
         if (a <= b && b - a <= 200) for (let n = a; n <= Math.min(b, pageCount); n++) add(n);
