@@ -4,7 +4,7 @@
   if (!ctx) return;
   const main = $("#main");
   const editable = ctx.books.filter((b) => b.role === "owner" || b.role === "member");
-  const MAX_PAGES = 4, PDF_MAX = 8 * 1024 * 1024;
+  const MAX_PAGES = 4, PDF_MAX = 8 * 1024 * 1024, PDF_ANALYSE_MAX = 30 * 1024 * 1024;
 
   main.setAttribute("aria-busy", "false");
   if (!editable.length) {
@@ -74,9 +74,14 @@
         <div>
           <span class="etiquette" id="photo-lib">Photos ou PDF de la recette (1 à ${MAX_PAGES} fichiers)</span>
           <input type="file" id="pages-input" accept="image/*,application/pdf,.pdf" multiple aria-labelledby="photo-lib" style="margin-top:6px">
-          <p class="aide">Page imprimée ou manuscrite, ou PDF de 8 Mo au plus. Les photos sont réduites à 2000 px ; tout est lu dans l'ordre. L'écriture à la main sera à relire avant d'entrer au carnet.</p>
+          <p class="aide">Page imprimée ou manuscrite, ou PDF de 8 Mo au plus. Les photos sont réduites à 2000 px ; tout est lu dans l'ordre. L'écriture à la main sera à relire avant d'entrer au carnet. Un PDF de plusieurs recettes (menu, recueil) peut aller jusqu'à 30 Mo et 100 pages : il s'analyse d'abord.</p>
         </div>
         <ul class="vignettes" id="vignettes" aria-label="Photos choisies"></ul>
+        <div class="pdf-analyse" id="pdf-analyse" hidden>
+          <p class="libelle or" id="pdf-analyse-t">PDF de plusieurs pages</p>
+          <p class="aide" id="pdf-analyse-aide">Si ce PDF contient plusieurs recettes (un menu, un recueil), analysez-le : vous choisirez ensuite celles à importer, chacune séparément.</p>
+          <div><button class="btn" type="button" id="go-pdf">Analyser le PDF</button></div>
+        </div>
         <div><button class="btn" type="submit" id="go-photo">Lire la page</button></div>
         <p class="msg" id="msg-photo" role="status" aria-live="polite"></p>
       </form>
@@ -85,6 +90,8 @@
       <p>Écrivez vous-même une recette (titre, ingrédients, étapes, photo) ou une astuce (un conseil, une technique).</p>
       <div class="rangee"><a class="btn" id="go-manuel" href="/recettes/editer.html">Nouvelle recette</a><a class="btn sec" id="go-astuce" href="/recettes/editer-astuce.html">Nouvelle astuce</a></div>
     </section>
+    <div id="jobs-zone" hidden><h2 class="section">Analyses de PDF</h2><span class="filet" aria-hidden="true"></span>
+      <div id="jobs" aria-live="polite"></div></div>
     <h2 class="section">En cours</h2><span class="filet" aria-hidden="true"></span>
     <div id="imports" aria-live="polite"><p class="chargement">Chargement…</p></div>`;
 
@@ -297,7 +304,26 @@
   // ---- photos de page
   const fp = $("#f-photo"), files = [];
   const thumbs = $("#vignettes");
+  // Nombre de pages d'un PDF, estimé sans bibliothèque : objets /Type /Page, ou plus grand /Count d'un arbre de pages. 0 = inconnu.
+  async function pdfPages(file) {
+    try {
+      const txt = new TextDecoder("latin1").decode(await file.arrayBuffer());
+      const objs = (txt.match(/\/Type\s*\/Page(?![A-Za-z])/g) || []).length;
+      let cnt = 0;
+      for (const m of txt.matchAll(/\/Type\s*\/Pages[^>]*?\/Count\s+(\d+)|\/Count\s+(\d+)[^>]*?\/Type\s*\/Pages/g)) cnt = Math.max(cnt, +(m[1] || m[2]));
+      return Math.max(objs, cnt);
+    } catch (e) { console.error(e); return 0; }
+  }
+  // « Analyser le PDF » : proposé quand un PDF est seul et n'a pas (ou pas certainement) une seule page.
+  function drawAnalyse() {
+    const one = files.length === 1 && files[0].pdf ? files[0] : null;
+    const show = !!one && one.pages !== 1;
+    $("#pdf-analyse").hidden = !show;
+    if (show) $("#pdf-analyse-t").textContent = one.pages > 1 ? `PDF de ${one.pages} pages` : "PDF de plusieurs pages ?";
+    $("#go-photo").textContent = show ? "Importer comme une seule recette" : "Lire la page";
+  }
   function drawThumbs() {
+    drawAnalyse();
     thumbs.innerHTML = files.map((x, i) => `<li class="vignette">${x.pdf ? `<span class="vignette-pdf" aria-hidden="true">PDF</span>` : `<img src="${esc(x.url)}" alt="Page ${i + 1}">`}<span class="libelle">${x.pdf ? esc(x.file.name) : `Page ${i + 1}`}</span>
       <button type="button" class="btn danger cible" data-rm-page="${i}" aria-label="Retirer la page ${i + 1}">×</button></li>`).join("");
   }
@@ -306,9 +332,11 @@
     Array.from(e.target.files || []).forEach((f) => {
       const pdf = f.type === "application/pdf" || /\.pdf$/i.test(f.name);
       if (!pdf && !/^image\//.test(f.type)) return setMsg(out, "Seules les images et les PDF sont acceptés.", "erreur");
-      if (pdf && f.size > PDF_MAX) return setMsg(out, `« ${f.name} » dépasse 8 Mo : exportez-le en plus léger ou photographiez les pages.`, "erreur");
+      if (pdf && f.size > PDF_ANALYSE_MAX) return setMsg(out, `« ${f.name} » dépasse 30 Mo : exportez-le en plus léger ou découpez-le.`, "erreur");
       if (files.length >= MAX_PAGES) return setMsg(out, `${MAX_PAGES} fichiers au plus : les suivants ont été ignorés.`, "erreur");
-      files.push({ file: f, pdf, url: pdf ? "" : URL.createObjectURL(f) });
+      const item = { file: f, pdf, url: pdf ? "" : URL.createObjectURL(f), pages: null };
+      files.push(item);
+      if (pdf) pdfPages(f).then((n) => { item.pages = n; drawAnalyse(); });
     });
     e.target.value = ""; drawThumbs();
   });
@@ -323,6 +351,8 @@
     e.preventDefault();
     const out = $("#msg-photo");
     if (!files.length) return setMsg(out, "Choisissez au moins une photo ou un PDF.", "erreur");
+    const big = files.find((x) => x.pdf && x.file.size > PDF_MAX);
+    if (big) return setMsg(out, `« ${big.file.name} » dépasse 8 Mo : l'import en une seule recette est limité à 8 Mo. S'il contient plusieurs recettes, utilisez « Analyser le PDF ».`, "erreur");
     const btn = $("#go-photo"); btn.disabled = true;
     const id = AR.uuid(), book = bookSel.value, paths = [];
     try {
@@ -352,11 +382,58 @@
     btn.disabled = false;
   });
 
+  // ---- analyse d'un PDF à plusieurs recettes : téléversement, ligne recipe_pdf_jobs (jamais status), appel, puis page du sommaire
+  $("#go-pdf").addEventListener("click", async () => {
+    const out = $("#msg-photo"), one = files.length === 1 && files[0].pdf ? files[0] : null;
+    if (!one) return;
+    if (one.file.size > PDF_ANALYSE_MAX) return setMsg(out, "Ce PDF dépasse 30 Mo : exportez-le en plus léger ou découpez-le.", "erreur");
+    if (one.pages > 100) return setMsg(out, "Ce PDF dépasse 100 pages : découpez-le.", "erreur");
+    const btn = $("#go-pdf"), submit = $("#go-photo"); btn.disabled = true; submit.disabled = true;
+    const id = AR.uuid(), book = bookSel.value, path = `${book}/imports/${id}/source.pdf`;
+    let uploaded = false;
+    try {
+      setMsg(out, "Envoi du PDF…");
+      const up = await sb.storage.from("recipes").upload(path, one.file, { contentType: "application/pdf", upsert: false });
+      if (up.error) throw up.error;
+      uploaded = true;
+      const ins = await sb.from("recipe_pdf_jobs").insert({ id, book_id: book, created_by: ctx.user.id, pdf_path: path });
+      if (ins.error) throw ins.error;
+      uploaded = false; // la ligne existe : le fichier lui appartient
+      try { sessionStorage.setItem("ar.pdf." + id, one.file.name.replace(/\.pdf$/i, "").replace(/[_-]+/g, " ").trim().slice(0, 200)); } catch { /* stockage indisponible */ }
+      const href = `/recettes/pdf.html?job=${encodeURIComponent(id)}`;
+      try { await AR.callPdfJob(id); }
+      catch (e2) { setMsg(out, "", ""); out.innerHTML = `${esc(e2.message)} L'analyse reste en attente : <a href="${href}">ouvrez-la</a> pour la relancer.`; out.className = "msg erreur"; btn.disabled = false; submit.disabled = false; loadJobs(); return; }
+      location.href = href;
+      return;
+    } catch (err) {
+      if (uploaded) sb.storage.from("recipes").remove([path]).catch(() => {});
+      setMsg(out, AR.menuErr(err, "Impossible d'envoyer le PDF. Réessayez."), "erreur");
+    }
+    btn.disabled = false; submit.disabled = false;
+  });
+
+  // ---- analyses de PDF récentes (retour au sommaire) : une erreur (table absente) masque simplement la zone
+  const jobsBox = $("#jobs"), jobs = new Map();
+  const JOB_ETAT = { en_attente: "En attente de démarrage…", en_cours: "Analyse en cours…", pret: "Sommaire prêt", echec: "L'analyse a échoué." };
+  function drawJobs() {
+    const list = [...jobs.values()];
+    $("#jobs-zone").hidden = !list.length;
+    jobsBox.innerHTML = `<ul class="imports">${list.map((j) => `<li class="imp"><div class="imp-tete"><span class="libelle">${esc(j.menu_title || "PDF")}${j.page_count ? ` · ${j.page_count} pages` : ""}</span><span class="meta">${esc(fmtDate(j.created_at))}</span></div>
+      <p class="imp-etat ${j.status === "pret" ? "or" : j.status === "echec" ? "erreur" : ""}">${["en_attente", "en_cours"].includes(j.status) ? '<span class="imp-point" aria-hidden="true"></span>' : ""}${esc(j.status === "echec" && j.error ? j.error : JOB_ETAT[j.status] || "")}</p>
+      <div class="rangee"><a class="btn petit" href="/recettes/pdf.html?job=${encodeURIComponent(j.id)}">${j.status === "pret" ? "Ouvrir le sommaire" : "Ouvrir"}</a></div></li>`).join("")}</ul>`;
+  }
+  async function loadJobs() {
+    const { data, error } = await sb.from("recipe_pdf_jobs").select("id,book_id,status,error,menu_title,page_count,toc,created_at").eq("created_by", ctx.user.id).order("created_at", { ascending: false }).limit(5);
+    if (error) { console.error(error); return; }
+    jobs.clear(); (data || []).forEach((j) => jobs.set(j.id, j)); drawJobs(); draw();
+  }
+
   // ---- liste « En cours »
   const rows = new Map();
   const box = $("#imports");
   const ACTIFS = ["en_attente", "en_cours"];
-  const label = (r) => r.kind === "texte" ? "Note" : r.kind === "photo_page" ? `${(r.page_paths || []).some((p) => /\.pdf$/i.test(p)) ? "PDF" : "Photo de page"}${(r.page_paths || []).length > 1 ? ` (${r.page_paths.length} fichiers)` : ""}`
+  const tocTitle = (r) => { const j = jobs.get(r.pdf_job_id); const t = j && Array.isArray(j.toc) ? j.toc.find((x) => x.idx === r.pdf_idx) : null; return t && t.titre ? ` · ${t.titre}` : ""; };
+  const label = (r) => r.kind === "pdf_extrait" ? "Extrait de PDF" + tocTitle(r) : r.kind === "texte" ? "Note" : r.kind === "photo_page" ? `${(r.page_paths || []).some((p) => /\.pdf$/i.test(p)) ? "PDF" : "Photo de page"}${(r.page_paths || []).length > 1 ? ` (${r.page_paths.length} fichiers)` : ""}`
     : (r.kind === "instagram" ? "Reel Instagram" : "Site web") + (AR.host(r.source_url || "") ? " · " + AR.host(r.source_url) : "");
   const fmtHeure = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
   function etat(r) {
@@ -415,8 +492,8 @@
   // Temps réel, avec sondage toutes les 5 s tant qu'un import est actif ou que le canal n'est pas établi.
   let live = false, timer = null;
   function poll() {
-    const need = !live || [...rows.values()].some((r) => ACTIFS.includes(r.status));
-    if (need && !timer) timer = setInterval(() => { if (!document.hidden) load(); }, 5000);
+    const need = !live || [...rows.values()].some((r) => ACTIFS.includes(r.status)) || [...jobs.values()].some((j) => ["en_attente", "en_cours"].includes(j.status));
+    if (need && !timer) timer = setInterval(() => { if (!document.hidden) { load(); loadJobs(); } }, 5000);
     if (!need && timer) { clearInterval(timer); timer = null; }
   }
   try {
@@ -430,5 +507,5 @@
   } catch (err) { console.error(err); live = false; }
   document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
   await load();
-  poll();
+  loadJobs().then(poll);
 })();

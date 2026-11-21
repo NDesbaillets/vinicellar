@@ -128,7 +128,16 @@
       impId = im.data && im.data[0] ? im.data[0].id : null;
     } catch (e) { console.error(e); }
   }
-  await Promise.all([loadDup(), loadVersions(), loadOrigin(), loadTips(), loadImportId()]);
+  // Menus dont la recette fait partie (contrat 09) : jamais bloquant, rien d'affiché si la table est absente.
+  let menus = [];
+  async function loadMenus() {
+    try {
+      const { data, error } = await sb.from("recipe_menu_items").select("menu_id,recipe_menus(id,title,deleted_at)").eq("recipe_id", r.id);
+      if (error) throw error;
+      menus = (data || []).map((x) => x.recipe_menus).filter((m) => m && !m.deleted_at);
+    } catch (e) { console.error(e); }
+  }
+  await Promise.all([loadDup(), loadVersions(), loadOrigin(), loadTips(), loadImportId(), loadMenus()]);
   let retyping = false;
   const tipsHtml = () => !tips.length ? "" : `<details class="pages-orig tips-liees"><summary>Astuces liées <span class="muted">(${tips.length})</span></summary>${AR.tipsListHtml(tips)}</details>`;
   const view = { tab: "fiche", lang: "fr", portions: null };
@@ -339,6 +348,7 @@
       <h1 class="fiche-titre"${orig && safeLang ? ` lang="${esc(safeLang)}"` : ""}>${esc(titre)}</h1>
       ${r.title_original && !orig ? `<p class="fiche-orig">${esc(r.title_original)}</p>` : ""}
       ${source ? `<p class="fiche-source">${source}</p>` : ""}
+      ${menus.length ? `<p class="fiche-source">Fait partie du menu : ${menus.map((m) => `<a href="/recettes/menu.html?id=${encodeURIComponent(m.id)}">${esc(m.title)}</a>`).join(", ")}</p>` : ""}
       ${origin ? `<p class="fiche-source">Transmise depuis <a href="/recettes/fiche.html?id=${encodeURIComponent(origin.id)}">${esc(origin.title)}</a></p>` : ""}
       <div id="statut-zone">${statutHtml()}</div>
       <span class="filet" style="margin:18px auto 0" aria-hidden="true"></span>

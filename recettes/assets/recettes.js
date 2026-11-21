@@ -596,8 +596,8 @@
       <span class="tip-meta">${esc([TIP_CATS[t.category] || "", tipReason(t.reason)].filter(Boolean).join(" · "))}</span></summary>
       <div class="tip-corps"><p>${esc(t.body)}</p>${opts.link === false ? "" : `<a class="btn sec petit" href="/recettes/astuce.html?id=${encodeURIComponent(t.id)}">Ouvrir l'astuce</a>`}</div></details></li>`).join("")}</ul>`;
   }
-  // Appel de la fonction d'import. extra : { retype: "recette" | "astuce" }. Lève une Error au message lisible.
-  async function callImport(importId, extra) {
+  // Appel de la fonction recipe-import. body : { import_id, retype? } ou { pdf_job_id }. Lève une Error au message lisible (e.status = code HTTP).
+  async function callFn(body, defaultMsg) {
     const { data } = await sb.auth.getSession();
     const token = data.session && data.session.access_token;
     if (!token) throw new Error("Votre session a expiré. Reconnectez-vous.");
@@ -606,7 +606,7 @@
       res = await fetch(`${cfg.supabaseUrl}/functions/v1/recipe-import`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}`, apikey: cfg.supabaseAnonKey },
-        body: JSON.stringify({ import_id: importId, ...(extra || {}) })
+        body: JSON.stringify(body)
       });
     } catch (e) { throw new Error("Connexion impossible. Vérifiez votre réseau et réessayez."); }
     if (!res.ok) {
@@ -616,9 +616,36 @@
         : res.status === 401 ? "Votre session a expiré. Reconnectez-vous."
         : res.status === 403 ? "Cette action n'est pas permise avec votre rôle dans ce carnet."
         : res.status === 409 ? "Un traitement est déjà en cours pour cette source."
-        : "Le changement de type n'a pas pu démarrer. Réessayez dans un instant.";
+        : defaultMsg;
       const e = new Error(m || fallback); e.status = res.status; throw e;
     }
+  }
+  const callImport = (importId, extra) => callFn({ import_id: importId, ...(extra || {}) }, "Le changement de type n'a pas pu démarrer. Réessayez dans un instant.");
+  // Analyse d'un PDF à plusieurs recettes (contrat 09 §2) : { pdf_job_id }.
+  const callPdfJob = (jobId) => callFn({ pdf_job_id: jobId }, "L'analyse n'a pas pu démarrer. Réessayez dans un instant.");
+
+  // ---- menus et PDF à plusieurs recettes (contrat 09-menus-pdf-contrat.md)
+  const MENU_RUBRIQUES = [["aperitif", "Apéritif"], ["entree", "Entrée"], ["plat", "Plat"], ["accompagnement", "Accompagnement"], ["fromage", "Fromage"], ["dessert", "Dessert"], ["base", "Base"], ["boisson", "Boisson"], ["autre", "Autre"]];
+  // Rubrique d'un menu -> rubrique d'une réception (qui n'en a que six).
+  const rubriqueReception = (k) => ({ accompagnement: "plat", base: "autre", boisson: "autre" }[k] || k);
+  // Message d'erreur d'une requête sur les menus ou les analyses de PDF : migration absente = message simple.
+  function menuErr(e, fallback) {
+    const m = String((e && (e.message || "")) || "") + " " + String((e && e.code) || "");
+    if (/row-level security|permission denied|42501/i.test(m)) return errMsg(e, fallback);
+    if (/recipe_menu|recipe_pdf|menu_id|pdf_job|pdf_extrait|pdf_idx|menu_title|PGRST20\d|42P01|42703|42883|schema cache|does not exist|Could not find|23514/i.test(m)) { console.error(e); return "Les menus et l'import de PDF ne sont pas encore disponibles sur ce serveur."; }
+    return errMsg(e, fallback);
+  }
+  // Pages d'un PDF en texte : [3,4,5,8] -> « p. 3 à 5, 8 ».
+  function fmtPages(pages) {
+    const p = [...new Set((pages || []).map(Number).filter((n) => n > 0))].sort((a, b) => a - b);
+    if (!p.length) return "";
+    const out = []; let a = p[0], b = a;
+    for (const n of p.slice(1).concat([null])) {
+      if (n === b + 1) { b = n; continue; }
+      out.push(a === b ? String(a) : b === a + 1 ? `${a}, ${b}` : `${a} à ${b}`);
+      a = b = n;
+    }
+    return "p. " + out.join(", ");
   }
   // Changer de type : relit la même source avec la cible forcée, puis attend la nouvelle fiche et renvoie son adresse.
   //   to : "recette" | "astuce" ; current : id de l'objet actuel (pour reconnaître le nouveau) ; onStep(texte) facultatif.
@@ -658,7 +685,7 @@
     toast("Source retirée : enregistrez pour confirmer.");
   });
 
-  window.AR = { TIP_CATS, tipErr, relatedTips, tipReason, tipsListHtml, callImport, retype, sb, cfg, $, $$, esc, norm, fmtDate, fmtDay, todayIso, parseDay, fmtQty, fmtUnit, fmtMin, host, safeUrl, errMsg, toast, setMsg, safeNext, getBookPref, setBookPref,
+  window.AR = { callPdfJob, MENU_RUBRIQUES, rubriqueReception, menuErr, fmtPages, TIP_CATS, tipErr, relatedTips, tipReason, tipsListHtml, callImport, retype, sb, cfg, $, $$, esc, norm, fmtDate, fmtDay, todayIso, parseDay, fmtQty, fmtUnit, fmtMin, host, safeUrl, errMsg, toast, setMsg, safeNext, getBookPref, setBookPref,
     signedUrls, compressImage, scaleQty: window.ARPure.scaleQty, portionFactor: window.ARPure.portionFactor, showOffline, clearOfflineData, uuid, extractUrl, alertText, diffLines, fmtLine, lineKey, getUser, loadBooks, boot, registerSW, ROLES, COURSES, DIFFICULTES, UNITES,
     VAPID_PUBLIC: AR_VAPID_PUBLIC, ALLERGENES, REGIMES, RAYONS, MOIS, JOURS, cap, addDays, weekdayOf, mondayOf, dayLabel, debounce, fmtShop, fnMessage,
     RUBRIQUES, CRENEAUX, rubriqueDe, prenom, guestPills, loadCatalog, catalogFind, catalogByName, catalogPicker, fetchCards, plancheHtml, dedupeVersions, pickBook, isNetErr, push, swipeBack, sourceFields };

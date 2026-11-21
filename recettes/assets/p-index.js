@@ -4,7 +4,7 @@
   if (!ctx) return;
   let books = ctx.books;
   const TYPE_KEY = "ar.type";
-  const st = { statut: "toutes", course: "", cat: "", q: "", book: AR.getBookPref(), mode: "mots", type: (() => { try { return localStorage.getItem(TYPE_KEY) === "astuces" ? "astuces" : "recettes"; } catch { return "recettes"; } })() };
+  const st = { statut: "toutes", course: "", cat: "", q: "", book: AR.getBookPref(), mode: "mots", type: (() => { const q = new URLSearchParams(location.search).get("type"); try { const v = ["recettes", "astuces", "menus"].includes(q) ? q : localStorage.getItem(TYPE_KEY); return v === "astuces" || v === "menus" ? v : "recettes"; } catch { return "recettes"; } })() };
   const msg = $("#msg"), liste = $("#liste");
 
   // ---- sélecteurs
@@ -50,7 +50,7 @@
   const cover = (r) => { const p = (r.recipe_photos || []).find((x) => x.is_cover); return p ? p.storage_path : null; };
   const sourceOf = (r) => r.source_author || AR.host(r.source_url || "") || "";
   let seq = 0;
-  function load() { return st.type === "astuces" ? loadTips() : loadRecipes(); }
+  function load() { return st.type === "astuces" ? loadTips() : st.type === "menus" ? loadMenus() : loadRecipes(); }
   async function loadRecipes() {
     const my = ++seq;
     liste.setAttribute("aria-busy", "true");
@@ -155,17 +155,58 @@
         <span class="astuce-extrait">${esc(t.body)}</span></span></a></li>`;
     }).join("")}</ul>`;
   }
-  // Bascule Recettes / Astuces : mémorisée par appareil.
+  // ---- menus (contrat 09 §3) : titre, nombre de recettes, vignette de la première recette avec photo
+  async function loadMenus() {
+    const my = ++seq;
+    liste.setAttribute("aria-busy", "true");
+    setMsg(msg, "");
+    if (!books.length) { liste.innerHTML = `<div class="vide-etat"><p>Vous n'appartenez à aucun carnet pour le moment.</p></div>`; liste.setAttribute("aria-busy", "false"); return; }
+    const ids = st.book === "all" ? books.map((b) => b.id) : [st.book];
+    let q = sb.from("recipe_menus").select("id,book_id,title,note,created_at,recipe_menu_items(position,recipes(id,deleted_at,recipe_photos(storage_path,is_cover)))").in("book_id", ids).is("deleted_at", null);
+    if (st.q) q = q.ilike("title", `%${st.q.replace(/[%_\\,()]/g, " ").trim()}%`);
+    const res = await q.order("created_at", { ascending: false }).limit(100);
+    if (my !== seq) return;
+    liste.setAttribute("aria-busy", "false");
+    if (res.error) { liste.innerHTML = ""; setMsg(msg, AR.menuErr(res.error, "Impossible de charger les menus."), "erreur"); return; }
+    const rows = (res.data || []).map((m) => {
+      const its = (m.recipe_menu_items || []).filter((x) => x.recipes && !x.recipes.deleted_at).sort((a, b) => a.position - b.position);
+      const withPhoto = its.map((x) => (x.recipes.recipe_photos || []).find((p) => p.is_cover)).find(Boolean);
+      return { ...m, n: its.length, path: withPhoto ? withPhoto.storage_path : null };
+    });
+    const nouveau = (() => { const ed = books.filter((b) => b.role !== "reader"); const b = ed.find((x) => x.id === st.book) || ed.find((x) => x.id === AR.getBookPref()) || ed[0]; return b ? `<a class="btn" href="/recettes/menu.html?nouveau=1&amp;book=${encodeURIComponent(b.id)}">Nouveau menu</a>` : ""; })();
+    if (!rows.length) {
+      liste.innerHTML = st.q
+        ? `<div class="vide-etat"><p>Aucun menu ne correspond à votre recherche.</p><button type="button" class="btn sec petit" id="reset">Effacer la recherche</button></div>`
+        : `<div class="vide-etat"><p class="italique">Aucun menu dans ce carnet pour l'instant. Importez un PDF de menu, ou composez-en un à la main.</p><div class="rangee" style="justify-content:center">${nouveau}<a class="btn sec" href="/recettes/ajouter.html">Importer un PDF</a></div></div>`;
+      const r = $("#reset"); if (r) r.addEventListener("click", resetFilters);
+      return;
+    }
+    let urls = {};
+    try { urls = await AR.signedUrls(rows.map((m) => m.path).filter(Boolean)); } catch (e) { console.error(e); }
+    if (my !== seq) return;
+    const multi = books.length > 1 && st.book === "all";
+    const bookName = (id) => (books.find((b) => b.id === id) || {}).name || "";
+    liste.innerHTML = `${nouveau ? `<p style="margin:0 0 16px">${nouveau}</p>` : ""}<ul class="liste-astuces">${rows.map((m) => {
+      const sub = [`${m.n} recette${m.n > 1 ? "s" : ""}`, multi ? bookName(m.book_id) : ""].filter(Boolean).join(" · ");
+      return `<li><a class="astuce-carte" href="/recettes/menu.html?id=${encodeURIComponent(m.id)}">
+        ${m.path && urls[m.path] ? `<img class="astuce-vignette" src="${esc(urls[m.path])}" alt="" loading="lazy">` : `<span class="astuce-vignette menu-sans" aria-hidden="true"></span>`}
+        <span class="astuce-bloc"><span class="astuce-titre">${esc(m.title)}</span><span class="planche-source">${esc(sub)}</span></span></a></li>`;
+    }).join("")}</ul>`;
+  }
+  // Bascule Recettes / Astuces / Menus : mémorisée par appareil.
   function syncType(reload) {
-    const tips = st.type === "astuces";
+    const tips = st.type === "astuces", menus = st.type === "menus";
     $$("[data-type]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.type === st.type)));
-    if (tips && st.mode === "question") setMode("mots");
-    $("#nl-mode").hidden = tips;
+    if ((tips || menus) && st.mode === "question") setMode("mots");
+    $("#nl-mode").hidden = tips || menus;
+    $(".filtres").hidden = menus;
     $("[data-statut=famille]").hidden = tips;
     if (tips && st.statut === "famille") { st.statut = "toutes"; syncStatut(); }
-    $("#course-l").hidden = tips; $("#cat-l").hidden = !tips;
-    $("#q").placeholder = tips ? "Une astuce, un ingrédient…" : "Une recette, un ingrédient…";
-    $("label[for=q]").textContent = tips ? "Rechercher une astuce" : "Rechercher une recette";
+    if (menus && st.statut !== "toutes") { st.statut = "toutes"; syncStatut(); }
+    $("#course-l").hidden = tips || menus; $("#cat-l").hidden = !tips;
+    $("#ligne-filtres").classList.toggle("seul", menus);
+    $("#q").placeholder = tips ? "Une astuce, un ingrédient…" : menus ? "Un menu…" : "Une recette, un ingrédient…";
+    $("label[for=q]").textContent = tips ? "Rechercher une astuce" : menus ? "Rechercher un menu" : "Rechercher une recette";
     if (reload) { clearTimeout(load.t); setMsg(msg, ""); load(); }
   }
   $$("[data-type]").forEach((b) => b.addEventListener("click", () => {

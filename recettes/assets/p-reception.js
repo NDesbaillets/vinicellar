@@ -26,6 +26,24 @@
   main.setAttribute("aria-busy", "false");
   $("#page-titre").textContent = rec ? "Réception" : "Nouvelle réception";
 
+  // ---- pré-remplissage depuis un menu : reception.html?book=…&menu=… (contrat 09 §3). Rien n'est créé avant « Créer la réception ».
+  let fromMenu = null;
+  const menuQ = !rec && editor ? qs.get("menu") : null;
+  if (menuQ) {
+    try {
+      const [m, it] = await Promise.all([
+        sb.from("recipe_menus").select("id,title,book_id,deleted_at").eq("id", menuQ).maybeSingle(),
+        sb.from("recipe_menu_items").select("position,rubrique,recipes(id,title,deleted_at)").eq("menu_id", menuQ).order("position")]);
+      if (m.error) throw m.error;
+      if (it.error) throw it.error;
+      if (m.data && m.data.book_id === bookId && !m.data.deleted_at) {
+        const order = new Map(AR.MENU_RUBRIQUES.map(([k], i) => [k, i]));
+        const rows = (it.data || []).filter((x) => x.recipes && !x.recipes.deleted_at).sort((a, b) => (order.get(a.rubrique) ?? 99) - (order.get(b.rubrique) ?? 99) || a.position - b.position);
+        fromMenu = { id: m.data.id, title: m.data.title, rows };
+      } else toast("Ce menu est introuvable dans ce carnet : la réception est créée vide.", "erreur");
+    } catch (e) { toast(AR.menuErr(e, "Le menu n'a pas pu être lu : la réception est créée vide."), "erreur"); }
+  }
+
   // ---- état du formulaire
   const dateQs = /^\d{4}-\d{2}-\d{2}$/.test(qs.get("date") || "") ? qs.get("date") : AR.todayIso();
   const dishOf = (d) => ({ k: AR.uuid(), id: d.id || null, recipe_id: d.recipe_id || null, label: d.label || "", course: d.course || "plat", position: d.position || 0 });
@@ -33,6 +51,10 @@
   const st = { day: rec ? String(rec.day).slice(0, 10) : dateQs, slot: rec ? rec.slot : null, title: rec ? rec.title || "" : "", members: rec ? rec.members_count : null, note: rec ? rec.note || "" : "",
     photo: rec ? rec.photo_path : null, file: null, photoUrl: null, guests: new Set(rec ? (rec.recipe_reception_guests || []).map((x) => x.guest_id) : []),
     dishes: rec ? (rec.recipe_reception_dishes || []).slice().sort((a, b) => a.position - b.position).map(dishOf) : [], wines: rec ? (rec.recipe_reception_wines || []).map(wineOf) : [] };
+  if (fromMenu) {
+    st.title = fromMenu.title.slice(0, 120);
+    st.dishes = fromMenu.rows.map((x) => dishOf({ recipe_id: x.recipes.id, label: x.recipes.title, course: AR.rubriqueReception(x.rubrique) }));
+  }
   // Instantané des lignes enregistrées, pour n'écrire que les différences.
   let saved = snapshot();
   function snapshot() { return { guests: new Set(st.guests), dishes: new Map(st.dishes.filter((d) => d.id).map((d) => [d.id, `${d.recipe_id}|${d.label}|${d.course}|${st.dishes.indexOf(d)}`])), wines: new Map(st.wines.filter((w) => w.id).map((w) => [w.id, `${w.label}|${w.note}`])) }; }
@@ -331,6 +353,7 @@
 
   render();
   refreshWarnings();
+  if (fromMenu) setMsg($("#re-msg"), `Pré-rempli avec les ${fromMenu.rows.length} plat${fromMenu.rows.length > 1 ? "s" : ""} du menu « ${fromMenu.title} ». Choisissez la date et les invités, puis créez la réception.`);
 
   // ---- interactions
   zone.addEventListener("submit", (e) => { if (e.target.id === "re-form") { e.preventDefault(); save(); } });

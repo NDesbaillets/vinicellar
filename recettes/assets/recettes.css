@@ -657,7 +657,7 @@ body.pt main.wrap{padding-bottom:24px}
 .vignette-pdf{display:flex;align-items:center;justify-content:center;aspect-ratio:4/5;background:var(--fond);font-family:var(--titre);font-weight:500;letter-spacing:.2em;color:var(--or-texte)}
 
 /* ---- astuces (contrat 08-astuces-contrat.md) */
-.type-bascule .onglets{max-width:300px}
+.type-bascule .onglets{max-width:360px}
 .importer-comme .onglet{letter-spacing:.08em;padding:0 4px}
 .liste-astuces{list-style:none;margin:0;padding:0;border-top:1px solid var(--filet)}
 .liste-astuces li{border-bottom:1px solid var(--filet)}
@@ -693,3 +693,37 @@ body.pt main.wrap{padding-bottom:24px}
 .cu-bar-2 .cu-quit{margin-right:auto}
 .cu-bar-2 .cu-titre{order:5;flex:1 0 100%;-webkit-line-clamp:1}
 .source-bloc{margin:8px 0 0;display:grid;gap:12px}.source-bloc #src-clear{justify-self:start;padding-left:0}
+
+/* ---- menus et PDF à plusieurs recettes (contrat 09) : préfixes pdf-, menu-, mn- */
+input[type=radio]{width:24px;height:24px;min-height:0;accent-color:var(--or-texte);flex:none;margin:0}
+.ligne-filtres.seul{grid-template-columns:1fr}
+.menu-sans{background:var(--note)}
+.pdf-analyse{background:var(--note);border:1px solid var(--filet);padding:14px 16px}
+.pdf-analyse .aide{margin:0 0 12px}
+.pdf-outils{margin:0 0 4px}
+.pdf-liste{list-style:none;margin:8px 0 0;padding:0;border-top:1px solid var(--filet)}
+.pdf-ent{border-bottom:1px solid var(--filet)}
+.pdf-case{display:flex;align-items:flex-start;gap:14px;padding:12px 0;min-height:56px;width:100%;cursor:pointer}
+.pdf-case input{margin-top:2px}
+.pdf-fait .pdf-case{cursor:default;padding-bottom:4px}
+.pdf-txt{display:block;min-width:0;flex:1}
+.pdf-t{display:block;font-family:var(--titre);font-weight:300;font-size:20px;line-height:1.25;color:var(--encre);text-transform:none;letter-spacing:0;overflow-wrap:anywhere}
+.pdf-m{display:block;font-family:var(--texte);font-size:16px;letter-spacing:0;text-transform:none;font-weight:400;color:var(--encre-3);margin-top:2px}
+.pdf-m .libelle{margin-left:0}
+.pdf-etat{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:0 0 12px}
+.pdf-etat .libelle{margin-right:auto}
+.pdf-err{display:block;color:var(--erreur);font-size:16px;padding:0 0 12px 38px}
+.pdf-vide{padding:16px 0}
+.pdf-regl{margin-top:28px}
+.menu-note{text-align:center;font-style:italic;color:var(--encre-2);margin:18px 0 0}
+.menu-groupe{margin-top:28px}
+.menu-rub{font-family:var(--titre);font-weight:300;font-size:20px;letter-spacing:.18em;text-transform:uppercase;color:var(--or-texte);margin:0 0 4px}
+.menu-plats{list-style:none;margin:0;padding:0;border-top:1px solid var(--filet)}
+.menu-plats li{border-bottom:1px solid var(--filet)}
+.planche.reduite{display:flex;align-items:center;gap:16px;padding:10px 0;min-height:44px}
+.planche.reduite .passe-partout{flex:none;width:84px;padding:6px}
+.planche.reduite .legende{margin:0;text-align:left;min-width:0}
+.mn-ed-liste{list-style:none;margin:0;padding:0;border-top:1px solid var(--filet)}
+.mn-ed{padding:12px 0;border-bottom:1px solid var(--filet)}
+.mn-ed-t{font-family:var(--titre);font-weight:300;font-size:20px;line-height:1.25;margin:0 0 8px;overflow-wrap:anywhere}
+.mn-ed select{width:auto;flex:1 1 150px;min-width:0}

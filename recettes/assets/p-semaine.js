@@ -13,6 +13,7 @@
   const st = { book: AR.pickBook(books), week: AR.mondayOf(AR.todayIso()) };
   const plan = new Map(); // « jour|créneau » -> ligne
   const recipes = new Map(); // id -> { title, servings, deleted }
+  const menus = new Map(); // id -> { title, n, deleted } (contrat 09 : une case peut porter un menu)
   let channel = null, pollT = null, lastSig = "", opener = null;
   const book = () => books.find((b) => b.id === st.book);
   const editor = () => !!book() && book().role !== "reader";
@@ -42,6 +43,12 @@
       if (rr.error) throw rr.error;
       (rr.data || []).forEach((r) => recipes.set(r.id, { title: r.title, servings: r.servings, deleted: !!r.deleted_at }));
     }
+    const needM = [...new Set(rows.map((r) => r.menu_id).filter((x) => x && !menus.has(x)))];
+    if (needM.length) {
+      const mm = await sb.from("recipe_menus").select("id,title,deleted_at,recipe_menu_items(recipe_id)").in("id", needM);
+      if (mm.error) console.error(mm.error);
+      else (mm.data || []).forEach((m) => menus.set(m.id, { title: m.title, n: (m.recipe_menu_items || []).length, deleted: !!m.deleted_at }));
+    }
     return rows;
   }
   async function load(silent) {
@@ -49,7 +56,7 @@
     if (!silent) { g.setAttribute("aria-busy", "true"); g.innerHTML = `<p class="chargement">Chargement de la semaine…</p>`; }
     try {
       const rows = await fetchWeek();
-      const sig = JSON.stringify(rows.map((r) => [r.id, r.day, r.slot, r.state, r.recipe_id, r.servings, r.note, r.reception_id]).sort()) + st.week + st.book;
+      const sig = JSON.stringify(rows.map((r) => [r.id, r.day, r.slot, r.state, r.recipe_id, r.menu_id, r.servings, r.note, r.reception_id]).sort()) + st.week + st.book;
       if (silent && sig === lastSig) return;
       lastSig = sig;
       plan.clear(); rows.forEach((r) => plan.set(key(String(r.day).slice(0, 10), r.slot), r));
@@ -71,7 +78,13 @@
     if (!withRecipe) corps = `<p class="muted italique se-txt">Pas de repas à préparer.</p>`;
     else if (r.recipe_id) corps = `<p class="se-recette">${rec && !rec.deleted ? `<a href="/recettes/fiche.html?id=${encodeURIComponent(r.recipe_id)}">${esc(rec.title)}</a>` : `<span class="muted italique">${rec ? "Recette dans la corbeille" : "Recette indisponible"}</span>`}</p>
       ${ed ? `<div class="rangee"><button type="button" class="btn sec petit" data-act="pick" aria-label="Changer la recette : ${esc(dl)}">Changer</button><button type="button" class="btn lien" data-act="norecipe" aria-label="Retirer la recette : ${esc(dl)}">Retirer la recette</button></div>` : ""}`;
-    else corps = ed ? `<div class="rangee"><button type="button" class="btn petit" data-act="pick" aria-label="Choisir une recette : ${esc(dl)}">Choisir une recette</button></div>` : `<p class="muted italique se-txt">Pas encore de recette.</p>`;
+    else if (r.menu_id) {
+      const mn = menus.get(r.menu_id), ok = mn && !mn.deleted;
+      corps = `<p class="se-recette">${ok ? `<a href="/recettes/menu.html?id=${encodeURIComponent(r.menu_id)}">${esc(mn.title)}</a>` : `<span class="muted italique">${mn ? "Menu dans la corbeille" : "Menu indisponible"}</span>`}</p>
+        ${ok ? `<p class="se-txt muted">Menu · ${mn.n} plat${mn.n > 1 ? "s" : ""}</p>` : ""}
+        ${ed ? `<div class="rangee"><button type="button" class="btn sec petit" data-act="pick" aria-label="Changer le menu : ${esc(dl)}">Changer</button><button type="button" class="btn lien" data-act="nomenu" aria-label="Retirer le menu : ${esc(dl)}">Retirer le menu</button></div>` : ""}`;
+    }
+    else corps = ed ? `<div class="rangee"><button type="button" class="btn petit" data-act="pick" aria-label="Choisir une recette ou un menu : ${esc(dl)}">Choisir une recette</button></div>` : `<p class="muted italique se-txt">Pas encore de recette.</p>`;
     const inv = r.state === "invites" && (ed || r.reception_id)
       ? `<div class="rangee se-inv">${ed ? `<button type="button" class="btn sec petit" data-act="invites" aria-label="Choisir les invités : ${esc(dl)}">Invités…</button>` : ""}${r.reception_id ? `<a class="btn lien" href="/recettes/reception.html?id=${encodeURIComponent(r.reception_id)}">Voir la réception</a>` : ""}</div>` : "";
     const ctrl = ed
@@ -154,6 +167,7 @@
   async function choose(day, slot, rid, servings) {
     const ex = plan.get(key(day, slot));
     const patch = { recipe_id: rid, state: ex && ex.state === "invites" ? "invites" : "prevu" };
+    if (ex && ex.menu_id) patch.menu_id = null; // une case a une recette ou un menu, pas les deux
     if (!(ex && ex.servings) && servings) patch.servings = servings;
     const row = await saveCell(day, slot, patch);
     if (row) { const rr = bookRecipes && bookRecipes.rows.find((x) => x.id === rid); if (rr) recipes.set(rid, { title: rr.title, servings: rr.servings, deleted: false }); }
@@ -161,8 +175,8 @@
   }
   function pickSheet(day, slot) {
     const lab = `${AR.dayLabel(day)} · ${slot === "midi" ? "midi" : "soir"}`;
-    const body = openSheet("Choisir une recette", lab);
-    body.innerHTML = `<div class="onglets" role="group" aria-label="Origine du choix"><button type="button" class="onglet" data-t="carnet" aria-pressed="true">Dans le carnet</button><button type="button" class="onglet" data-t="sugg" aria-pressed="false">Suggestions du jour</button></div><div id="se-pick" class="panneau"></div>`;
+    const body = openSheet("Choisir une recette ou un menu", lab);
+    body.innerHTML = `<div class="onglets" role="group" aria-label="Origine du choix"><button type="button" class="onglet" data-t="carnet" aria-pressed="true">Dans le carnet</button><button type="button" class="onglet" data-t="sugg" aria-pressed="false">Suggestions</button><button type="button" class="onglet" data-t="menus" aria-pressed="false">Menus</button></div><div id="se-pick" class="panneau"></div>`;
     const zonePick = $("#se-pick", body);
     async function tabCarnet() {
       zonePick.innerHTML = `<label for="se-rech" class="sr-only">Chercher dans le carnet</label><input id="se-rech" type="search" placeholder="Chercher dans le carnet…" autocomplete="off"><div id="se-res" class="se-res"><p class="chargement">Chargement…</p></div>`;
@@ -186,9 +200,27 @@
         rows.forEach((x) => { const c = cards.get(x.recipe_id); bookRecipes = bookRecipes && bookRecipes.book === st.book ? bookRecipes : { book: st.book, rows: [] }; if (!bookRecipes.rows.some((y) => y.id === c.id)) bookRecipes.rows.push({ id: c.id, title: c.title, servings: c.servings, course: c.course }); });
       } catch (e) { zonePick.innerHTML = `<p class="msg erreur" role="alert">${esc(errMsg(e, "Impossible de calculer les suggestions."))}</p>`; }
     }
+    // Menus du carnet : la case reçoit le menu (menu_id) à la place d'une recette.
+    async function tabMenus() {
+      zonePick.innerHTML = `<p class="chargement">Chargement des menus…</p>`;
+      try {
+        const { data, error } = await sb.from("recipe_menus").select("id,title,recipe_menu_items(recipe_id)").eq("book_id", st.book).is("deleted_at", null).order("title").limit(200);
+        if (error) throw error;
+        const rows = data || [];
+        rows.forEach((m) => menus.set(m.id, { title: m.title, n: (m.recipe_menu_items || []).length, deleted: false }));
+        zonePick.innerHTML = rows.length ? `<ul class="se-choix">${rows.map((m) => `<li><button type="button" class="se-choix-b" data-mid="${esc(m.id)}"><span class="se-ch-t">${esc(m.title)}</span><span class="se-ch-m">${(m.recipe_menu_items || []).length} plat${(m.recipe_menu_items || []).length > 1 ? "s" : ""}</span></button></li>`).join("")}</ul>` : `<p class="muted italique">Aucun menu dans ce carnet. <a href="/recettes/?type=menus">Voir les menus</a></p>`;
+      } catch (e) { zonePick.innerHTML = `<p class="msg erreur" role="alert">${esc(AR.menuErr(e, "Impossible de lire les menus."))}</p>`; }
+    }
     body.addEventListener("click", async (e) => {
       const t = e.target.closest("[data-t]");
-      if (t) { $$("[data-t]", body).forEach((b) => b.setAttribute("aria-pressed", String(b === t))); return void (t.dataset.t === "carnet" ? tabCarnet() : tabSugg()); }
+      if (t) { $$("[data-t]", body).forEach((b) => b.setAttribute("aria-pressed", String(b === t))); return void (t.dataset.t === "carnet" ? tabCarnet() : t.dataset.t === "menus" ? tabMenus() : tabSugg()); }
+      const mb = e.target.closest("[data-mid]");
+      if (mb) {
+        mb.disabled = true;
+        const row = await saveCell(day, slot, { menu_id: mb.dataset.mid, recipe_id: null, state: (plan.get(key(day, slot)) || {}).state === "invites" ? "invites" : "prevu" });
+        if (!row) { mb.disabled = false; return; }
+        closeSheet(); render(); toast("Menu ajouté au planning."); return;
+      }
       const b = e.target.closest("[data-rid]"); if (!b) return;
       b.disabled = true;
       const rr = bookRecipes && bookRecipes.rows.find((x) => x.id === b.dataset.rid);
@@ -241,7 +273,7 @@
 
   // ---- « Remplir ma semaine » : une proposition par case vide, validée une par une
   async function remplir() {
-    const empty = days().flatMap((d) => SLOTS.map(([s]) => [d, s])).filter(([d, s]) => { const r = plan.get(key(d, s)); return r && r.state === "prevu" && !r.recipe_id; });
+    const empty = days().flatMap((d) => SLOTS.map(([s]) => [d, s])).filter(([d, s]) => { const r = plan.get(key(d, s)); return r && r.state === "prevu" && !r.recipe_id && !r.menu_id; });
     if (!empty.length) return void toast("Aucune case vide à remplir : prévoyez d'abord vos repas, ou reprenez le rythme de la semaine dernière.", "erreur");
     opener = $('[data-top="remplir"]');
     const body = openSheet("Remplir ma semaine", "Rien n'est enregistré sans votre accord");
@@ -321,8 +353,9 @@
     b.disabled = true;
     let ok = true;
     if (b.dataset.act === "on") ok = !!(await saveCell(day, slot, { state: "prevu" }));
-    else if (b.dataset.act === "off") { if (plan.get(key(day, slot)).recipe_id && !confirm("Retirer ce repas du planning ?")) { b.disabled = false; return; } ok = await removeCell(day, slot); }
+    else if (b.dataset.act === "off") { if ((plan.get(key(day, slot)).recipe_id || plan.get(key(day, slot)).menu_id) && !confirm("Retirer ce repas du planning ?")) { b.disabled = false; return; } ok = await removeCell(day, slot); }
     else if (b.dataset.act === "norecipe") ok = !!(await saveCell(day, slot, { recipe_id: null }));
+    else if (b.dataset.act === "nomenu") ok = !!(await saveCell(day, slot, { menu_id: null }));
     render();
     if (!ok) return;
     const nb = $(`[data-day="${day}"][data-slot="${slot}"] button, [data-day="${day}"][data-slot="${slot}"] select`); if (nb) nb.focus();
@@ -332,7 +365,7 @@
     const f = e.target.dataset.f; if (!f) return;
     const cell = e.target.closest(".se-case"), day = cell.dataset.day, slot = cell.dataset.slot;
     let patch;
-    if (f === "state") { patch = { state: e.target.value }; if (e.target.value === "dehors" || e.target.value === "travail") patch.recipe_id = null; }
+    if (f === "state") { patch = { state: e.target.value }; if (e.target.value === "dehors" || e.target.value === "travail") { patch.recipe_id = null; const cur = plan.get(key(day, slot)); if (cur && cur.menu_id) patch.menu_id = null; } }
     else {
       const v = e.target.value.trim() === "" ? null : Number(e.target.value);
       if (v != null && (!Number.isInteger(v) || v < 1 || v > 99)) { toast("Le nombre de convives doit être un entier entre 1 et 99.", "erreur"); return render(); }

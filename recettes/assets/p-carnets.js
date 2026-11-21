@@ -28,6 +28,7 @@
     await loadInvites(); renderAll();
   });
 
+  const TABLE = { recipe: "recipes", tip: "recipe_tips", menu: "recipe_menus" };
   // ---- un carnet
   const sec = (b) => $(`section[data-book="${CSS.escape(b.id)}"]`);
   async function renderBook(b) {
@@ -36,13 +37,16 @@
     root.innerHTML = `<h2>${esc(b.name)}</h2><p class="libelle or" style="margin:4px 0 14px">${esc(AR.ROLES[b.role])}</p><div data-zone="body"><p class="chargement">Chargement…</p></div>`;
     const calls = [sb.rpc("book_people", { b: b.id }), editor ? sb.from("recipes").select("id,title,deleted_at").eq("book_id", b.id).not("deleted_at", "is", null).gte("deleted_at", new Date(Date.now() - 30 * 864e5).toISOString()).order("deleted_at", { ascending: false }) : Promise.resolve({ data: [] }),
       // Astuces en corbeille (contrat 08) : une erreur (migration absente) ne bloque pas la page.
-      editor ? sb.from("recipe_tips").select("id,title,deleted_at").eq("book_id", b.id).not("deleted_at", "is", null).gte("deleted_at", new Date(Date.now() - 30 * 864e5).toISOString()).order("deleted_at", { ascending: false }) : Promise.resolve({ data: [] })];
+      editor ? sb.from("recipe_tips").select("id,title,deleted_at").eq("book_id", b.id).not("deleted_at", "is", null).gte("deleted_at", new Date(Date.now() - 30 * 864e5).toISOString()).order("deleted_at", { ascending: false }) : Promise.resolve({ data: [] }),
+      // Menus en corbeille (contrat 09) : même tolérance.
+      editor ? sb.from("recipe_menus").select("id,title,deleted_at").eq("book_id", b.id).not("deleted_at", "is", null).gte("deleted_at", new Date(Date.now() - 30 * 864e5).toISOString()).order("deleted_at", { ascending: false }) : Promise.resolve({ data: [] })];
     if (owner) calls.push(sb.from("recipe_book_invites").select("id,email,role,created_at").eq("book_id", b.id).is("accepted_at", null).order("created_at"));
-    const [pp, tr, tt, iv] = await Promise.all(calls);
+    const [pp, tr, tt, mt, iv] = await Promise.all(calls);
     if (tt && tt.error) console.error(tt.error);
+    if (mt && mt.error) console.error(mt.error);
     const zone = $("[data-zone=body]", root);
     const errs = [pp, tr, iv].filter((x) => x && x.error).map((x) => errMsg(x.error, "Chargement incomplet."));
-    const people = pp.data || [], trash = [...(tr.data || []).map((x) => ({ ...x, kind: "recipe" })), ...(tt && !tt.error ? tt.data || [] : []).map((x) => ({ ...x, kind: "tip" }))].sort((x, y) => String(y.deleted_at).localeCompare(String(x.deleted_at))), invites = (iv && iv.data) || [];
+    const people = pp.data || [], trash = [...(tr.data || []).map((x) => ({ ...x, kind: "recipe" })), ...(tt && !tt.error ? tt.data || [] : []).map((x) => ({ ...x, kind: "tip" })), ...(mt && !mt.error ? mt.data || [] : []).map((x) => ({ ...x, kind: "menu" }))].sort((x, y) => String(y.deleted_at).localeCompare(String(x.deleted_at))), invites = (iv && iv.data) || [];
 
     zone.innerHTML = `${errs.length ? `<p class="msg erreur" role="alert">${esc(errs[0])}</p>` : ""}
       ${owner ? `<form data-form="rename" class="champs" novalidate style="margin-bottom:8px"><label>Nom du carnet<input name="name" maxlength="80" value="${esc(b.name)}"></label><div><button class="btn sec petit" type="submit">Renommer</button></div></form>` : ""}
@@ -61,8 +65,8 @@
       <p class="aide" style="margin:0 0 10px">Le fichier JSON contient les recettes, ingrédients, étapes, cuissons et notes que vous pouvez lire. Le livre s'imprime ou s'enregistre en PDF.</p>
       <div class="rangee"><button type="button" class="btn sec petit" data-act="export">Exporter le carnet (JSON)</button><a class="btn sec petit" href="/recettes/livre.html?book=${encodeURIComponent(b.id)}">Livre du carnet</a></div><p class="msg" data-export-msg role="status" aria-live="polite"></p>
       ${editor ? `<h3 class="libelle" style="margin:28px 0 4px">Corbeille</h3>
-        ${trash.length ? `<ul class="membres">${trash.map((t) => { const left = Math.max(0, 30 - Math.floor((Date.now() - new Date(t.deleted_at)) / 864e5)); return `<li data-recipe="${esc(t.id)}" data-kind="${t.kind}"><div class="qui">${esc(t.title)}<small>${t.kind === "tip" ? "Astuce · Supprimée le" : "Supprimée le"} ${esc(fmtDate(t.deleted_at))} · encore ${left} jour${left > 1 ? "s" : ""}</small></div>
-          <div class="rangee"><button type="button" class="btn sec petit" data-act="restore">Restaurer</button><button type="button" class="btn danger petit" data-act="purge">Supprimer définitivement</button></div></li>`; }).join("")}</ul>` : `<p class="muted italique">La corbeille est vide. Les recettes et astuces supprimées y restent 30 jours.</p>`}` : ""}
+        ${trash.length ? `<ul class="membres">${trash.map((t) => { const left = Math.max(0, 30 - Math.floor((Date.now() - new Date(t.deleted_at)) / 864e5)); return `<li data-recipe="${esc(t.id)}" data-kind="${t.kind}"><div class="qui">${esc(t.title)}<small>${t.kind === "tip" ? "Astuce · Supprimée le" : t.kind === "menu" ? "Menu · Supprimé le" : "Supprimée le"} ${esc(fmtDate(t.deleted_at))} · encore ${left} jour${left > 1 ? "s" : ""}</small></div>
+          <div class="rangee"><button type="button" class="btn sec petit" data-act="restore">Restaurer</button><button type="button" class="btn danger petit" data-act="purge">Supprimer définitivement</button></div></li>`; }).join("")}</ul>` : `<p class="muted italique">La corbeille est vide. Les recettes, astuces et menus supprimés y restent 30 jours.</p>`}` : ""}
       ${!owner ? `<div style="margin-top:24px"><button type="button" class="btn danger petit" data-act="leave">Quitter ce carnet</button></div>` : ""}`;
   }
 
@@ -151,20 +155,20 @@
         if (AR.getBookPref() === b.id) AR.setBookPref("all");
         return renderAll();
       } else if (act === "restore") {
-        const tip = li.dataset.kind === "tip";
-        const { error } = await sb.from(tip ? "recipe_tips" : "recipes").update({ deleted_at: null }).eq("id", li.dataset.recipe);
+        const kind = li.dataset.kind, tip = kind === "tip";
+        const { error } = await sb.from(TABLE[kind] || "recipes").update({ deleted_at: null }).eq("id", li.dataset.recipe);
         if (error) throw error;
-        toast(tip ? "Astuce restaurée." : "Recette restaurée.");
+        toast(tip ? "Astuce restaurée." : kind === "menu" ? "Menu restauré." : "Recette restaurée.");
       } else if (act === "purge") {
-        const tip = li.dataset.kind === "tip";
-        if (!confirm(tip ? "Supprimer définitivement cette astuce ? Cette action est irréversible." : "Supprimer définitivement cette recette ? Cette action est irréversible.")) { btn.disabled = false; return; }
+        const kind = li.dataset.kind, tip = kind === "tip", menu = kind === "menu";
+        if (!confirm(tip ? "Supprimer définitivement cette astuce ? Cette action est irréversible." : menu ? "Supprimer définitivement ce menu ? Les recettes qu'il contient sont conservées. Cette action est irréversible." : "Supprimer définitivement cette recette ? Cette action est irréversible.")) { btn.disabled = false; return; }
         const rid = li.dataset.recipe;
-        const ph = tip ? await sb.from("recipe_tip_photos").select("storage_path").eq("tip_id", rid) : await sb.from("recipe_photos").select("storage_path").eq("recipe_id", rid);
-        const { error } = await sb.from(tip ? "recipe_tips" : "recipes").delete().eq("id", rid).not("deleted_at", "is", null);
+        const ph = menu ? { data: [] } : tip ? await sb.from("recipe_tip_photos").select("storage_path").eq("tip_id", rid) : await sb.from("recipe_photos").select("storage_path").eq("recipe_id", rid);
+        const { error } = await sb.from(TABLE[kind] || "recipes").delete().eq("id", rid).not("deleted_at", "is", null);
         if (error) throw error;
         const paths = (ph.data || []).map((x) => x.storage_path);
         if (paths.length) { const rm = await sb.storage.from("recipes").remove(paths); if (rm.error) console.error(rm.error); }
-        toast(tip ? "Astuce supprimée définitivement." : "Recette supprimée définitivement.");
+        toast(tip ? "Astuce supprimée définitivement." : menu ? "Menu supprimé définitivement." : "Recette supprimée définitivement.");
       }
       await renderBook(b);
     } catch (err) { btn.disabled = false; toast(errMsg(err, "Action impossible. Réessayez."), "erreur"); }
