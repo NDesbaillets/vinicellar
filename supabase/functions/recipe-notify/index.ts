@@ -40,6 +40,7 @@ function authorized(req: Request): boolean {
 const clean = (v: unknown, n: number) => String(v ?? "").replace(/[\u0000-\u001f\u007f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, n);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const fiche = (id: unknown) => (typeof id === "string" && UUID.test(id) ? `/recettes/fiche.html?id=${id}` : "/recettes/");
+const astuce = (id: unknown) => (typeof id === "string" && UUID.test(id) ? `/recettes/astuce.html?id=${id}` : "/recettes/");
 
 type Row = { id: number; user_id: string; kind: string; payload: Record<string, unknown> };
 
@@ -50,8 +51,8 @@ function message(r: Row): { title: string; body: string; url: string; tag: strin
     const relire = p.status === "a_relire";
     return {
       title: relire ? "Import à relire" : "Import terminé",
-      body: relire ? "Une fiche attend votre relecture avant d'entrer au carnet." : "Votre recette est prête dans le carnet.",
-      url: fiche(p.recipe_id), tag: `import-${clean(p.import_id, 40)}`,
+      body: relire ? "Une fiche attend votre relecture avant d'entrer au carnet." : p.tip_id ? "Votre astuce est prête dans le carnet." : "Votre recette est prête dans le carnet.",
+      url: p.tip_id ? astuce(p.tip_id) : fiche(p.recipe_id), tag: `import-${clean(p.import_id, 40)}`,
     };
   }
   if (r.kind === "recette_ajoutee") {

@@ -97,3 +97,12 @@ Migration : `supabase/recettes-note.sql` (rejouable, à appliquer après les pha
 - Photos : chaque fichier de `photo_paths` est copié (API Storage, service_role) vers `<book_id>/<recipe_id>/note-<n>.jpg` (n dès 1, dans l'ordre) et inscrit dans `recipe_photos` avec `kind = 'perso'` ; la première copiée avec succès est `is_cover = true`. Une copie en échec est ignorée (journalisée), la fiche est créée quand même. Les fichiers d'origine restent dans le dossier d'import.
 - Erreurs 400 (« Note invalide. », « Photos de la note invalides. ») ; quota inchangé : 50 imports / 24 h, `ai_calls.kind = 'recipe-import'`.
 - Le front ne passe pas par `page_paths` pour ce type : le laisser vide.
+
+## 6. Astuces et changement de type
+
+Les imports peuvent aussi produire une **astuce** (fiche courte qui n'est pas une recette). Contrat complet : `08-astuces-contrat.md` (§1 schéma, §2 edge function) ; migration `supabase/recettes-astuces.sql`.
+
+- `recipe_imports.target` (`auto` par défaut, `recette`, `astuce`) : choisi par le client à l'insertion. En `auto`, le même appel Claude renvoie `nature` (`recette` ou `astuce`, doute = recette) et soit l'objet recette du §3, soit l'objet astuce.
+- Astuce créée : `recipe_imports.tip_id` renseigné, `recipe_id` null, statut `termine` (y compris pour une photo de page). Pas de recherche de doublons.
+- `POST { "import_id", "retype": "recette" | "astuce" }` sur un import `termine` ou `a_relire` : retraite la même source avec la cible forcée, met l'ancienne fiche à la corbeille et renseigne `replaces`. Compte dans le quota (50 / 24 h). Erreurs : 400 « Ce type est déjà le bon. », 409 si un traitement est en cours.
+- La notification « import terminé » pointe vers `astuce.html?id=` quand `tip_id` est rempli.

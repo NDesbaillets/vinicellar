@@ -4,6 +4,7 @@ import {
   buildCatalogIndex, bytesToBase64, dropCatalogAlerts, durationRange, recipeJsonLdImage, stripLeadingQuantity, captionSignals, cleanUrl, convertTemperaturesInText, extractJsonLdRecipe, fahrenheitToCelsius, fence,
   findCatalog, htmlToText, isoDurationToMinutes, isPublicHttpUrl, matchKey, normalizeLine, normalizeUnit, overlapRatio, parseInstagramUrl,
   parseModelJson, parseQuantity, recipeJsonLdToText, sanitizeStructured, cleanNoteText, validNotePhotoPaths, notePhotoTarget, NOTE_TEXT_MAX,
+  chooseOutput, decideRetype, isTarget, normalizeTipCategory, planTipPhotos, sanitizeTip, skipVideoForTarget, sourcePagePaths, TIP_TEXT_MAX,
 } from "./lib.ts";
 
 const line = (o: Partial<Parameters<typeof normalizeLine>[0]> & { name: string }) =>
@@ -403,4 +404,132 @@ Deno.test("sanitizeStructured : la source « note » est conservée", () => {
   const s = sanitizeStructured({ titre: "Cake", ingredients: [{ libelle: "farine", nom_canonique: "farine", quantite: 200, unite: "g", source: "note" }], etapes: [{ texte: "Mélanger", source: "note" }] });
   assertEquals(s.ingredients[0].source, "note");
   assertEquals(s.steps[0].source, "note");
+});
+
+// ---------------------------------------------------------------- astuces
+const TIP = {
+  nature: "astuce", titre: "Zestes de citron au congélateur", titre_original: null, langue_originale: "fr",
+  texte: "Congelez les zestes dans un sachet.\n\nPas besoin de les décongeler.", texte_original: null,
+  categorie: "conservation", ingredients: ["citron", "Citron", "zeste de citron"], alertes: ["Durée non précisée."],
+};
+
+Deno.test("catégorie d'astuce : liste autorisée, accents, pluriel, synonymes, inconnu = autre", () => {
+  assertEquals(normalizeTipCategory("conservation"), "conservation");
+  assertEquals(normalizeTipCategory("Pâtisserie"), "patisserie");
+  assertEquals(normalizeTipCategory("MATÉRIEL"), "materiel");
+  assertEquals(normalizeTipCategory("matériels"), "materiel");
+  assertEquals(normalizeTipCategory("accords"), "accord");
+  assertEquals(normalizeTipCategory("Accord mets-vins"), "accord");
+  assertEquals(normalizeTipCategory("ustensiles"), "materiel");
+  assertEquals(normalizeTipCategory("n'importe quoi"), "autre");
+  assertEquals(normalizeTipCategory(null), "autre");
+  assertEquals(normalizeTipCategory(42), "autre");
+});
+
+Deno.test("sanitizeTip : champs bornés, sauts de ligne conservés, ingrédients dédoublonnés", () => {
+  const t = sanitizeTip(TIP)!;
+  assertEquals(t.title, "Zestes de citron au congélateur");
+  assertEquals(t.body, "Congelez les zestes dans un sachet.\n\nPas besoin de les décongeler.");
+  assertEquals(t.category, "conservation");
+  assertEquals(t.ingredients, ["citron", "zeste de citron"]);
+  assertEquals(t.alerts, ["Durée non précisée."]);
+  assertEquals([t.lang, t.titleOriginal, t.bodyOriginal], ["fr", null, null]);
+});
+
+Deno.test("sanitizeTip : titre ou texte manquant = null ; types faux ignorés ; bornes", () => {
+  assertEquals(sanitizeTip({ ...TIP, titre: "  " }), null);
+  assertEquals(sanitizeTip({ ...TIP, texte: null }), null);
+  assertEquals(sanitizeTip({ nature: "astuce" }), null);
+  const t = sanitizeTip({
+    titre: "T".repeat(500), texte: "x".repeat(TIP_TEXT_MAX + 500), categorie: 7, langue_originale: "Italien",
+    ingredients: "citron", alertes: [1, null, "ok"], titre_original: "Titolo\nsu due righe",
+  })!;
+  assertEquals(t.title.length, 200);
+  assertEquals(t.body.length, TIP_TEXT_MAX);
+  assertEquals([t.category, t.lang, t.ingredients, t.alerts, t.titleOriginal], ["autre", null, [], ["1", "ok"], "Titolo su due righe"]);
+  assertEquals(sanitizeTip({ ...TIP, ingredients: Array.from({ length: 80 }, (_v, i) => `ingredient ${i}x`) })!.ingredients.length, 30);
+});
+
+Deno.test("sanitizeTip : texte nettoyé (retours Windows, espaces insécables, caractères de contrôle)", () => {
+  const nb = String.fromCharCode(0xa0), ctl = String.fromCharCode(0x01);
+  const t = sanitizeTip({ ...TIP, texte: `Ligne${nb}un\r\nLigne${ctl} deux` })!;
+  assertEquals(t.body, "Ligne un\nLigne deux");
+});
+
+Deno.test("sanitizeTip : version originale conservée si fournie", () => {
+  const t = sanitizeTip({ ...TIP, langue_originale: "EN", titre_original: "Freeze lemon zest", texte_original: "Freeze the zest." })!;
+  assertEquals([t.lang, t.titleOriginal, t.bodyOriginal], ["en", "Freeze lemon zest", "Freeze the zest."]);
+});
+
+Deno.test("chooseOutput : cible recette = recette ; astuce = astuce ; auto suit nature, doute = recette", () => {
+  assertEquals(chooseOutput("recette", TIP), { nature: "recette", tip: null });
+  const forced = chooseOutput("astuce", TIP);
+  assertEquals(forced.nature, "astuce");
+  assertEquals(forced.tip?.title, "Zestes de citron au congélateur");
+  assertEquals(chooseOutput("astuce", { titre: "Tarte", ingredients: [], etapes: [] }), { nature: "astuce", tip: null });
+  assertEquals(chooseOutput("auto", TIP).nature, "astuce");
+  assertEquals(chooseOutput("auto", { ...TIP, nature: "Astuce" }).nature, "astuce");
+  assertEquals(chooseOutput("auto", { ...TIP, nature: "recette" }), { nature: "recette", tip: null });
+  assertEquals(chooseOutput("auto", { titre: "Tarte", ingredients: [{ libelle: "farine" }], etapes: [{ texte: "Mélanger" }] }), { nature: "recette", tip: null });
+  // « astuce » annoncée mais JSON astuce inexploitable : en cas de doute, recette.
+  assertEquals(chooseOutput("auto", { nature: "astuce", titre: "x" }), { nature: "recette", tip: null });
+  assertEquals(chooseOutput("auto", {}), { nature: "recette", tip: null });
+});
+
+Deno.test("isTarget", () => {
+  assert(isTarget("auto") && isTarget("recette") && isTarget("astuce"));
+  assert(!isTarget("tip") && !isTarget(null) && !isTarget(undefined));
+});
+
+Deno.test("légende suffisante pour une astuce demandée : vidéo ignorée", () => {
+  const long = "Astuce : pour garder les herbes fraîches, enveloppez-les dans un linge humide puis un sac.";
+  assert(skipVideoForTarget("astuce", long));
+  assert(!skipVideoForTarget("astuce", "Regardez la vidéo !"));
+  assert(!skipVideoForTarget("auto", long));
+  assert(!skipVideoForTarget("recette", long));
+});
+
+const BOOK = "11111111-1111-4111-8111-111111111111", TIPID = "22222222-2222-4222-8222-222222222222";
+Deno.test("planTipPhotos : origine en couverture, note en perso, pages jamais en couverture", () => {
+  assertEquals(planTipPhotos({ bookId: BOOK, tipId: TIPID, originExt: "jpg", notePhotos: [], pagePaths: [] }),
+    [{ kind: "origine", from: null, to: `${BOOK}/tips/${TIPID}/origine.jpg`, cover: true }]);
+  const plan = planTipPhotos({
+    bookId: BOOK, tipId: TIPID, originExt: "webp", notePhotos: [`${BOOK}/imports/i/1.jpg`, `${BOOK}/imports/i/2.jpg`],
+    pagePaths: [`${BOOK}/imports/i/1.jpg`, `${BOOK}/imports/i/2.pdf`],
+  });
+  assertEquals(plan.map((p) => [p.kind, p.to.slice(`${BOOK}/tips/${TIPID}/`.length), p.cover]), [
+    ["origine", "origine.webp", true], ["perso", "note-1.jpg", true], ["perso", "note-2.jpg", true],
+    ["page", "page-1.jpg", false], ["page", "page-2.pdf", false],
+  ]);
+  assertEquals(plan[1].from, `${BOOK}/imports/i/1.jpg`);
+  // Sans origine : la première note est la première éligible ; extension inconnue : jpg.
+  assertEquals(planTipPhotos({ bookId: BOOK, tipId: TIPID, originExt: "svg", notePhotos: ["a"], pagePaths: [] })[0].to.endsWith("origine.jpg"), true);
+  assertEquals(planTipPhotos({ bookId: BOOK, tipId: TIPID, originExt: null, notePhotos: ["a"], pagePaths: [] })[0].kind, "perso");
+  assertEquals(planTipPhotos({ bookId: BOOK, tipId: TIPID, originExt: null, notePhotos: [], pagePaths: [] }), []);
+});
+
+Deno.test("decideRetype : type d'origine, doublon, traitement en cours, import sans fiche", () => {
+  const rid = "33333333-3333-4333-8333-333333333333";
+  assertEquals(decideRetype({ status: "termine", recipe_id: rid, tip_id: null }, "astuce"), { ok: true, from: "recette", id: rid });
+  assertEquals(decideRetype({ status: "a_relire", recipe_id: rid, tip_id: null }, "astuce").ok, true);
+  assertEquals(decideRetype({ status: "termine", recipe_id: null, tip_id: TIPID }, "recette"), { ok: true, from: "astuce", id: TIPID });
+  assertEquals(decideRetype({ status: "termine", recipe_id: rid, tip_id: null }, "recette"), { ok: false, status: 400, message: "Ce type est déjà le bon." });
+  assertEquals(decideRetype({ status: "termine", recipe_id: null, tip_id: TIPID }, "astuce"), { ok: false, status: 400, message: "Ce type est déjà le bon." });
+  const busy = decideRetype({ status: "en_cours", recipe_id: rid, tip_id: null }, "astuce");
+  assertEquals(busy.ok === false && busy.status, 409);
+  assertEquals(decideRetype({ status: "en_attente", recipe_id: null, tip_id: null }, "astuce").ok === false, true);
+  assertEquals(decideRetype({ status: "echec", recipe_id: null, tip_id: null }, "astuce").ok === false, true);
+  assertEquals(decideRetype({ status: "termine", recipe_id: null, tip_id: null }, "astuce").ok === false, true);
+  assertEquals(decideRetype({ status: "termine", recipe_id: rid, tip_id: null }, "auto").ok === false, true);
+  assertEquals(decideRetype({ status: "termine", recipe_id: rid, tip_id: null }, undefined).ok === false, true);
+});
+
+Deno.test("sourcePagePaths : pages de la fiche précédente d'abord, sinon celles de l'import", () => {
+  const imp = [`${BOOK}/imports/i/1.jpg`];
+  const prev = [`${BOOK}/r/page-1.jpg`, `${BOOK}/r/page-2.pdf`];
+  assertEquals(sourcePagePaths(BOOK, imp, prev), { paths: prev, fromPrevious: true });
+  assertEquals(sourcePagePaths(BOOK, imp, []), { paths: imp, fromPrevious: false });
+  // chemin d'un autre carnet ou avec « .. » : écarté
+  assertEquals(sourcePagePaths(BOOK, imp, ["autre/r/page-1.jpg", `${BOOK}/../x.jpg`]), { paths: imp, fromPrevious: false });
+  assertEquals(sourcePagePaths(BOOK, imp, [...prev, `${BOOK}/a`, `${BOOK}/b`, `${BOOK}/c`]).paths.length, 4);
 });

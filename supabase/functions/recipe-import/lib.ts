@@ -638,3 +638,121 @@ export function validNotePhotoPaths(bookId: string, importId: string, paths: unk
 
 /** Destination d'une photo de note dans le dossier de la recette (n commence à 1). */
 export const notePhotoTarget = (bookId: string, recipeId: string, n: number) => `${bookId}/${recipeId}/note-${n}.jpg`;
+
+// ---------------------------------------------------------------- astuces (contrat 08-astuces-contrat.md §2)
+export const TARGETS = ["auto", "recette", "astuce"] as const;
+export type Target = typeof TARGETS[number];
+export const isTarget = (v: unknown): v is Target => typeof v === "string" && (TARGETS as readonly string[]).includes(v);
+
+export const TIP_CATEGORIES = ["cuisson", "technique", "conservation", "produit", "materiel", "patisserie", "accord", "autre"] as const;
+export type TipCategory = typeof TIP_CATEGORIES[number];
+export const TIP_TEXT_MAX = 20000;
+export const TIP_TITLE_MAX = 200;
+export const TIP_INGREDIENTS_MAX = 30;
+
+export type StructuredTip = {
+  title: string; titleOriginal: string | null; lang: string | null; body: string; bodyOriginal: string | null;
+  category: TipCategory; ingredients: string[]; alerts: string[];
+};
+
+// Écarts courants du modèle (accents, pluriel, synonymes) ramenés à la liste autorisée ; inconnu : « autre ».
+const TIP_CATEGORY_ALIASES: Record<string, TipCategory> = {
+  cuisson: "cuisson", technique: "technique", conservation: "conservation", produit: "produit",
+  materiel: "materiel", patisserie: "patisserie", accord: "accord", autre: "autre",
+  ustensile: "materiel", equipement: "materiel", appareil: "materiel", geste: "technique", astuce: "autre",
+  "accord mets vins": "accord", "accord mets et vins": "accord", "accords mets vins": "accord", "accord vin": "accord",
+};
+/** Catégorie d'astuce valide : minuscules, sans accents ni pluriel (« Pâtisserie » → patisserie, « matériels » → materiel). */
+export function normalizeTipCategory(v: unknown): TipCategory {
+  if (typeof v !== "string") return "autre";
+  const k = norm(v);
+  return TIP_CATEGORY_ALIASES[k] ?? TIP_CATEGORY_ALIASES[matchKey(v)] ?? "autre";
+}
+
+/** Valide et borne le JSON astuce de Claude ; null si le titre ou le texte manque (rien n'est inventé). */
+export function sanitizeTip(raw: Record<string, unknown>): StructuredTip | null {
+  const oneLine = (v: unknown, max: number) => str(cleanNoteText(v).replace(/\s*\n+\s*/g, " "), max);
+  const title = oneLine(raw.titre, TIP_TITLE_MAX);
+  const body = str(cleanNoteText(raw.texte), TIP_TEXT_MAX);
+  if (!title || !body) return null;
+  const lang = typeof raw.langue_originale === "string" && /^[a-z]{2,3}$/i.test(raw.langue_originale.trim()) ? raw.langue_originale.trim().toLowerCase() : null;
+  const seen = new Set<string>();
+  const ingredients: string[] = [];
+  for (const x of Array.isArray(raw.ingredients) ? raw.ingredients : []) {
+    const name = typeof x === "string" ? str(x, 120) : null;
+    const key = name ? matchKey(name) : "";
+    if (!name || !key || seen.has(key)) continue;
+    seen.add(key);
+    ingredients.push(name);
+    if (ingredients.length >= TIP_INGREDIENTS_MAX) break;
+  }
+  return {
+    title, titleOriginal: oneLine(raw.titre_original, TIP_TITLE_MAX), lang,
+    body, bodyOriginal: str(cleanNoteText(raw.texte_original), TIP_TEXT_MAX),
+    category: normalizeTipCategory(raw.categorie), ingredients,
+    alerts: (Array.isArray(raw.alertes) ? raw.alertes : []).map((a) => str(a, 400)).filter(Boolean).slice(0, 20) as string[],
+  };
+}
+
+export type Output = { nature: "recette"; tip: null } | { nature: "astuce"; tip: StructuredTip | null };
+/**
+ * Décision de cible à partir de la réponse de Claude.
+ * - « recette » : toujours l'objet recette ; « astuce » : toujours l'objet astuce (tip null si le JSON est inexploitable) ;
+ * - « auto » : astuce seulement si le modèle l'a dit ET que le JSON astuce est valide ; en cas de doute, recette.
+ */
+export function chooseOutput(target: Target, raw: Record<string, unknown>): Output {
+  if (target === "recette") return { nature: "recette", tip: null };
+  const tip = sanitizeTip(raw);
+  if (target === "astuce") return { nature: "astuce", tip };
+  const said = typeof raw.nature === "string" ? norm(raw.nature) : "";
+  return said === "astuce" && tip ? { nature: "astuce", tip } : { nature: "recette", tip: null };
+}
+
+/** Pour une astuce demandée explicitement, une légende d'au moins 80 caractères suffit : la vidéo n'est pas analysée. */
+export const TIP_CAPTION_MIN = 80;
+export const skipVideoForTarget = (target: Target, captionText: string) => target === "astuce" && String(captionText ?? "").trim().length >= TIP_CAPTION_MIN;
+
+// ---------------------------------------------------------------- astuces : photos
+export type TipPhotoPlan = { kind: "origine" | "perso" | "page"; from: string | null; to: string; cover: boolean };
+export const tipFolder = (bookId: string, tipId: string) => `${bookId}/tips/${tipId}/`;
+
+/**
+ * Photos d'une astuce, dans l'ordre d'écriture. `from` : fichier à copier (null pour l'image d'origine, téléchargée).
+ * `cover` : éligible à la couverture ; la première photo éligible réellement enregistrée l'emporte (origine d'abord,
+ * sinon la première photo de note). Une page (image ou PDF) n'est jamais couverture. Les fichiers d'import ne sont jamais déplacés.
+ */
+export function planTipPhotos(a: { bookId: string; tipId: string; originExt: string | null; notePhotos: string[]; pagePaths: string[] }): TipPhotoPlan[] {
+  const dir = tipFolder(a.bookId, a.tipId);
+  const plan: TipPhotoPlan[] = [];
+  if (a.originExt) {
+    const ext = /^(jpg|png|webp|avif|gif)$/.test(a.originExt) ? a.originExt : "jpg";
+    plan.push({ kind: "origine", from: null, to: `${dir}origine.${ext}`, cover: true });
+  }
+  a.notePhotos.forEach((from, i) => plan.push({ kind: "perso", from, to: `${dir}note-${i + 1}.jpg`, cover: true }));
+  a.pagePaths.forEach((from, i) => plan.push({ kind: "page", from, to: `${dir}page-${i + 1}.${/\.pdf$/i.test(from) ? "pdf" : "jpg"}`, cover: false }));
+  return plan;
+}
+
+// ---------------------------------------------------------------- changement de type (« retype »)
+export type RetypeDecision = { ok: true; from: "recette" | "astuce"; id: string } | { ok: false; status: 400 | 409; message: string };
+/** Un import terminé ou à relire peut être retraité vers l'autre type ; le résultat actuel (recipe_id ou tip_id) donne le type d'origine. */
+export function decideRetype(row: { status: string; recipe_id: string | null; tip_id: string | null }, retype: unknown): RetypeDecision {
+  if (retype !== "recette" && retype !== "astuce") return { ok: false, status: 400, message: "Type invalide." };
+  if (row.status === "en_attente" || row.status === "en_cours") return { ok: false, status: 409, message: "Un traitement est déjà en cours pour cet import." };
+  if (row.status !== "termine" && row.status !== "a_relire") return { ok: false, status: 400, message: "Cet import n'a pas de résultat à convertir." };
+  const from = row.tip_id ? "astuce" : row.recipe_id ? "recette" : null;
+  const id = row.tip_id ?? row.recipe_id;
+  if (!from || !id) return { ok: false, status: 400, message: "Cet import n'a plus de fiche à convertir." };
+  if (from === retype) return { ok: false, status: 400, message: "Ce type est déjà le bon." };
+  return { ok: true, from, id };
+}
+
+/**
+ * Pages à relire pour un changement de type : si la fiche précédente a conservé des pages (kind 'page', dans ce carnet),
+ * on lit celles-ci (les fichiers d'import ont pu être déplacés par l'import d'origine) ; sinon ceux de l'import.
+ * `fromPrevious` : fichiers appartenant à la fiche précédente (restée en corbeille), à copier sans jamais les déplacer.
+ */
+export function sourcePagePaths(bookId: string, pagePaths: string[], previousPages: string[]): { paths: string[]; fromPrevious: boolean } {
+  const ok = previousPages.filter((p) => typeof p === "string" && p.startsWith(`${bookId}/`) && !p.includes("..")).slice(0, 4);
+  return ok.length ? { paths: ok, fromPrevious: true } : { paths: pagePaths, fromPrevious: false };
+}
