@@ -101,7 +101,7 @@
   }
 
   const ROLES = { owner: "Propriétaire", member: "Membre", reader: "Lecteur" };
-  const COURSES = { entree: "Entrée", plat: "Plat", dessert: "Dessert", accompagnement: "Accompagnement", boisson: "Boisson", autre: "Autre" };
+  const COURSES = { entree: "Entrée", plat: "Plat", dessert: "Dessert", accompagnement: "Accompagnement", base: "Base", boisson: "Boisson", autre: "Autre" };
   const DIFFICULTES = { 1: "Facile", 2: "Moyen", 3: "Difficile" };
   const UNITES = { g: "g", kg: "kg", ml: "ml", cl: "cl", l: "l", cas: "c. à soupe", cac: "c. à café", piece: "pièce", pincee: "pincée", botte: "botte", gousse: "gousse", tranche: "tranche" };
 

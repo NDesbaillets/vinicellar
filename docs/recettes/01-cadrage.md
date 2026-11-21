@@ -86,3 +86,4 @@ Chaque phase est utilisable avant de commencer la suivante, sur `/recettes/` non
 - **Le carnet** : bascule « Recettes / Astuces » en tête de liste ; la recherche couvre les deux.
 - **Import** : même pipeline (lien, note, photo ou PDF). Choix avant l'import « Automatique / Recette / Astuce » ; en automatique, Claude décide et le type reste modifiable ensuite (convertir une astuce en recette et inversement).
 - Hors périmètre au départ : livre PDF, lien public, transmission, notifications propres aux astuces (la notification « import terminé » couvre les astuces).
+- **Type de plat « Base »** (ajouté le 21.11.2026) : sauces, fonds, pâtes, crèmes, condiments. Recette complète, exclue des suggestions et de « Remplir ma semaine », ajoutable à la main au planning et aux courses ; reconnue à l'import. Lien d'une recette vers une base (sous-recette) : plus tard, à décider à l'usage.

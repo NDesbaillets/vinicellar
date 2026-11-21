@@ -11,7 +11,7 @@ const COMBINING_RE = new RegExp("[" + span(0x300, 0x36f) + "]", "g");
 // ---------------------------------------------------------------- types
 export const UNITS = ["g", "kg", "ml", "cl", "l", "cas", "cac", "piece", "pincee", "botte", "gousse", "tranche"] as const;
 export type Unit = typeof UNITS[number];
-export const COURSES = ["entree", "plat", "dessert", "accompagnement", "boisson", "autre"] as const;
+export const COURSES = ["entree", "plat", "dessert", "accompagnement", "base", "boisson", "autre"] as const;
 export const SOURCES = ["legende", "parole", "ecran", "visuel", "page", "web", "note"] as const;
 
 export type RawIngredient = {

@@ -296,7 +296,7 @@ const SCHEMA = `{
   "titre_original": "string|null",
   "langue_originale": "fr|it|en|de|es|…|null",
   "resume": "string|null",
-  "type_plat": "entree|plat|dessert|accompagnement|boisson|autre|null",
+  "type_plat": "entree|plat|dessert|accompagnement|base|boisson|autre|null",
   "cuisine": "string|null",
   "portions": {"valeur": "int|null", "estime": "bool"},
   "temps_actif_min": {"valeur": "int|null", "estime": "bool"},
@@ -332,6 +332,7 @@ Le message indique une « Cible » : auto, recette ou astuce.
 Un seul objet JSON, du type choisi. Les règles ci-dessous (RÈGLES) valent pour la recette ; celles de « RÈGLES ASTUCE » valent pour l'astuce.
 
 RÈGLES
+- « type_plat » : « base » pour une préparation de base destinée à d'autres plats (sauce, fond, jus, pâte brisée ou feuilletée, crème pâtissière, praliné, condiment, marinade) ; sinon le type du plat servi.
 - Aucune quantité, durée ou température inventée : ce qui est absent vaut null (« à l'œil » : quantite null, precision « à l'œil »). Ne complète rien de mémoire.
 - Quantités : recopie le nombre et l'unité TELS QU'ILS SONT ÉCRITS, sans rien convertir (cups, oz, lb, sticks, °F restent tels quels : la conversion métrique est faite ensuite par un autre programme). Fractions en décimal (1/2 = 0.5). Fourchette (« 2 à 3 ») : quantite null, precision « 2 à 3 ».
 - « unite_origine » : l'unité écrite dans la source (« cups », « oz », « càs », « tbsp », « boîte »…), ou null. « unite » : l'unité de la liste autorisée si l'unité écrite en est une ou un synonyme direct (tbsp = cas, tsp = cac, clove = gousse…), sinon null. Un ingrédient compté (2 oignons) : unite « piece » ou null.

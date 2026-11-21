@@ -12,7 +12,7 @@
   if (!book) { etat.textContent = ""; out.innerHTML = `<div class="vide-etat"><p role="alert">Carnet introuvable, ou vous n'y avez pas accès.</p><a class="btn sec petit" href="/recettes/carnets.html">Retour aux carnets</a></div>`; return; }
   document.title = `Livre · ${book.name} · ARÔMES V&N`;
 
-  const ORDRE = ["entree", "plat", "dessert", "accompagnement", "boisson", "autre"];
+  const ORDRE = ["entree", "plat", "dessert", "accompagnement", "base", "boisson", "autre"];
   const chunk = async (table, ids, select, extra) => {
     const res = [];
     for (let i = 0; i < ids.length; i += 100) {
@@ -33,7 +33,7 @@
     // Une fiche « à vérifier » n'a pas été relue : elle n'entre pas dans un livre destiné à être donné.
     recs = all.filter((r) => r.review_state !== "a_verifier");
     skipped = all.length - recs.length;
-    const ci = (c) => { const i = ORDRE.indexOf(c || "autre"); return i < 0 ? 5 : i; };
+    const ci = (c) => { const i = ORDRE.indexOf(c || "autre"); return i < 0 ? ORDRE.indexOf("autre") : i; };
     recs.sort((a, b) => ci(a.course) - ci(b.course) || a.title.localeCompare(b.title, "fr"));
     const ids = recs.map((r) => r.id);
     [lines, steps, photos, notes] = await Promise.all([

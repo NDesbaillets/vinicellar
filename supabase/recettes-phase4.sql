@@ -159,6 +159,7 @@ begin
       from recipes r
      where r.book_id = any(p_book_ids)
        and r.deleted_at is null and r.archived_at is null and r.review_state = 'valide'
+       and r.course is distinct from 'base'                      -- une base (sauce, pâte…) ne se suggère pas comme repas
        and not exists (select 1 from recipe_feedback f
                         where f.user_id = me and f.recipe_id = r.id
                           and (f.kind = 'jamais' or f.created_at > now() - interval '14 days'))

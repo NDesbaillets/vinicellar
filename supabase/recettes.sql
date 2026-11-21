@@ -226,7 +226,7 @@ create table if not exists public.recipes (
   title_original text,
   lang_original text,
   summary text,
-  course text check (course in ('entree','plat','dessert','accompagnement','boisson','autre')),
+  course text check (course in ('entree','plat','dessert','accompagnement','base','boisson','autre')),
   cuisine text,
   servings int check (servings > 0),
   servings_estimated boolean not null default false,
