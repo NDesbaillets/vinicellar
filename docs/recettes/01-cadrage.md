@@ -87,3 +87,10 @@ Chaque phase est utilisable avant de commencer la suivante, sur `/recettes/` non
 - **Import** : même pipeline (lien, note, photo ou PDF). Choix avant l'import « Automatique / Recette / Astuce » ; en automatique, Claude décide et le type reste modifiable ensuite (convertir une astuce en recette et inversement).
 - Hors périmètre au départ : livre PDF, lien public, transmission, notifications propres aux astuces (la notification « import terminé » couvre les astuces).
 - **Type de plat « Base »** (ajouté le 21.11.2026) : sauces, fonds, pâtes, crèmes, condiments. Recette complète, exclue des suggestions et de « Remplir ma semaine », ajoutable à la main au planning et aux courses ; reconnue à l'import. Lien d'une recette vers une base (sous-recette) : plus tard, à décider à l'usage.
+
+## 11. Menus et PDF à plusieurs recettes (ajouté le 21.11.2026)
+
+- **Import d'un PDF à plusieurs recettes** (menu complet, recueil) : analyse préalable qui présente le sommaire (titre, type, pages) ; on coche les recettes voulues ; chaque recette cochée est importée séparément à partir de ses seules pages. Recettes déjà importées signalées. PDF jusqu'à 30 Mo et 100 pages. Un extrait de PDF entre au carnet « À vérifier », sans relecture obligatoire.
+- **Rangement** : « Séparées et réunies dans un menu » (par défaut) ou « Séparées ». (Une fiche unique à sections n'est pas retenue.)
+- **Menu** : titre, note, recettes ordonnées par rubrique. Ajout aux courses de tout le menu, menu posé sur une case du planning, création d'une réception à partir du menu. Corbeille comme les recettes. Un menu peut aussi se composer à la main.
+- Quota : l'analyse compte pour un import, chaque recette importée aussi (50 par 24 h).
