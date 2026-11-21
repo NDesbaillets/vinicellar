@@ -12,6 +12,7 @@
 --   recipe_meal_plan     : colonne menu_id, contrainte « recette ou menu », trigger de cohérence du carnet, droits de colonne ;
 --   recipe_shopping_add_plan() et recipe_plan_to_reception() : une case « menu » vaut l'ensemble des recettes du menu
 --                          (fonctions relues par pg_get_functiondef et complétées, sans les recopier) ;
+--   recipe_notify_import() : pas de notification pour un extrait de PDF (une notification par analyse prête, via recipe_notify_pdf_job) ;
 --   purge_recipe_trash() : purge aussi les menus en corbeille depuis plus de 30 jours ;
 --   bucket « recipes »   : file_size_limit porté à 30 Mo.
 -- La RLS est activée dès la création de chaque table.
@@ -284,6 +285,41 @@ end $$;
 
 -- Droit d'insertion par colonnes : additif (les colonnes existantes, target compris, restent).
 grant insert (pdf_job_id, pdf_idx, menu_id, menu_position, menu_rubrique) on public.recipe_imports to authenticated;
+
+-- Notifications : pas de notification par extrait de PDF (un recueil en produirait des dizaines) ; même fonction qu'en
+-- recettes-astuces.sql avec le filtre « kind <> 'pdf_extrait' ». Le trigger recipe_notify_import existant la reprend.
+create or replace function public.recipe_notify_import() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.status in ('termine','a_relire') and old.status is distinct from new.status
+     and old.status not in ('termine','a_relire') and new.kind <> 'pdf_extrait' then
+    insert into recipe_notifications_outbox (user_id, kind, payload)
+    values (new.created_by, 'import_termine',
+            jsonb_build_object('book_id', new.book_id, 'import_id', new.id, 'recipe_id', new.recipe_id,
+                               'tip_id', new.tip_id, 'status', new.status));
+  end if;
+  return null;
+end $$;
+
+-- Une seule notification quand l'analyse d'un PDF passe à « pret » : recipe-notify en tire le lien pdf.html?job=<id>.
+create or replace function public.recipe_notify_pdf_job() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.status = 'pret' and old.status is distinct from 'pret' and new.created_by is not null then
+    insert into recipe_notifications_outbox (user_id, kind, payload)
+    values (new.created_by, 'import_termine',
+            jsonb_build_object('book_id', new.book_id, 'pdf_job_id', new.id, 'status', 'pret'));
+  end if;
+  return null;
+end $$;
+
+create or replace trigger recipe_notify_pdf_job after update of status on public.recipe_pdf_jobs
+  for each row execute function public.recipe_notify_pdf_job();
+
+do $$
+begin
+  execute 'revoke execute on function public.recipe_notify_pdf_job() from anon, authenticated, public';
+end $$;
 
 -- ---------------------------------------------------------------- planning : une case peut porter un menu
 alter table public.recipe_meal_plan add column if not exists menu_id uuid references public.recipe_menus on delete set null;

@@ -47,6 +47,14 @@ type Row = { id: number; user_id: string; kind: string; payload: Record<string, 
 function message(r: Row): { title: string; body: string; url: string; tag: string } {
   const p = r.payload ?? {};
   const book = clean(p.book_name, 80);
+  if (r.kind === "import_termine" && typeof p.pdf_job_id === "string") {
+    // Analyse d'un PDF à plusieurs recettes terminée : une seule notification, lien vers le sommaire.
+    return {
+      title: "Sommaire du PDF prêt",
+      body: "Choisissez les recettes à importer.",
+      url: UUID.test(p.pdf_job_id) ? `/recettes/pdf.html?job=${p.pdf_job_id}` : "/recettes/", tag: `pdf-${clean(p.pdf_job_id, 40)}`,
+    };
+  }
   if (r.kind === "import_termine") {
     const relire = p.status === "a_relire";
     return {

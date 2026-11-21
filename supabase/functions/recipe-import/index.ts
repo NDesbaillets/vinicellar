@@ -683,6 +683,7 @@ async function saveTipPhotos(c: Ctx, g: Gathered, tipId: string) {
 // ---------------------------------------------------------------- menu
 /** Recette importée depuis un PDF rangé dans un menu : entrée de menu (position et rubrique demandées, sinon à la suite / d'après le type de plat). */
 async function addToMenu(c: Ctx, recipeId: string, course: string | null) {
+  if (c.retype?.from === "recette") return;       // changement de type d'une recette : voir swapMenuItems (même position et rubrique)
   const item = menuItemFor({ menuId: c.row.menu_id, recipeId, position: c.row.menu_position, rubrique: c.row.menu_rubrique, course });
   if (!item) return;
   try {
@@ -694,6 +695,21 @@ async function addToMenu(c: Ctx, recipeId: string, course: string | null) {
     const { error } = await admin.from("recipe_menu_items").insert({ ...item, position });
     if (error) console.error("menu item insert", error.message);        // le menu a pu être supprimé entre-temps : la fiche reste créée
   } catch (e) { console.error("menu item", String((e as Error)?.message ?? e)); }
+}
+
+/** Changement de type d'une recette membre de menus : l'ancien item est retiré ; si le résultat est une recette, la nouvelle prend sa position et sa rubrique. */
+async function swapMenuItems(prevId: string, out: Outcome) {
+  try {
+    const { data: olds } = await admin.from("recipe_menu_items").select("menu_id, position, rubrique").eq("recipe_id", prevId);
+    for (const o of olds ?? []) {
+      const { error: de } = await admin.from("recipe_menu_items").delete().eq("menu_id", o.menu_id).eq("recipe_id", prevId);
+      if (de) { console.error("menu item delete", de.message); continue; }
+      if (out.kind === "recette") {
+        const { error } = await admin.from("recipe_menu_items").insert({ menu_id: o.menu_id, recipe_id: out.recipeId, position: o.position, rubrique: o.rubrique });
+        if (error) console.error("menu item swap", error.message);
+      }
+    }
+  } catch (e) { console.error("menu swap", String((e as Error)?.message ?? e)); }
 }
 
 // ---------------------------------------------------------------- pipeline
@@ -860,6 +876,7 @@ async function runImport(c: Ctx, callId: number | null) {
         await admin.from(out.kind === "recette" ? "recipes" : "recipe_tips").delete().eq("id", out.kind === "recette" ? out.recipeId : out.tipId);
         throw new Fail("L'ancienne fiche n'a pas pu être mise à la corbeille : changement de type annulé.");
       }
+      if (c.retype.from === "recette") await swapMenuItems(c.retype.prevId, out);
       upd.replaces = { type: c.retype.from, id: c.retype.prevId };
       upd.target = c.retype.to;
       if (out.videoPath) upd.video_path = out.videoPath;
