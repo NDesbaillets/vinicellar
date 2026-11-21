@@ -181,7 +181,8 @@
     async function tabCarnet() {
       zonePick.innerHTML = `<label for="se-rech" class="sr-only">Chercher dans le carnet</label><input id="se-rech" type="search" placeholder="Chercher dans le carnet…" autocomplete="off"><div id="se-res" class="se-res"><p class="chargement">Chargement…</p></div>`;
       let rows = [];
-      try { rows = await loadBookRecipes(); } catch (e) { $("#se-res").innerHTML = `<p class="msg erreur" role="alert">${esc(errMsg(e, "Impossible de lire le carnet."))}</p>`; return; }
+      try { rows = await loadBookRecipes(); } catch (e) { if (!$("#se-res")) return; $("#se-res").innerHTML = `<p class="msg erreur" role="alert">${esc(errMsg(e, "Impossible de lire le carnet."))}</p>`; return; }
+      if (!$("#se-rech")) return; // un autre onglet a été ouvert pendant le chargement
       const show = () => {
         const n = AR.norm($("#se-rech").value), f = rows.filter((r) => !n || AR.norm(r.title).includes(n)).slice(0, 80);
         $("#se-res").innerHTML = f.length ? `<ul class="se-choix">${f.map((r) => `<li><button type="button" class="se-choix-b" data-rid="${esc(r.id)}"><span class="se-ch-t">${esc(r.title)}</span><span class="se-ch-m">${esc([AR.COURSES[r.course] || "", r.time_total_min ? AR.fmtMin(r.time_total_min) : "", r.review_state === "a_verifier" ? "À vérifier" : ""].filter(Boolean).join(" · "))}</span></button></li>`).join("")}</ul>` : `<p class="muted italique">Aucune recette ne correspond.</p>`;
