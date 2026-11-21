@@ -76,3 +76,13 @@ Chaque phase est utilisable avant de commencer la suivante, sur `/recettes/` non
 - **Fiche recette** : dans l'historique, pour qui elle a déjà été cuisinée et quand.
 - **Suggestions « Pour qui ? »** : les invités s'y choisissent comme les membres ; leurs contraintes s'appliquent ; les plats déjà servis à ces invités sont relégués en fin de liste avec la mention « Déjà servi à Marie le 12.03.2026 », un interrupteur permet de les masquer.
 - **Vins servis** (plus tard) : lors d'une réception, vins choisis parmi les sorties de cave Vinicellar du jour, visibles sur la fiche invité. Le modèle prévoit la place dès maintenant.
+
+## 10. Astuces (ajouté le 21.11.2026)
+
+- **Astuce** : fiche courte qui n'est pas une recette (tip de cuisson, technique, conservation, produit, matériel, pâtisserie, accord). Titre, texte, catégorie, photo ou image d'origine, source et créateur crédité. Pas de portions, d'étapes, de journal, de planning, de courses ni de suggestions.
+- Rangée dans le carnet, mêmes droits que les recettes : owner et member créent, modifient, suppriment ; les lecteurs consultent (ils gardent les notes sur les recettes). Corbeille de 30 jours.
+- **Liens** : ingrédients du catalogue concernés (proposés automatiquement depuis le texte) et, facultativement, une ou plusieurs recettes du même carnet.
+- **Fiche recette** : encadré replié « Astuces liées » (astuces liées à la recette ou partageant un ingrédient du catalogue). Mode cuisine : accessibles d'un geste.
+- **Le carnet** : bascule « Recettes / Astuces » en tête de liste ; la recherche couvre les deux.
+- **Import** : même pipeline (lien, note, photo ou PDF). Choix avant l'import « Automatique / Recette / Astuce » ; en automatique, Claude décide et le type reste modifiable ensuite (convertir une astuce en recette et inversement).
+- Hors périmètre au départ : livre PDF, lien public, transmission, notifications propres aux astuces (la notification « import terminé » couvre les astuces).
