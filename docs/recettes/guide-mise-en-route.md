@@ -102,3 +102,9 @@ Fusion de `recettes` dans `main` : `vinicellar.ch/recettes/` devient accessible 
 3. Réception créée depuis le planning : le nombre de membres présents est déduit en retirant les invités du nombre de convives de la case. D'accord ?
 4. Un menu passé compte comme « déjà servi » même si ses plats n'ont pas été inscrits au journal. D'accord ?
 5. Livre PDF : les notes en marge affichent le prénom et le nom de leur auteur. À garder si le livre est offert ?
+
+## À faire depuis l'ordinateur (astuces, 21.11.2026)
+
+La migration des astuces a été appliquée depuis le téléphone en version « création seule » (sans les instructions `drop`/`revoke`, qui déclenchent une confirmation Supabase visible seulement sur ordinateur). Reste à rejouer `supabase/recettes-astuces.sql` en entier (idempotent) depuis l'ordinateur, pour :
+- retirer l'exécution des fonctions d'astuces au rôle `anon` (sans effet sur les données : RLS réservée aux comptes connectés) ;
+- étendre `purge_recipe_trash()` aux astuces (la purge n'est pas encore planifiée).
