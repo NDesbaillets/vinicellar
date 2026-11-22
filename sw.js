@@ -1,7 +1,7 @@
 // Service worker Vinicellar : lancement rapide depuis l'écran d'accueil et page hors ligne.
 // Ne met en cache que les fichiers du site et les bibliothèques versionnées des CDN.
 // Supabase (données, photos signées, fonctions IA) et toute requête autre que GET passent sans cache.
-const VERSION = "vinicellar-prix-20261122b";
+const VERSION = "vinicellar-prix-20261122c";
 const STATIC = VERSION + "-static"; // CSS, JS, images, polices
 const PAGES = VERSION + "-pages";   // pages déjà visitées
 const OFFLINE = "/offline.html";
@@ -83,6 +83,8 @@ self.addEventListener("push", (e) => {
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
   const url = new URL((e.notification.data && e.notification.data.url) || "/app/", self.location.origin).href;
+  // Page d'un shop (alerte de prix) : ouverte telle quelle, l'app reste où elle était.
+  if (!url.startsWith(self.location.origin)) { e.waitUntil(self.clients.openWindow(url)); return; }
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
     const open = list.find((c) => c.url.startsWith(self.location.origin));
     return open ? open.navigate(url).then((c) => c && c.focus()) : self.clients.openWindow(url);

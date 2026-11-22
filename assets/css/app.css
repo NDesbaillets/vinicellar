@@ -869,6 +869,12 @@ b.f-n { font-size: var(--fs-4); }
 .px-btn svg, .px-line svg { width: 16px; height: 16px; flex: none; color: var(--wine); }
 .px-line s, .px-offers s, .px-alerts s { color: var(--ink-3); }
 .px-line .tag { margin-left: auto; }
+.px-split { cursor: default; }
+.px-split .tag { margin-left: 0; }
+.px-shop { flex: 1 1 14em; min-width: 0; padding: 6px 0; margin: -6px 0; color: var(--ink); text-decoration: none; line-height: 1.35; }
+.px-shop u { text-decoration-color: var(--wine); text-underline-offset: 2px; }
+.px-line .px-shop svg { width: 14px; height: 14px; vertical-align: -2px; margin-left: 3px; }
+.px-set { margin-left: auto; min-height: var(--touch); margin-block: -6px; padding: 0 4px 0 8px; border: 0; background: none; font: 500 var(--fs-2) var(--font-ui); color: var(--wine); cursor: pointer; }
 .px-wait { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
 .px-sheet { display: grid; gap: var(--s-4); }
 .px-sheet label { display: grid; gap: 4px; font-size: var(--fs-2); color: var(--ink-2); }

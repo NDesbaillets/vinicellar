@@ -236,13 +236,18 @@ async function notify(admin: Db, onlyUser?: string) {
       return `${it.name ?? "Vin"}${vint ? " " + vint : ""} : ${KIND[a.kind as string]}, ${money(a.price as number, a.currency as string)}${a.regular_price ? ` au lieu de ${money(a.regular_price as number, a.currency as string)}` : ""} chez ${a.site_domain}`;
     });
     const title = list.length > 1 ? `Prix : ${list.length} alertes sur vos vins` : "Prix : un vin de vos envies";
-    await deliver(admin, userId, title, lines, list as { url?: string }[]);
+    // Jusqu'à 4 alertes : une notification par alerte, qui ouvre la page du shop. Au-delà : un résumé qui ouvre les Envies.
+    const pushes = list.length <= 4 && list.every((a) => a.url) ? list.map((a, i) => ({
+      title: `Prix : ${KIND[a.kind as string]}`, body: lines[i], url: a.url as string, tag: `vinicellar-prix-${a.id}`,
+    })) : null;
+    await deliver(admin, userId, title, lines, list as { url?: string }[], pushes);
     await admin.from("watch_alerts").update({ notified_at: new Date().toISOString() }).in("id", list.map((a) => a.id));
   }
   return byUser.size;
 }
 
-async function deliver(admin: Db, userId: string, title: string, lines: string[], alerts: { url?: string }[] = []) {
+type Push = { title: string; body: string; url: string; tag: string };
+async function deliver(admin: Db, userId: string, title: string, lines: string[], alerts: { url?: string }[] = [], pushes: Push[] | null = null) {
   const { data: prefs } = await admin.from("watch_prefs").select("notify_push, notify_email").eq("user_id", userId).maybeSingle();
   const out = { push: 0, email: false };
   const cfg = prefs?.notify_push ? await getConfig(admin, true) : null;
@@ -250,10 +255,12 @@ async function deliver(admin: Db, userId: string, title: string, lines: string[]
   if (prefs?.notify_push && pub && priv) {
     webpush.setVapidDetails("https://vinicellar.ch", pub, priv);
     const { data: subs } = await admin.from("push_subscriptions").select("id, endpoint, p256dh, auth").eq("user_id", userId);
-    const payload = JSON.stringify({ title, body: lines.slice(0, 3).join("\n") + (lines.length > 3 ? `\n+ ${lines.length - 3} autre(s)` : ""), url: "/app/envies.html#alertes", tag: "vinicellar-prix" });
+    const payloads = (pushes ?? [{ title, body: lines.slice(0, 3).join("\n") + (lines.length > 3 ? `\n+ ${lines.length - 3} autre(s)` : ""), url: "/app/envies.html#alertes", tag: "vinicellar-prix" }]).map((p) => JSON.stringify(p));
     for (const s of subs ?? []) {
-      try { await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 86400 }); out.push++; }
-      catch (e) { const code = (e as { statusCode?: number }).statusCode; if (code === 404 || code === 410) await admin.from("push_subscriptions").delete().eq("id", s.id); else console.warn("push", code); }
+      for (const payload of payloads) {
+        try { await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 86400 }); out.push++; }
+        catch (e) { const code = (e as { statusCode?: number }).statusCode; if (code === 404 || code === 410) { await admin.from("push_subscriptions").delete().eq("id", s.id); break; } else console.warn("push", code); }
+      }
     }
   }
   const key = Deno.env.get("RESEND_API_KEY"), from = Deno.env.get("WATCH_EMAIL_FROM");

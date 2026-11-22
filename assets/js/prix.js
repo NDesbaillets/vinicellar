@@ -43,10 +43,12 @@
   function block(item, entry, { canWatch = true } = {}) {
     if (!entry) return canWatch ? `<button class="px-btn" data-px="on" data-item="${item.id}">${I.bell || "🔔"}Surveiller le prix</button>` : "";
     const { w, offers } = entry, b = best(offers);
+    const tags = `${w.vintages && w.vintages !== "exact" && item.vintage ? `<span class="tag">${w.vintages === "newer" ? `${item.vintage} et plus jeunes` : "tous millésimes"}</span>` : ""}${w.target_price ? `<span class="tag ready">cible ${money(w.target_price, w.currency)}</span>` : ""}`;
+    // Meilleur prix : lien direct vers la page du shop ; les réglages restent à droite.
+    if (w.discovered_at && b) return `<div class="px-line px-split">${I.bell || ""}<a class="px-shop" href="${esc(b.url)}" target="_blank" rel="noopener noreferrer" aria-label="Meilleur prix chez ${esc(b.site_domain)} : ouvrir la page du shop">Meilleur prix <b>${money(b.price, b.currency)}</b>${b.regular_price ? ` <s>${money(b.regular_price, b.currency)}</s>` : ""}${b.vintage && b.vintage !== item.vintage ? ` · <b>${b.vintage}</b>` : ""} chez <u>${esc(b.site_domain)}</u>${I.external || "↗"}</a>${tags}<button class="px-set" data-px="open" data-item="${item.id}" aria-label="Surveillance du prix : réglages">Régler</button></div>`;
     const state = !w.discovered_at ? `<span class="px-wait"><span class="spin"></span>Recherche des pages…</span>`
-      : b ? `<span>Meilleur prix <b>${money(b.price, b.currency)}</b>${b.regular_price ? ` <s>${money(b.regular_price, b.currency)}</s>` : ""}${b.vintage && b.vintage !== item.vintage ? ` · <b>${b.vintage}</b>` : ""} · ${esc(b.site_domain)}</span>`
       : `<span class="faint">${esc(w.discover_note || "Aucune page trouvée.")}</span>`;
-    return `<button class="px-line" data-px="open" data-item="${item.id}" aria-label="Surveillance du prix : réglages">${I.bell || ""}${state}${w.vintages && w.vintages !== "exact" && item.vintage ? `<span class="tag">${w.vintages === "newer" ? `${item.vintage} et plus jeunes` : "tous millésimes"}</span>` : ""}${w.target_price ? `<span class="tag ready">cible ${money(w.target_price, w.currency)}</span>` : ""}</button>`;
+    return `<button class="px-line" data-px="open" data-item="${item.id}" aria-label="Surveillance du prix : réglages">${I.bell || ""}${state}${tags}</button>`;
   }
 
   // Choix des millésimes suivis (seulement pour une fiche millésimée).
