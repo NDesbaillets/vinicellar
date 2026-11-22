@@ -4,7 +4,7 @@
   const { sb, $, esc, I, CATEGORY, money, toast, fail, bottleSvg, signed, mainImagePath } = VC;
   const ctx = await VC.boot("carnet");
   const main = $("#main");
-  let lists = [], entries = [], places = [], colls = [], current = null, getUrl = () => null;
+  let lists = [], entries = [], places = [], colls = [], current = null, getUrl = () => null, prix = new Map(), alerts = [], bound = false;
 
   async function load() {
     const [a, b, c, d] = await Promise.all([
@@ -18,7 +18,20 @@
     if (!lists.length && colls.length) lists = await VC.wishlistsFor((places[0] || {}).collection_id || colls[0].id);
     if (!lists.some((l) => l.id === current)) current = lists[0] ? lists[0].id : null;
     getUrl = await signed(entries.map((e) => e.items && mainImagePath(e.items)).filter(Boolean));
+    [prix, alerts] = await Promise.all([VC.Prix.load(entries.map((e) => e.item_id)), VC.Prix.alerts()]);
     draw();
+    if (alerts.some((a) => !a.seen_at)) VC.Prix.markSeen(alerts);
+    if (location.hash === "#alertes") document.getElementById("alertes")?.scrollIntoView();
+    if (!bound) {
+      bound = true;
+      VC.Prix.bind(main, {
+        items: { get: (id) => (entries.find((e) => e.item_id === id) || {}).items },
+        getEntries: () => prix,
+        defaults: (it) => { const en = entries.find((e) => e.item_id === it.id) || {}; return { origin: "wish", target: en.target_price || null, currency: it.market_currency || ctx.profile.currency || "CHF" }; },
+        onChange: () => load(),
+      });
+      document.addEventListener("vc:prix", () => load());
+    }
   }
 
   const list = () => lists.find((l) => l.id === current);
@@ -35,13 +48,14 @@
       <p class="sub">${esc([it.producer, it.appellation || it.region, it.country].filter(Boolean).join(" · ")) || (e.pending ? "Fiche en cours…" : "")}</p>
       <div class="tags">${e.qty_wanted ? `<span class="tag">${e.qty_wanted} bt. voulues</span>` : ""}${price ? `<span class="tag">marché ${price}</span>` : ""}${e.target_price ? `<span class="tag ready">cible ${money(e.target_price, it.market_currency || ctx.profile.currency)}</span>` : ""}</div>
       ${e.note ? `<p class="sub" style="margin:6px 0 0;white-space:normal">${esc(e.note)}</p>` : ""}</div></a>
+      <div class="px-wrap">${VC.Prix.block(it, prix.get(it.id))}</div>
       ${VC.canEdit(it.collection_id) ? `<div class="wish-acts"><button class="btn" data-w="bought">${I.check}Acheté</button><button class="icon-btn" data-w="del" aria-label="Retirer de la liste">${I.trash}</button></div>` : ""}</div>`;
   }
 
   function draw() {
     const l = list();
     const mine = entries.filter((e) => e.wishlist_id === current);
-    main.innerHTML = `<div class="page-head"><div><span class="eyebrow">Carnet</span><h1>Envies</h1></div></div>${VC.carnetNav("envies")}
+    main.innerHTML = `<div class="page-head"><div><span class="eyebrow">Carnet</span><h1>Envies</h1></div></div>${VC.carnetNav("envies")}${VC.Prix.alertsHtml(alerts)}
       <div class="chips" id="lists">${lists.map((x) => `<button class="chip" data-l="${x.id}" aria-pressed="${x.id === current}">${esc(listLabel(x))}<span class="n">${entries.filter((e) => e.wishlist_id === x.id).length}</span></button>`).join("")}
         <button class="chip" data-new>${I.plus.replace("<svg", '<svg width="14" height="14" style="vertical-align:-2px"')} Nouvelle liste</button></div>
       ${l ? `<div class="row" style="margin:6px 0 14px"><h2 style="margin:0">${esc(l.name)}</h2><span class="spacer"></span>

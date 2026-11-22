@@ -861,3 +861,43 @@ b.f-n { font-size: var(--fs-4); }
 @keyframes bee-pop { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
 .bee-trail.fade { animation: bee-fade 1.6s ease-in 1.2s forwards; }
 @keyframes bee-fade { to { opacity: 0; } }
+
+/* ================================================================ alertes de prix (Envies, Vins passés, Compte) */
+.px-wrap { grid-column: 1 / -1; padding: 0 var(--s-3) var(--s-2); }
+.px-btn, .px-line { display: flex; align-items: center; gap: 6px; width: 100%; min-height: var(--touch); border: 1px dashed var(--line); background: transparent; border-radius: var(--r-s); padding: 6px 10px; font: 500 var(--fs-2) var(--font-ui); color: var(--wine); cursor: pointer; text-align: left; }
+.px-line { border-style: solid; background: var(--sunk); color: var(--ink); flex-wrap: wrap; }
+.px-btn svg, .px-line svg { width: 16px; height: 16px; flex: none; color: var(--wine); }
+.px-line s, .px-offers s, .px-alerts s { color: var(--ink-3); }
+.px-line .tag { margin-left: auto; }
+.px-wait { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.px-sheet { display: grid; gap: var(--s-4); }
+.px-sheet label { display: grid; gap: 4px; font-size: var(--fs-2); color: var(--ink-2); }
+.px-offers, .px-alerts ul, .px-sites { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.px-offer, .px-alerts li { display: grid; grid-template-columns: 1fr auto auto auto; gap: var(--s-2); align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: var(--fs-2); }
+.px-alerts li { grid-template-columns: 1fr auto auto; }
+.px-offer > div, .px-alerts li > div { display: grid; min-width: 0; }
+.px-offer small, .px-alerts small { color: var(--ink-3); font-size: var(--fs-1); }
+.px-offer.gone { opacity: .55; }
+.px-price { font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.px-actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.px-actions .danger { margin-left: auto; }
+.px-alerts { margin: var(--s-4) 0; }
+.px-alerts .eyebrow { margin: 0 0 var(--s-2); font: 600 var(--fs-1)/1.2 var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--wine); }
+.px-alerts li.new b { color: var(--wine); }
+.px-prefs { display: grid; gap: 2px; margin-top: var(--s-3); }
+.px-pref { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--s-3); padding: 10px 0; border-bottom: 1px solid var(--line); margin: 0; cursor: pointer; }
+.px-pref > div { display: grid; gap: 2px; }
+.px-pref small { color: var(--ink-3); font-size: var(--fs-1); font-weight: 400; }
+.px-pref input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--wine); }
+.px-sites li { display: flex; align-items: center; justify-content: space-between; min-height: 40px; }
+.px-sites label { display: flex; align-items: center; gap: var(--s-2); margin: 0; font-size: var(--fs-2); cursor: pointer; }
+.px-sites input { width: 20px; height: 20px; accent-color: var(--wine); }
+.px-add { display: grid; grid-template-columns: 1fr 1fr auto; gap: var(--s-2); margin-top: var(--s-2); }
+@media (max-width: 520px) { .px-add { grid-template-columns: 1fr; } }
+@media (max-width: 520px) {
+  .px-alerts li { grid-template-columns: 1fr auto; }
+  .px-alerts li > div { grid-column: 1 / -1; }
+  .px-offer { grid-template-columns: 1fr auto auto; }
+  .px-offer .px-price { grid-column: 1; grid-row: 2; justify-self: start; }
+  .px-offer > div { grid-column: 1 / -1; }
+}

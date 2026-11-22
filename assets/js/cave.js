@@ -253,6 +253,8 @@
       const { count } = await sb.from("access_requests").select("id", { count: "exact", head: true }).eq("status", "pending");
       if (count) box.insertAdjacentHTML("afterbegin", `<a class="invite" href="/app/admin.html"><div><b>${count} demande${count > 1 ? "s" : ""} d'invitation</b> à valider.</div></a>`);
     }
+    const nAlerts = VC.Prix ? await VC.Prix.unseen() : 0;
+    if (nAlerts) box.insertAdjacentHTML("afterbegin", `<a class="invite" href="/app/envies.html#alertes"><div><b>${nAlerts} alerte${nAlerts > 1 ? "s" : ""} de prix</b> sur vos vins surveillés.</div></a>`);
     const { count: ready } = await sb.from("drafts").select("id", { count: "exact", head: true }).eq("status", "ready");
     if (ready) box.insertAdjacentHTML("beforeend", `<a class="invite" href="/app/ajouter.html"><div><b>${ready} fiche${ready > 1 ? "s" : ""} prête${ready > 1 ? "s" : ""}</b> à vérifier avant d'entrer en cave.</div></a>`);
   }

@@ -23,6 +23,18 @@
       <p class="faint" style="margin:14px 0 0;font-size:var(--fs-2)">Analyses d'étiquettes ces dernières 24 h : <span id="quota">…</span></p></div>
     <div class="card"><h3>Fond des aperçus</h3><p class="muted">Derrière les visuels de bouteilles, dans la cave et les fiches. Modifiable à tout moment, sans refaire les visuels. Suit votre compte sur tous vos appareils.</p>
       <div class="bg-choices" id="visual-bg">${[["white", "Blanc", "#fff"], ["ivory", "Ivoire", "#f3efe7"], ["none", "Aucun", "repeating-conic-gradient(var(--sunk) 0 25%, var(--card) 0 50%) 0 0 / 12px 12px"]].map(([k, l, bg]) => `<button type="button" class="bg-choice" data-bg="${k}" aria-pressed="${VC.getVisualBg() === k}"><i style="background:${bg}"></i>${l}</button>`).join("")}</div></div>
+    <div class="card" id="prix-card"><h3>Alertes de prix</h3><p class="muted">Pour les vins surveillés depuis les Envies et les Vins passés : prix cible atteint, baisse, promotion, retour en stock. Les prix sont relus chaque nuit.</p>
+      <div class="px-prefs">
+        <div class="px-pref"><div><b>Notifications sur cet appareil</b><small id="push-state">…</small></div><button class="btn ghost" id="push-btn" type="button">Activer</button></div>
+        <label class="px-pref"><div><b>Notifications</b><small>Sur les appareils où elles sont activées.</small></div><input type="checkbox" id="pref-push"></label>
+        <label class="px-pref"><div><b>E-mail</b><small>Un récapitulatif à l'adresse du compte.</small></div><input type="checkbox" id="pref-email"></label>
+        <label class="px-pref"><div><b>Baisse signalée à partir de</b><small>Par rapport au prix habituel des 60 derniers jours.</small></div><select id="pref-drop">${[10, 15, 20, 25, 30].map((n) => `<option value="${n}">−${n} %</option>`).join("")}</select></label>
+      </div>
+      <div class="field-label" style="margin-top:16px">Sites consultés <small class="faint">(le site du producteur l'est toujours)</small></div>
+      <ul class="px-sites" id="px-sites"></ul>
+      <form class="px-add" id="px-add" novalidate><input name="name" maxlength="80" placeholder="Nom, ex. Cave du village" aria-label="Nom du site"><input name="domain" maxlength="120" placeholder="exemple.ch" aria-label="Adresse du site" autocapitalize="none" autocomplete="off"><button class="btn ghost" type="submit">${I.plus}Ajouter</button></form>
+      <p class="hint" id="px-usage"></p>
+      <div class="row"><button class="btn quiet" id="px-test" type="button">Envoyer une alerte de test</button></div></div>
     <div class="card"><h3>Tableau de la fiche</h3><p class="muted">Les informations affichées sous le stock, dans chaque fiche. Cochez, puis montez ou descendez.</p>
       <ol class="rows-pref" id="rows-pref"></ol><div class="row"><button class="btn" id="rows-save">${I.check}Enregistrer</button><button class="btn quiet" id="rows-reset">Revenir au choix par défaut</button></div></div>
     <div class="card"><h3>Caves et partage</h3><p class="muted">Créer, renommer ou supprimer une cave ; inviter votre conjoint ou votre famille.</p><a class="btn ghost" href="/app/caves.html">${I.share}Gérer les caves et le partage</a></div>
@@ -57,6 +69,62 @@
     if (error) return fail(error);
     p.fiche_rows = same ? null : rowsSel; toast("Tableau de la fiche enregistré.");
   });
+
+  // Alertes de prix : réglages, sites, notifications sur cet appareil.
+  async function prixCard() {
+    await VC.Prix.ensureSites();
+    const [{ data: prefs }, { data: sites }, { data: use }] = await Promise.all([
+      sb.from("watch_prefs").select("*").maybeSingle(),
+      sb.from("watch_sites").select("*").order("builtin", { ascending: false }).order("name"),
+      sb.from("watch_usage").select("cost_chf").eq("month", new Date().toISOString().slice(0, 7) + "-01").maybeSingle(),
+    ]);
+    $("#pref-push").checked = !!prefs?.notify_push; $("#pref-email").checked = !!prefs?.notify_email; $("#pref-drop").value = String(prefs?.drop_pct || 15);
+    $("#px-sites").innerHTML = (sites || []).map((x) => `<li><label><input type="checkbox" data-site="${x.id}"${x.enabled ? " checked" : ""}>${esc(x.name)} <small class="faint">${esc(x.domain)}</small></label>${x.builtin ? "" : `<button class="icon-btn" type="button" data-site-del="${x.id}" aria-label="Retirer ${esc(x.name)}">${I.x}</button>`}</li>`).join("");
+    $("#px-usage").textContent = `Recherches de pages ce mois : CHF ${Number(use?.cost_chf || 0).toFixed(2)} sur 2.00. Les relevés de prix de la nuit ne coûtent rien.`;
+    const st = await VC.Prix.pushState();
+    $("#push-state").textContent = { on: "Activées sur cet appareil.", off: "Pas encore activées sur cet appareil.", denied: "Refusées : autorisez-les dans les réglages de l'appareil.", unsupported: /iPhone|iPad/.test(navigator.userAgent) && !VC.standalone ? "Sur iPhone : ouvrez Vinicellar depuis l'écran d'accueil." : "Non disponibles dans ce navigateur." }[st];
+    $("#push-btn").textContent = st === "on" ? "Désactiver" : "Activer";
+    $("#push-btn").disabled = st === "denied" || (st === "unsupported");
+  }
+  const savePref = async (patch) => { const { error } = await sb.from("watch_prefs").upsert({ user_id: ctx.user.id, ...patch, updated_at: new Date().toISOString() }); if (error) fail(error); else toast("Réglage enregistré."); };
+  $("#pref-push").addEventListener("change", (e) => savePref({ notify_push: e.target.checked }));
+  $("#pref-email").addEventListener("change", (e) => savePref({ notify_email: e.target.checked }));
+  $("#pref-drop").addEventListener("change", (e) => savePref({ drop_pct: Number(e.target.value) }));
+  $("#push-btn").addEventListener("click", async (e) => {
+    e.target.disabled = true;
+    try {
+      if ((await VC.Prix.pushState()) === "on") { await VC.Prix.disablePush(); toast("Notifications désactivées sur cet appareil."); }
+      else { await VC.Prix.enablePush(); toast("Notifications activées sur cet appareil."); }
+    } catch (err) { toast(err.message || "Activation impossible."); }
+    prixCard();
+  });
+  $("#px-sites").addEventListener("change", async (e) => {
+    const id = e.target.dataset.site; if (!id) return;
+    const { error } = await sb.from("watch_sites").update({ enabled: e.target.checked }).eq("id", id);
+    if (error) fail(error);
+  });
+  $("#px-sites").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-site-del]"); if (!b) return;
+    const { error } = await sb.from("watch_sites").delete().eq("id", b.dataset.siteDel);
+    if (error) return fail(error);
+    prixCard();
+  });
+  $("#px-add").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    let domain = f.domain.value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0];
+    if (!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(domain)) return toast("Adresse invalide, par exemple : cave-du-village.ch");
+    const { error } = await sb.from("watch_sites").insert({ name: f.name.value.trim() || domain, domain });
+    if (error) return fail(error, /duplicate|unique/.test(error.message) ? "Ce site est déjà dans la liste." : undefined);
+    f.reset(); toast("Site ajouté."); prixCard();
+  });
+  $("#px-test").addEventListener("click", async () => {
+    try {
+      const r = await VC.Prix.invoke({ action: "test" });
+      toast(r.push || r.email ? `Test envoyé${r.push ? ` : ${r.push} notification${r.push > 1 ? "s" : ""}` : ""}${r.email ? `${r.push ? ", " : " : "}e-mail` : ""}.` : "Rien envoyé : activez les notifications ou l'e-mail ci-dessus.");
+    } catch (err) { toast(err.message); }
+  });
+  prixCard();
 
   $("#visual-bg").addEventListener("click", (e) => {
     const b = e.target.closest("[data-bg]"); if (!b) return;
