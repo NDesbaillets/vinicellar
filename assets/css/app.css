@@ -901,3 +901,9 @@ b.f-n { font-size: var(--fs-4); }
   .px-offer .px-price { grid-column: 1; grid-row: 2; justify-self: start; }
   .px-offer > div { grid-column: 1 / -1; }
 }
+.px-vint { border: 0; margin: 0; padding: 0; display: grid; gap: 2px; }
+.px-vint legend { font-size: var(--fs-2); color: var(--ink-2); margin-bottom: 4px; padding: 0; }
+.px-vint label { display: grid; grid-template-columns: auto 1fr; gap: var(--s-2); align-items: start; padding: 8px 0; border-bottom: 1px solid var(--line); cursor: pointer; color: var(--ink); }
+.px-vint input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--wine); }
+.px-vint span { display: grid; gap: 1px; font-size: var(--fs-2); }
+.px-vint small { color: var(--ink-3); font-size: var(--fs-1); }

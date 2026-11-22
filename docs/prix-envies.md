@@ -5,8 +5,9 @@ Version 1, 22.11.2026.
 ## Pour l'utilisateur
 
 - **Activer** : dans Envies ou Vins passés, « Surveiller le prix » sous un vin. Un prix cible facultatif se règle en touchant la ligne de surveillance. Pour les Envies, il reprend le prix cible de la liste.
+- **Millésimes** : à l'activation, puis dans la fenêtre de surveillance, au choix « Seulement 2023 », « 2023 et les plus jeunes » ou « Tous les millésimes en vente ». Un vin sans millésime suit tous les millésimes. Passer à un choix plus large relance la recherche ; les pages déjà suivies ne sont pas recherchées à nouveau. Le millésime de chaque page est relu sur la page elle-même à chaque relevé (une page qui passe au millésime suivant est mise à jour). Le meilleur prix indique son millésime quand il diffère de celui de la fiche.
 - **Alertes** :
-  - prix cible atteint (comparé par bouteille ; magnums et demi-bouteilles ramenés à 75 cl) ;
+  - prix cible atteint (comparé par bouteille, 70 et 75 cl tels quels ; magnums et demi-bouteilles ramenés à 75 cl) ;
   - baisse d'au moins X % par rapport au prix habituel (médiane des 60 derniers jours, 15 % par défaut) ;
   - prix barré affiché ;
   - retour en stock.
@@ -19,7 +20,8 @@ Version 1, 22.11.2026.
 
 1. **Recherche (IA)** : la fonction `watch`, action `discover`, s'en charge.
    - Claude Sonnet 5.5 cherche avec `web_search`, restreint aux domaines choisis, et rend la page produit et le prix par bouteille pour chaque site.
-   - Elle a lieu à l'activation, puis une fois par mois.
+   - Elle a lieu à l'activation, puis une fois par mois. En mode « plus jeunes », le message liste chaque millésime à chercher et les pages déjà suivies.
+   - Les pages trouvées sont aussitôt relues sans IA : le prix et le millésime enregistrés sont ceux de la page, pas ceux annoncés par la recherche.
    - Coût mesuré : environ 0,02 à 0,04 CHF par vin.
 2. **Relevé (sans IA)** : `pg_cron` lance la tâche `watch-prices` toutes les heures, à la minute 17.
    - La fonction relit les pages vues il y a plus de 20 h.

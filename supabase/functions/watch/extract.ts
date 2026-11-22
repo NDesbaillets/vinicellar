@@ -4,7 +4,7 @@
 // puis on garde celui qui correspond au prix de référence relevé lors de la recherche (prix par bouteille).
 // Un carton de 6 ou de 12 est ramené à la bouteille.
 
-export type Reading = { unit: number; regular: number | null; currency: string | null; inStock: boolean | null; method: string };
+export type Reading = { unit: number; regular: number | null; currency: string | null; inStock: boolean | null; method: string; vintage: number | null };
 type Cand = { v: number; kind: "ld" | "meta" | "json" | "text"; regular: boolean; qty: number };
 
 const REGULAR_KEYS = /^(old|regular|list|base|was|strike|original|normal|uvp|compare)/i;
@@ -16,11 +16,16 @@ const num = (s: unknown) => {
   return Number(t);
 };
 
-function walkLd(node: unknown, out: Cand[], meta: { currency?: string; stock?: boolean }) {
+function walkLd(node: unknown, out: Cand[], meta: { currency?: string; stock?: boolean; vintage?: number }) {
   if (Array.isArray(node)) { node.forEach((n) => walkLd(n, out, meta)); return; }
   if (!node || typeof node !== "object") return;
   const o = node as Record<string, unknown>;
   const type = String(o["@type"] ?? "");
+  // Millésime affiché par la fiche produit (nom, identifiant ou « _vintage=2024 » dans l'adresse).
+  if (/Product/.test(type) && meta.vintage === undefined) {
+    const m = `${o.name ?? ""} ${o["@id"] ?? ""} ${o.url ?? ""}`.match(/(?:vintage=|\b)((?:19[5-9]|20[0-4])\d)\b/);
+    if (m) meta.vintage = Number(m[1]);
+  }
   if (/Offer/.test(type)) {
     const qty = num((o.eligibleQuantity as Record<string, unknown> | undefined)?.value) || 1;
     for (const k of ["price", "lowPrice"]) { const v = num(o[k]); if (v > 0) out.push({ v, kind: "ld", regular: false, qty }); }
@@ -38,7 +43,7 @@ function walkLd(node: unknown, out: Cand[], meta: { currency?: string; stock?: b
 
 export function extract(html: string, ref: number | null): Reading | null {
   const cands: Cand[] = [];
-  const meta: { currency?: string; stock?: boolean } = {};
+  const meta: { currency?: string; stock?: boolean; vintage?: number } = {};
   for (const m of html.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)) {
     try { walkLd(JSON.parse(m[1].trim()), cands, meta); } catch { /* bloc illisible */ }
   }
@@ -78,5 +83,10 @@ export function extract(html: string, ref: number | null): Reading | null {
   // Prix normal : un prix « ancien / barré » ou un prix affiché plus haut, au plus 80 % au-dessus.
   const regs = units.filter((c) => c.pen < 3 && c.u > unit * 1.03 && c.u <= unit * 1.8 && (c.regular || c.kind === "meta" || c.kind === "ld"));
   const regular = regs.length ? Math.round(Math.max(...regs.map((c) => c.u)) * 100) / 100 : null;
-  return { unit, regular, currency: meta.currency ?? null, inStock: meta.stock ?? null, method: pick.kind };
+  if (meta.vintage === undefined) {
+    const t = (html.match(/<title>([^<]{0,200})<\/title>/i) || [])[1] || "";
+    const m = t.match(/\b((?:19[5-9]|20[0-4])\d)\b/);
+    if (m) meta.vintage = Number(m[1]);
+  }
+  return { unit, regular, currency: meta.currency ?? null, inStock: meta.stock ?? null, method: pick.kind, vintage: meta.vintage ?? null };
 }

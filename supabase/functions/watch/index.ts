@@ -39,7 +39,7 @@ const json = (req: Request, body: unknown, status = 200) =>
 
 // deno-lint-ignore no-explicit-any
 type Db = any;
-type Watch = { id: string; user_id: string; item_id: string; target_price: number | null; currency: string; discovered_at: string | null };
+type Watch = { id: string; user_id: string; item_id: string; target_price: number | null; currency: string; discovered_at: string | null; vintages?: "exact" | "newer" | "any" };
 type Item = { id: string; name: string; producer: string | null; vintage: number | null; appellation: string | null; region: string | null; country: string | null; volume_cl: number | null; producer_url: string | null; market_price: number | null; market_currency: string | null; category: string };
 type Offer = { id: string; watch_id: string; user_id: string; site_domain: string; url: string; title: string | null; vintage: number | null; volume_cl: number | null; price: number | null; regular_price: number | null; currency: string | null; in_stock: boolean | null; status: string; fails: number };
 
@@ -83,10 +83,10 @@ function costChf(u: any) {
 // ------------------------------------------------------------------ recherche des pages produit (IA)
 const SYSTEM = `Tu cherches où acheter une bouteille précise, pour une alerte de prix. Uniquement sur les sites autorisés par l'outil de recherche.
 Pour chaque site qui vend CE vin (même producteur, même cuvée), donne la page produit exacte (pas une liste, pas une recherche) et le prix lu sur la page ou l'extrait.
-- Millésime : celui demandé s'il est en vente ; sinon le millésime proposé, indiqué dans vintage.
+- Millésimes : suis la consigne du message (seulement celui demandé, celui-ci et les plus jeunes, ou tous). Le millésime de chaque page dans vintage.
 - Prix par bouteille (unit_price) : si la page vend par carton de 6, divise. Contenance en cl (75, 70, 50, 150…).
 - regular_unit_price : prix normal barré si un prix promotionnel est affiché, sinon null.
-- Une seule page par site, la plus proche du vin demandé. Rien d'inventé : un site sans page trouvée n'apparaît pas.
+- Une page par site et par millésime. Rien d'inventé : un site sans page trouvée n'apparaît pas.
 Réponds uniquement par ce JSON : {"offers":[{"url":"https://…","title":"","vintage":int|null,"volume_cl":int|null,"unit_price":num,"regular_unit_price":num|null,"currency":"CHF|EUR","in_stock":bool|null}]}`;
 
 async function discover(admin: Db, apiKey: string, w: Watch, it: Item, domains: string[]) {
@@ -95,14 +95,22 @@ async function discover(admin: Db, apiKey: string, w: Watch, it: Item, domains: 
   if (!allowed.length) return { offers: 0, note: "Aucun site actif dans le Compte." };
   const wine = [it.producer, it.name, it.vintage, it.appellation || it.region, it.country, it.volume_cl ? `${it.volume_cl} cl` : null].filter(Boolean).join(" · ");
   const client = new Anthropic({ apiKey });
-  const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: `Vin : ${wine}${it.market_price ? `\nPrix indicatif : ${it.market_price} ${it.market_currency || "CHF"}` : ""}` }];
+  const mode = it.vintage ? (w.vintages ?? "exact") : "any";
+  const year = new Date().getFullYear();
+  const rule = mode === "exact" ? `Millésimes : seulement ${it.vintage} ; s'il n'est plus en vente, le millésime proposé à sa place.`
+    : mode === "newer" ? `Millésimes : ${it.vintage} et chacun des plus jeunes en vente (${Array.from({ length: Math.max(0, year - it.vintage!) }, (_, i) => it.vintage! + 1 + i).join(", ")}). Cherche explicitement chaque millésime, par exemple « ${it.name} ${Math.min(year, it.vintage! + 1)} ».`
+    : "Millésimes : tous ceux en vente ; cherche aussi les millésimes récents un par un.";
+  // Pages déjà suivies : inutile de les retrouver, la recherche se concentre sur les autres millésimes et les autres sites.
+  const { data: known } = await admin.from("watch_offers").select("site_domain, vintage").eq("watch_id", w.id).neq("status", "gone");
+  const knownText = (known ?? []).length ? `\nDéjà suivies (ne pas les redonner) : ${(known ?? []).map((k: { site_domain: string; vintage: number | null }) => `${k.site_domain} ${k.vintage ?? ""}`.trim()).join(", ")}.` : "";
+  const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: `Vin : ${wine}\n${rule}${knownText}${it.market_price ? `\nPrix indicatif : ${it.market_price} ${it.market_currency || "CHF"}` : ""}` }];
   let cost = 0, final: Anthropic.Beta.BetaMessage | null = null;
   for (let i = 0; i < 3; i++) {
     final = await client.beta.messages.create({
       model: MODEL, max_tokens: 4000, betas: ["server-side-fallback-2026-07-01"], fallbacks: "default",
       output_config: { effort: "low" },
       system: [{ type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } }],
-      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 5, allowed_domains: allowed }],
+      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: mode === "exact" ? 5 : 8, allowed_domains: allowed }],
       messages,
     });
     cost += costChf(final.usage);
@@ -118,18 +126,22 @@ async function discover(admin: Db, apiKey: string, w: Watch, it: Item, domains: 
   const list = Array.isArray(raw.offers) ? raw.offers as Record<string, unknown>[] : [];
   const now = new Date().toISOString();
   let n = 0;
-  const seenHosts = new Set<string>();
-  for (const o of list.slice(0, 12)) {
+  const seen = new Set<string>(), fresh: Offer[] = [];
+  for (const o of list.slice(0, 24)) {
     const url = typeof o.url === "string" ? o.url.trim() : "";
     const host = hostOf(url);
     const unit = Number(o.unit_price);
-    if (!url.startsWith("https://") || !host || !allowed.some((d) => host === d || host.endsWith("." + d)) || !(unit > 0 && unit < 100000) || seenHosts.has(host)) continue;
-    seenHosts.add(host);
+    const vint = Number.isInteger(o.vintage) ? o.vintage as number : null;
+    // Un millésime plus ancien que celui de la fiche n'est gardé qu'en mode « tous » (ou à défaut du millésime demandé).
+    if (mode === "newer" && vint && it.vintage && vint < it.vintage) continue;
+    const key = `${host}|${vint ?? ""}`;
+    if (!url.startsWith("https://") || !host || !allowed.some((d) => host === d || host.endsWith("." + d)) || !(unit > 0 && unit < 100000) || seen.has(key)) continue;
+    seen.add(key);
     const reg = Number(o.regular_unit_price);
     const row = {
       watch_id: w.id, user_id: w.user_id, site_domain: allowed.find((d) => host === d || host.endsWith("." + d))!, url: url.slice(0, 1000),
       title: typeof o.title === "string" ? o.title.slice(0, 200) : null,
-      vintage: Number.isInteger(o.vintage) ? o.vintage as number : null,
+      vintage: vint,
       volume_cl: Number.isInteger(o.volume_cl) && (o.volume_cl as number) >= 5 && (o.volume_cl as number) <= 3000 ? o.volume_cl as number : null,
       price: round2(unit), regular_price: reg > unit ? round2(reg) : null,
       currency: o.currency === "EUR" ? "EUR" : "CHF", in_stock: typeof o.in_stock === "boolean" ? o.in_stock : null,
@@ -139,11 +151,15 @@ async function discover(admin: Db, apiKey: string, w: Watch, it: Item, domains: 
     const { data: saved } = await admin.from("watch_offers").upsert(row, { onConflict: "watch_id,url" }).select("*").single();
     if (!saved) continue;
     n++;
+    fresh.push(saved);
     await admin.from("watch_prices").insert({ offer_id: saved.id, price: row.price, regular_price: row.regular_price, in_stock: row.in_stock });
     await evaluate(admin, w, saved, before);
   }
-  await admin.from("watches").update({ discovered_at: now, discover_note: n ? null : "Aucune page trouvée chez les sites choisis." }).eq("id", w.id);
-  return { offers: n, note: n ? null : "Aucune page trouvée chez les sites choisis." };
+  // Vérification immédiate des pages trouvées (sans IA) : millésime et prix lus sur la page elle-même.
+  await Promise.all(fresh.map((o) => check(admin, o, w).catch(() => "error")));
+  const total = n + (known ?? []).length;
+  await admin.from("watches").update({ discovered_at: now, discover_note: total ? null : "Aucune page trouvée chez les sites choisis." }).eq("id", w.id);
+  return { offers: n, note: n ? null : total ? "Pas de nouvelle page : les pages déjà suivies restent relues chaque nuit." : "Aucune page trouvée chez les sites choisis." };
 }
 
 // ------------------------------------------------------------------ relevé d'une page (sans IA)
@@ -165,7 +181,8 @@ async function check(admin: Db, o: Offer, w: Watch) {
     await admin.from("watch_offers").update({ fails, status: fails >= 3 ? "error" : o.status, checked_at: now }).eq("id", o.id);
     return "error";
   }
-  const patch = { price: r.unit, regular_price: r.regular, currency: r.currency ?? o.currency, in_stock: r.inStock ?? o.in_stock, status: "ok", fails: 0, checked_at: now };
+  // Le millésime lu sur la page fait foi (une même page peut passer au millésime suivant).
+  const patch = { price: r.unit, regular_price: r.regular, currency: r.currency ?? o.currency, in_stock: r.inStock ?? o.in_stock, status: "ok", fails: 0, checked_at: now, ...(r.vintage ? { vintage: r.vintage } : {}) };
   const { data: saved } = await admin.from("watch_offers").update(patch).eq("id", o.id).select("*").single();
   await admin.from("watch_prices").insert({ offer_id: o.id, price: r.unit, regular_price: r.regular, in_stock: patch.in_stock });
   if (saved) await evaluate(admin, w, saved, o);
@@ -205,7 +222,7 @@ const KIND = { target: "prix cible atteint", drop: "baisse de prix", promo: "en 
 const money = (n: number | null, c: string | null) => n == null ? "" : `${c || "CHF"} ${Number(n).toFixed(2)}`;
 
 async function notify(admin: Db, onlyUser?: string) {
-  let q = admin.from("watch_alerts").select("id, user_id, kind, price, regular_price, currency, url, site_domain, watches(items(name, vintage, producer))").is("notified_at", null).order("created_at").limit(200);
+  let q = admin.from("watch_alerts").select("id, user_id, kind, price, regular_price, currency, url, site_domain, watches(items(name, vintage, producer)), watch_offers(vintage)").is("notified_at", null).order("created_at").limit(200);
   if (onlyUser) q = q.eq("user_id", onlyUser);
   const { data: alerts } = await q;
   const byUser = new Map<string, Record<string, unknown>[]>();
@@ -214,7 +231,9 @@ async function notify(admin: Db, onlyUser?: string) {
     const lines = list.map((a) => {
       // deno-lint-ignore no-explicit-any
       const it = (a.watches as any)?.items ?? {};
-      return `${it.name ?? "Vin"}${it.vintage ? " " + it.vintage : ""} : ${KIND[a.kind as string]}, ${money(a.price as number, a.currency as string)}${a.regular_price ? ` au lieu de ${money(a.regular_price as number, a.currency as string)}` : ""} chez ${a.site_domain}`;
+      // deno-lint-ignore no-explicit-any
+      const vint = (a.watch_offers as any)?.vintage ?? it.vintage;
+      return `${it.name ?? "Vin"}${vint ? " " + vint : ""} : ${KIND[a.kind as string]}, ${money(a.price as number, a.currency as string)}${a.regular_price ? ` au lieu de ${money(a.regular_price as number, a.currency as string)}` : ""} chez ${a.site_domain}`;
     });
     const title = list.length > 1 ? `Prix : ${list.length} alertes sur vos vins` : "Prix : un vin de vos envies";
     await deliver(admin, userId, title, lines, list as { url?: string }[]);

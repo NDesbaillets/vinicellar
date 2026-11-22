@@ -44,14 +44,36 @@
     if (!entry) return canWatch ? `<button class="px-btn" data-px="on" data-item="${item.id}">${I.bell || "🔔"}Surveiller le prix</button>` : "";
     const { w, offers } = entry, b = best(offers);
     const state = !w.discovered_at ? `<span class="px-wait"><span class="spin"></span>Recherche des pages…</span>`
-      : b ? `<span>Meilleur prix <b>${money(b.price, b.currency)}</b>${b.regular_price ? ` <s>${money(b.regular_price, b.currency)}</s>` : ""} · ${esc(b.site_domain)}</span>`
+      : b ? `<span>Meilleur prix <b>${money(b.price, b.currency)}</b>${b.regular_price ? ` <s>${money(b.regular_price, b.currency)}</s>` : ""}${b.vintage && b.vintage !== item.vintage ? ` · <b>${b.vintage}</b>` : ""} · ${esc(b.site_domain)}</span>`
       : `<span class="faint">${esc(w.discover_note || "Aucune page trouvée.")}</span>`;
-    return `<button class="px-line" data-px="open" data-item="${item.id}" aria-label="Surveillance du prix : réglages">${I.bell || ""}${state}${w.target_price ? `<span class="tag ready">cible ${money(w.target_price, w.currency)}</span>` : ""}</button>`;
+    return `<button class="px-line" data-px="open" data-item="${item.id}" aria-label="Surveillance du prix : réglages">${I.bell || ""}${state}${w.vintages && w.vintages !== "exact" && item.vintage ? `<span class="tag">${w.vintages === "newer" ? `${item.vintage} et plus jeunes` : "tous millésimes"}</span>` : ""}${w.target_price ? `<span class="tag ready">cible ${money(w.target_price, w.currency)}</span>` : ""}</button>`;
   }
 
-  async function watchItem(item, { origin = "wish", target = null, currency = "CHF" } = {}) {
+  // Choix des millésimes suivis (seulement pour une fiche millésimée).
+  const VINTAGES = (y) => [["exact", `Seulement ${y}`, "Le millésime de la fiche."], ["newer", `${y} et les plus jeunes`, "Pour racheter le même vin dans un millésime plus récent."], ["any", "Tous les millésimes en vente", "Y compris des millésimes plus anciens."]];
+  const vintageChoice = (item, cur) => item.vintage ? `<fieldset class="px-vint"><legend>Millésimes suivis</legend>${VINTAGES(item.vintage).map(([k, l, h]) => `<label><input type="radio" name="px-vint" value="${k}"${k === cur ? " checked" : ""}><span><b>${esc(l)}</b><small>${esc(h)}</small></span></label>`).join("")}</fieldset>` : "";
+
+  // Activation : millésimes et prix cible, puis recherche.
+  function askWatch(item, defs, done) {
+    const d = VC.sheet(`<form class="px-sheet" novalidate><h2>Surveiller le prix</h2><p class="muted" style="margin:-8px 0 0">${esc(item.name)}${item.vintage ? ` ${item.vintage}` : ""}</p>
+      ${vintageChoice(item, "exact")}
+      <label>Prix cible par bouteille (facultatif)<input type="number" name="target" min="0" step="0.5" inputmode="decimal" value="${defs.target ?? ""}" placeholder="${esc(defs.currency || "CHF")}"></label>
+      <p class="hint">La recherche des pages prend environ 30 s ; ensuite, les prix sont relus chaque nuit.</p>
+      <div class="px-actions"><button type="button" class="btn ghost" data-close>Annuler</button><button class="btn" type="submit">${I.bell || ""}Surveiller</button></div></form>`);
+    d.querySelector("form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const f = e.target, v = f.target.value.trim();
+      const vint = item.vintage ? (f.querySelector("[name=px-vint]:checked") || {}).value || "exact" : "any";
+      f.querySelector("[type=submit]").disabled = true;
+      const w = await watchItem(item, { ...defs, target: v ? Number(v) : null, vintages: vint });
+      d.close(); done(w);
+    });
+    d.addEventListener("close", () => done(null), { once: true });
+  }
+
+  async function watchItem(item, { origin = "wish", target = null, currency = "CHF", vintages = item.vintage ? "exact" : "any" } = {}) {
     await ensureSites();
-    const { data: w, error } = await sb.from("watches").insert({ item_id: item.id, origin, target_price: target, currency }).select("*").single();
+    const { data: w, error } = await sb.from("watches").insert({ item_id: item.id, origin, target_price: target, currency, vintages }).select("*").single();
     if (error) { fail(error); return null; }
     toast("Surveillance activée. Recherche des pages chez les cavistes (environ 30 s)…");
     discover(w.id);
@@ -79,13 +101,14 @@
   // Feuille « Surveillance du prix » : prix cible, pages trouvées, relire, chercher à nouveau, arrêter.
   async function openSheet(item, entry, onChange) {
     const { w } = entry;
-    const { data: offers } = await sb.from("watch_offers").select("*").eq("watch_id", w.id).order("price", { ascending: true, nullsFirst: false });
+    const { data: offers } = await sb.from("watch_offers").select("*").eq("watch_id", w.id).order("vintage", { ascending: false, nullsFirst: false }).order("price", { ascending: true, nullsFirst: false });
     const { data: use } = await sb.from("watch_usage").select("cost_chf").eq("month", new Date().toISOString().slice(0, 7) + "-01").maybeSingle();
     const row = (o) => `<li class="px-offer${o.status === "gone" ? " gone" : ""}"><div><b>${esc(o.site_domain)}</b><small>${esc([o.vintage, o.volume_cl && o.volume_cl !== 75 ? `${o.volume_cl} cl` : null, o.in_stock === false ? "épuisé" : null, o.status === "error" ? "prix illisible" : null, o.status === "gone" ? "page disparue" : null, o.checked_at ? `relu le ${VC.date(o.checked_at.slice(0, 10))}` : null].filter(Boolean).join(" · "))}</small></div>
       <span class="px-price">${o.price != null ? money(o.price, o.currency) : "–"}${o.regular_price ? ` <s>${money(o.regular_price, o.currency)}</s>` : ""}</span>
       <a class="icon-btn" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer" aria-label="Ouvrir la page chez ${esc(o.site_domain)}">${I.external || "↗"}</a>
       <button class="icon-btn" data-del="${o.id}" aria-label="Retirer cette page (mauvais vin)">${I.x}</button></li>`;
     const d = VC.sheet(`<div class="px-sheet"><h2>Surveillance du prix</h2><p class="muted" style="margin:-8px 0 0">${esc(item.name)}${item.vintage ? ` ${item.vintage}` : ""}</p>
+      ${vintageChoice(item, w.vintages || "exact")}
       <label>Prix cible par bouteille (facultatif)<input type="number" id="px-target" min="0" step="0.5" inputmode="decimal" value="${w.target_price ?? ""}" placeholder="${esc(w.currency)}"></label>
       <div><div class="field-label">Pages suivies</div>${(offers || []).length ? `<ul class="px-offers">${offers.map(row).join("")}</ul>` : `<p class="muted">${esc(w.discover_note || (w.discovered_at ? "Aucune page trouvée." : "Recherche en cours…"))}</p>`}</div>
       <p class="hint">Les prix sont relus chaque nuit. Nouvelle recherche des pages : une fois par mois, ou à la demande. Recherches ce mois : ${money(Number(use?.cost_chf || 0), "CHF")} sur 2.00.</p>
@@ -97,9 +120,14 @@
     });
     q("#px-save").addEventListener("click", async () => {
       const v = q("#px-target").value.trim();
-      const { error } = await sb.from("watches").update({ target_price: v ? Number(v) : null }).eq("id", w.id);
+      const vint = item.vintage ? (q("[name=px-vint]:checked") || {}).value || "exact" : "any";
+      const changed = vint !== (w.vintages || "exact");
+      const { error } = await sb.from("watches").update({ target_price: v ? Number(v) : null, vintages: vint }).eq("id", w.id);
       if (error) return fail(error);
-      d.close(); toast("Prix cible enregistré."); onChange();
+      d.close();
+      // Nouveaux millésimes suivis : on cherche leurs pages tout de suite.
+      if (changed && vint !== "exact") { toast("Enregistré. Recherche des autres millésimes (environ 30 s)…"); discover(w.id, onChange); }
+      else { toast("Réglages enregistrés."); onChange(); }
     });
     q("#px-check").addEventListener("click", async (e) => {
       e.target.disabled = true; e.target.textContent = "Lecture…";
@@ -123,10 +151,8 @@
       const it = items.get(b.dataset.item);
       if (!it) return;
       if (b.dataset.px === "on") {
-        b.disabled = true;
-        const w = await watchItem(it, defaults(it));
-        if (w) onChange();
-        else b.disabled = false;
+        let handled = false;
+        askWatch(it, defaults(it), (w) => { if (handled) return; handled = true; if (w) onChange(); });
       } else if (b.dataset.px === "open") {
         const en = getEntries().get(it.id);
         if (en) openSheet(it, en, onChange);
@@ -137,14 +163,14 @@
   // Alertes récentes (30 jours), non vues d'abord ; vues dès qu'elles sont affichées.
   async function alerts() {
     const since = new Date(Date.now() - 30 * 864e5).toISOString();
-    const { data } = await sb.from("watch_alerts").select("*, watches(item_id, items(name, vintage))").gte("created_at", since).order("created_at", { ascending: false }).limit(30);
+    const { data } = await sb.from("watch_alerts").select("*, watches(item_id, items(name, vintage)), watch_offers(vintage)").gte("created_at", since).order("created_at", { ascending: false }).limit(30);
     return data || [];
   }
   function alertsHtml(list) {
     if (!list.length) return "";
     return `<section class="card px-alerts" id="alertes"><h2 class="eyebrow">Alertes de prix</h2><ul>${list.map((a) => {
-      const it = (a.watches && a.watches.items) || {};
-      return `<li class="${a.seen_at ? "" : "new"}"><div><b>${esc(KIND[a.kind])}</b> · ${esc(it.name || "")}${it.vintage ? ` ${it.vintage}` : ""}<small>${esc(a.site_domain || "")} · ${VC.date(a.created_at.slice(0, 10))}</small></div>
+      const it = (a.watches && a.watches.items) || {}, vint = (a.watch_offers && a.watch_offers.vintage) || it.vintage;
+      return `<li class="${a.seen_at ? "" : "new"}"><div><b>${esc(KIND[a.kind])}</b> · ${esc(it.name || "")}${vint ? ` ${vint}` : ""}<small>${esc(a.site_domain || "")} · ${VC.date(a.created_at.slice(0, 10))}</small></div>
         <span class="px-price">${money(a.price, a.currency)}${a.regular_price ? ` <s>${money(a.regular_price, a.currency)}</s>` : ""}</span>
         ${a.url ? `<a class="btn ghost" href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">Voir</a>` : ""}</li>`;
     }).join("")}</ul></section>`;

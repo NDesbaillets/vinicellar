@@ -143,3 +143,7 @@ create policy "own usage read" on public.watch_usage for select using (user_id =
 -- Marquer une alerte vue : seule la colonne seen_at est modifiable par l'utilisateur.
 revoke update on public.watch_alerts from authenticated;
 grant update (seen_at) on public.watch_alerts to authenticated;
+
+-- Millésimes suivis (ajout du 22.11.2026) : seulement celui de la fiche, celui-ci et les plus jeunes, ou tous.
+alter table public.watches add column if not exists vintages text not null default 'exact'
+  check (vintages in ('exact', 'newer', 'any'));
