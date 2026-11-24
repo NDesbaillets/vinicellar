@@ -23,11 +23,11 @@
     return shared / (query.size + candidate.size - shared || 1);
   }
 
-  function card(idea, score, space) {
+  function card(idea, score, space, signed) {
     const target = E.url("fiche.html", { id: idea.id, espace: space });
     const article = E.link(null, target, "card");
     const image = el("div", null, "card-image");
-    image.append(E.visual(idea.image_path));
+    image.append(E.visual(signed.get(idea.image_path) || idea.image_path));
     if (idea.urgence >= 4) image.append(el("span", "Urgent", "badge"));
     const content = el("div");
     const metrics = el("p", null, "metrics");
@@ -103,6 +103,7 @@
             matches = matches.filter((idea) => closeness.get(idea.id) >= 0.3);
           }
         }
+        const signed = await E.signedPhotos(matches.map((idea) => idea.image_path)).catch(() => new Map());
         if (current !== request) return;
         const score = (idea) => byId.get(idea.id) ?? -1;
         matches.sort((a, b) => {
@@ -110,7 +111,7 @@
           return difference || (closeness.get(b.id) || 0) - (closeness.get(a.id) || 0) || a.titre.localeCompare(b.titre, "fr");
         });
         visible = matches;
-        list.append(...matches.map((idea) => card(idea, byId.get(idea.id), space.id)));
+        list.append(...matches.map((idea) => card(idea, byId.get(idea.id), space.id, signed)));
         surprise.hidden = !visible.length;
         E.message(state, matches.length ? "" : ideas.length ? "Aucune idée ne correspond à ces critères." : "Cet espace ne contient encore aucune idée.");
       } catch {

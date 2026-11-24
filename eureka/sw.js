@@ -1,9 +1,9 @@
-const CACHE = "eureka-static-v1";
+const CACHE = "eureka-static-v2";
 const SCOPE = "/eureka/";
 const FILES = [
-  "/eureka/", "/eureka/fiche.html", "/eureka/editer.html", "/eureka/hors-ligne.html",
+  "/eureka/", "/eureka/fiche.html", "/eureka/editer.html", "/eureka/ajouter.html", "/eureka/hors-ligne.html",
   "/eureka/assets/eureka.css", "/eureka/assets/eureka.js",
-  "/eureka/assets/p-index.js", "/eureka/assets/p-fiche.js", "/eureka/assets/p-editer.js",
+  "/eureka/assets/p-index.js", "/eureka/assets/p-ajouter.js", "/eureka/assets/p-fiche.js", "/eureka/assets/p-editer.js",
   "/eureka/assets/monogramme.svg", "/eureka/assets/icon-192.png", "/eureka/assets/icon-512.png",
   "/eureka/assets/apple-touch-icon.png", "/eureka/manifest.webmanifest",
   "/eureka/assets/polices/cormorant-garamond.woff2", "/eureka/assets/polices/cormorant-garamond-italique.woff2",

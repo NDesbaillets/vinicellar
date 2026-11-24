@@ -73,7 +73,9 @@
     row("Mots-clés", idea.tags.join(", "));
     row("Notes", idea.notes);
     row("Source", external("Consulter la source", idea.source_url));
-    row("À vérifier", Object.keys(idea.a_verifier).join(", "));
+    for (const [field, reason] of Object.entries(idea.a_verifier)) {
+      if (typeof reason === "string") row(field === "import" ? "Import" : "À vérifier · " + field.replaceAll("_", " "), reason);
+    }
   }
 
   function scoreCell(label, value, accent) {
@@ -117,17 +119,30 @@
     const scope = { espace: ctx.space.id };
     $(".back").href = E.url("", scope);
     $("#edit").href = E.url("editer.html", { ...scope, id });
-    $("#hero").prepend(E.visual(idea.image_path));
-    $("#urgent").hidden = idea.urgence < 4;
-    $("#meta").textContent = E.meta(idea);
-    $("#title").textContent = idea.titre;
-    $("#pitch").textContent = idea.accroche || "";
-    $("#pitch").hidden = !idea.accroche;
-    $("#description").textContent = idea.description || "";
-    $("#description-section").hidden = !idea.description;
-    document.title = idea.titre + " · Eurêka";
-    details(idea);
-    map(idea);
+    async function showIdea() {
+      const photos = await pages(() => sb.from("sorties_photos")
+        .select("chemin,position").eq("idee_id", id).order("position")).catch(() => []);
+      const signed = await E.signedPhotos([idea.image_path, ...photos.map((row) => row.chemin)]).catch(() => new Map());
+      const cover = E.visual(signed.get(idea.image_path) || idea.image_path);
+      const old = $("#hero > .visual");
+      if (old) old.replaceWith(cover);
+      else $("#hero").prepend(cover);
+      const extras = photos.filter((row) => row.chemin !== idea.image_path && signed.has(row.chemin));
+      $("#gallery").replaceChildren(...extras.map((row) => E.visual(signed.get(row.chemin))));
+      $("#gallery-section").hidden = !extras.length;
+      $("#urgent").hidden = idea.urgence < 4;
+      $("#meta").textContent = E.meta(idea);
+      $("#title").textContent = idea.titre;
+      $("#pitch").textContent = idea.accroche || "";
+      $("#pitch").hidden = !idea.accroche;
+      $("#description").textContent = idea.description || "";
+      $("#description-section").hidden = !idea.description;
+      document.title = idea.titre + " · Eurêka";
+      details(idea);
+      $("#map").replaceChildren();
+      map(idea);
+    }
+    await showIdea();
 
     const [members, options] = await Promise.all([
       pages(() => sb.from("sorties_espace_membres").select("user_id,prenom_affiche").eq("espace_id", ctx.space.id).order("user_id")),
@@ -291,5 +306,63 @@
     await Promise.all([scores(), occurrences()]);
     $("#edit-actions").hidden = !ctx.editor;
     $("#idea").hidden = false;
+
+    let importId = E.params.get("import");
+    if (!importId && idea.a_verifier.import) {
+      const imports = await data(sb.from("sorties_inbox").select("id").eq("espace_id", ctx.space.id)
+        .eq("idee_id", id).eq("user_id", ctx.user.id).limit(1)).catch(() => []);
+      importId = imports[0]?.id;
+    }
+    if (!importId || !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(importId)) return;
+    const section = $("#import-section");
+    const label = $("#import-status");
+    const retry = $("#retry-import");
+    let deadline = Date.now() + 155_000;
+    let refreshed = false;
+    section.hidden = false;
+    async function progress() {
+      try {
+        const row = await data(sb.from("sorties_inbox").select("statut,erreur,alerte_budget")
+          .eq("id", importId).eq("espace_id", ctx.space.id).eq("idee_id", id).maybeSingle());
+        if (!row) {
+          section.hidden = true;
+          return;
+        }
+        const budget = row.alerte_budget ? " Le seuil de 70 % du budget mensuel de l’espace est atteint ou le coût prévu dépasse le solde." : "";
+        const expired = Date.now() >= deadline;
+        if (row.statut === "traite") {
+          if (!refreshed) {
+            idea = await E.ideaById(ctx, id) || idea;
+            await showIdea();
+            refreshed = true;
+          }
+          E.message(label, (row.erreur || "Enrichissement terminé.") + budget);
+          retry.hidden = true;
+        } else if (row.statut === "echec" || expired || row.statut === "nouveau") {
+          E.message(label, (row.erreur || "La fiche est enregistrée. L’enrichissement peut être relancé.") + budget, row.statut === "echec");
+          retry.hidden = !ctx.editor;
+        } else {
+          E.message(label, "Fiche enregistrée. Enrichissement en cours…" + budget);
+          retry.hidden = true;
+          setTimeout(progress, 3000);
+        }
+      } catch {
+        E.message(label, "Le suivi est indisponible. La fiche est enregistrée.", true);
+        retry.hidden = !ctx.editor;
+      }
+    }
+    retry.addEventListener("click", async () => {
+      retry.disabled = true;
+      try {
+        await data(sb.functions.invoke("sorties-enrich", { body: { id: importId, espace: ctx.space.id, reprendre: true } }));
+        deadline = Date.now() + 155_000;
+        await progress();
+      } catch {
+        E.message(label, "Impossible de relancer l’enrichissement. Réessayez.", true);
+      } finally {
+        retry.disabled = false;
+      }
+    });
+    await progress();
   });
 })();

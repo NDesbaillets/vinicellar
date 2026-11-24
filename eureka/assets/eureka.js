@@ -57,6 +57,20 @@
     return box;
   }
 
+  function privatePhoto(value) {
+    return typeof value === "string" && /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/[1-5]\.(jpg|png|webp)$/.test(value);
+  }
+
+  async function signedPhotos(paths) {
+    const keys = [...new Set(paths.filter(privatePhoto))];
+    const signed = new Map();
+    for (let i = 0; i < keys.length; i += 100) {
+      const { data: batch } = await sb.storage.from("eureka-photos").createSignedUrls(keys.slice(i, i + 100), 900);
+      for (const row of batch || []) if (row.signedUrl) signed.set(row.path, row.signedUrl);
+    }
+    return signed;
+  }
+
   function options(select, entries, empty) {
     select.replaceChildren();
     if (empty != null) select.add(new Option(empty, ""));
@@ -102,7 +116,7 @@
   function bind(form, output, action, failure = "Impossible d’enregistrer. Réessayez.") {
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const button = $("button", form);
+      const button = $('button[type="submit"], button:not([type])', form);
       if (button.disabled) return;
       button.disabled = true;
       message(output, "Enregistrement…");
@@ -126,7 +140,7 @@
       ["Planifié", url("", { espace: ctx.space.id, statut: "planifiee" }), "planifiee"],
       ["Souvenirs", url("", { espace: ctx.space.id, statut: "faite" }), "faite"]
     ];
-    if (ctx.editor) entries.splice(2, 0, ["Ajouter une idée", url("editer.html", { espace: ctx.space.id }), "ajout"]);
+    if (ctx.editor) entries.splice(2, 0, ["Ajouter une idée", url("ajouter.html", { espace: ctx.space.id }), "ajout"]);
     for (const [name, href, key] of entries) {
       const item = link(name, href);
       if (key === page) item.setAttribute("aria-current", "page");
@@ -187,6 +201,6 @@
 
   window.Eureka = {
     sb, $, params, formats, statuts, modalites, mois, number, currency, el, link, url, safeUrl,
-    visual, options, date, meta, data, pages, message, bind, UserError, mustUpdate, boot, ideaById
+    visual, signedPhotos, options, date, meta, data, pages, message, bind, UserError, mustUpdate, boot, ideaById
   };
 })();
