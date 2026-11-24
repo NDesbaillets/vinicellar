@@ -1,0 +1,6 @@
+# Écarts de l’étape 1
+
+- **Retour après connexion.** Eurêka redirige vers `/recettes/connexion.html` avec l’adresse demandée. Cette page accepte uniquement les destinations sous `/recettes/`. Après connexion, rouvrir `/eureka/` ou la fiche d’origine. La session est déjà partagée.
+- **Trigrammes.** Le schéma possède un index sur le titre normalisé, mais ne publie aucune fonction de recherche par similarité. PostgREST expose la recherche plein texte et la normalisation via `sorties_unaccent`. Si la recherche plein texte ne donne aucun résultat dans les filtres actifs, le navigateur compare les trigrammes des titres de l’espace chargé.
+- **Visuels.** Une URL HTTPS dans `image_path` est affichée directement. Le schéma Eurêka ne déclare ni bucket ni politiques de stockage pour les chemins privés. Un chemin de bucket ou une image inaccessible laisse la place au visuel Atelier. L’import de photos est prévu à l’étape 2.
+- **Planification.** Le schéma permet d’insérer une occurrence et de modifier l’idée séparément. Si le créneau est créé mais que l’actualisation échoue, la fiche le signale et permet de réessayer. Les créneaux prévus déjà connus pour cette date sont réutilisés. Le schéma ne garantit pas l’unicité d’une date en cas de créations simultanées.
