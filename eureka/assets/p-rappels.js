@@ -192,6 +192,12 @@
 
   E.boot("rappels", async (ctx) => {
     const scope = { espace: ctx.space.id };
+    data(sb.rpc("sorties_agenda_actif", { p_espace: ctx.space.id })).then((allowed) => {
+      if (!allowed) return;
+      const link = $("#agenda-link");
+      link.href = E.url("agendas.html", scope);
+      link.hidden = false;
+    }).catch(() => {});
     const [settings, reminders, pending] = await Promise.all([
       data(sb.from("sorties_reglages").select("max_notifs_par_jour,heure_semaine,heure_weekend,ton,poids_classement")
         .eq("espace_id", ctx.space.id).eq("user_id", ctx.user.id).maybeSingle()),
