@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#9A4A2B">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co; img-src 'self' https:; style-src 'self'; font-src 'self'; frame-src https://www.openstreetmap.org; base-uri 'none'; form-action 'self'">
+  <title>Fiche idée · Eurêka</title>
+  <link rel="manifest" href="/eureka/manifest.webmanifest">
+  <link rel="icon" href="/eureka/assets/monogramme.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/eureka/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="/eureka/assets/eureka.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+  <script defer src="/assets/js/config.js"></script>
+  <script defer src="/eureka/assets/eureka.js"></script>
+  <script defer src="/eureka/assets/p-fiche.js"></script>
+</head>
+<body>
+  <main id="main" class="fiche">
+    <p id="state" role="status">Chargement…</p>
+  <article id="idea" hidden>
+    <div id="hero" class="hero">
+      <a class="back button" href="/eureka/" aria-label="Retour aux idées">←</a>
+      <span id="urgent" class="badge" hidden>Urgent</span>
+    </div>
+    <header class="intro">
+      <p id="meta" class="eyebrow"></p>
+      <h1 id="title"></h1>
+      <p id="pitch" class="pitch"></p>
+    </header>
+    <section><h2>Envie</h2><div id="scores" class="scores"></div></section>
+    <section id="description-section" hidden><h2>Ce qui vous attend</h2><p id="description" class="prose"></p></section>
+    <section><h2>Organiser</h2><dl id="details" class="rows"></dl><div id="map"></div></section>
+    <section id="options-section" hidden><h2>Options</h2><ul id="options" class="rows list"></ul></section>
+    <section><h2>Occurrences</h2><div id="occurrences" class="rows"></div></section>
+    <section id="edit-actions" hidden>
+      <h2>Suivi</h2>
+      <form id="status-form" class="actions">
+        <label class="grow">Statut de l’idée <select name="statut"></select></label>
+        <button>Changer le statut</button>
+      </form>
+      <form id="plan-form" class="actions">
+        <label class="grow">Date prévue <input type="date" name="date" required></label>
+        <button class="primary">Planifier</button>
+      </form>
+      <a id="edit" class="button" href="editer.html">Modifier l’idée</a>
+      <p id="action-status" role="status"></p>
+    </section>
+  </article>
+  </main>
+  <nav id="nav" class="nav" aria-label="Eurêka" hidden></nav>
+  <noscript>Activez JavaScript pour utiliser Eurêka.</noscript>
+</body>
+</html>
