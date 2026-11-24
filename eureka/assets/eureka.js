@@ -140,6 +140,7 @@
       ["Planifié", url("", { espace: ctx.space.id, statut: "planifiee" }), "planifiee"],
       ["Souvenirs", url("", { espace: ctx.space.id, statut: "faite" }), "faite"]
     ];
+    entries.push(["Rappels", url("rappels.html", { espace: ctx.space.id }), "rappels"]);
     if (ctx.editor) entries.splice(2, 0, ["Ajouter une idée", url("ajouter.html", { espace: ctx.space.id }), "ajout"]);
     for (const [name, href, key] of entries) {
       const item = link(name, href);
@@ -159,15 +160,36 @@
     return data(request.select().single());
   }
 
+  async function cleanOtherPush(userId) {
+    try {
+      if (!("serviceWorker" in navigator)) return;
+      const key = "eureka.push.user";
+      const active = localStorage.getItem(key);
+      if (!active || active === userId) return;
+      const registration = await navigator.serviceWorker.getRegistration("/eureka/");
+      if (registration?.scope !== new URL("/eureka/", location.origin).href || !registration.pushManager) return;
+      const subscription = await registration.pushManager.getSubscription();
+      if (subscription) await subscription.unsubscribe();
+      localStorage.removeItem(key);
+    } catch { /* Le navigateur peut bloquer l'accès aux réglages de l'appareil. */ }
+  }
+
   async function boot(page, start) {
     const state = $("#state");
     try {
       if (!sb) throw new UserError("Le service est momentanément indisponible.");
       const { session } = await data(sb.auth.getSession());
       if (!session) {
+        await cleanOtherPush(null);
         location.replace("/recettes/connexion.html?next=" + encodeURIComponent(location.pathname + location.search));
         return;
       }
+      cleanOtherPush(session.user.id);
+      sb.auth.onAuthStateChange((event, current) => {
+        if (event === "SIGNED_OUT" || (event === "SIGNED_IN" && current?.user.id !== session.user.id)) {
+          location.reload();
+        }
+      });
       const memberships = await pages(() => sb.from("sorties_espace_membres")
         .select("espace_id, role, sorties_espaces(id, nom)").eq("user_id", session.user.id).order("espace_id"));
       const spaces = memberships.filter((row) => row.sorties_espaces)

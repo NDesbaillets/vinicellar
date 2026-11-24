@@ -140,3 +140,15 @@ section h2 { margin-bottom: 12px; }
 #quick-info, #quick-status:not(:empty), #import-status:not(:empty) { margin: 12px 0; }
 .gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .gallery .visual { aspect-ratio: 4 / 3; }
+.rappels { max-width: 760px; }
+.rappels section:first-child { margin-top: 0; }
+#reminder-list li, #pending-list li { display: grid; gap: 6px; }
+#reminder-list .highlight { background: var(--papier); padding-inline: 12px; outline: 1px solid var(--filet); }
+#reminder-list form { margin-top: 6px; }
+#reminder-list h3 { font-size: 27px; }
+#reminder-list h3 a { min-height: 44px; color: var(--encre); }
+#push-status:not(:empty), #following-status:not(:empty), #preferences-status:not(:empty) { margin: 10px 0; }
+@media (max-width: 480px) {
+  .nav { gap: 2px; }
+  .nav a { letter-spacing: 0; font-size: 10px; }
+}

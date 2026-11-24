@@ -113,6 +113,59 @@
     return target.toISOString().slice(0, 10);
   }
 
+  async function followControls(ctx, members) {
+    const role = await data(sb.rpc("sorties_suivi_role", { p_espace: ctx.space.id })).catch(() => null);
+    if (!role) return;
+    const section = $("#following");
+    const controls = $("#following-controls");
+    const feedback = $("#following-status");
+    const status = { en_attente: "Demande en attente", accepte: "Suivi accepté", refuse: "Suivi refusé" };
+    section.hidden = false;
+    async function render() {
+      const follows = await pages(() => sb.from("sorties_suivis").select("demandeuse,statut")
+        .eq("espace_id", ctx.space.id).eq("idee_id", id).order("demandeuse"));
+      controls.replaceChildren();
+      if (role === "demande") {
+        const mine = follows.find((row) => row.demandeuse === ctx.user.id);
+        const line = el("div", null, "actions");
+        line.append(el("p", mine ? status[mine.statut] : "Recevoir une notification pour cette idée si votre demande est acceptée."));
+        line.append(action(mine ? "Retirer le suivi" : "Demander à suivre", () =>
+          sb.rpc("sorties_demander_suivi", { p_idee: id, p_activer: !mine })));
+        controls.append(line);
+        return;
+      }
+      if (!follows.length) controls.append(el("p", "Aucune demande pour cette idée."));
+      for (const row of follows) {
+        const name = members.find((member) => member.user_id === row.demandeuse)?.prenom_affiche || "Membre de l’espace";
+        const line = el("div", null, "actions");
+        line.append(el("p", name + " · " + status[row.statut]));
+        const decide = (accepted) => sb.rpc("sorties_decider_suivi",
+          { p_idee: id, p_demandeuse: row.demandeuse, p_accepter: accepted });
+        if (row.statut === "en_attente") line.append(action("Accepter", () => decide(true)), action("Refuser", () => decide(false)));
+        if (row.statut === "accepte") line.append(action("Révoquer le suivi", () => decide(false)));
+        controls.append(line);
+      }
+    }
+    function action(label, operation) {
+      const button = el("button", label);
+      button.type = "button";
+      button.addEventListener("click", async () => {
+        button.disabled = true;
+        try {
+          await data(operation());
+          await render();
+          E.message(feedback, "Suivi enregistré.");
+        } catch {
+          E.message(feedback, "Le suivi n’a pas pu être enregistré. Réessayez.", true);
+        } finally {
+          button.disabled = false;
+        }
+      });
+      return button;
+    }
+    await render();
+  }
+
   E.boot("fiche", async (ctx) => {
     let idea = await E.ideaById(ctx, id);
     if (!idea) throw new E.UserError("Cette idée n’est pas accessible.");
@@ -306,6 +359,7 @@
     await Promise.all([scores(), occurrences()]);
     $("#edit-actions").hidden = !ctx.editor;
     $("#idea").hidden = false;
+    followControls(ctx, members).catch(() => E.message($("#following-status"), "Le suivi est indisponible.", true));
 
     let importId = E.params.get("import");
     if (!importId && idea.a_verifier.import) {
