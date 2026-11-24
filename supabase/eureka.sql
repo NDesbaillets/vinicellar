@@ -87,7 +87,7 @@ create table public.sorties_idees (
   urgence smallint not null default 1 check (urgence between 1 and 5),
   statut text not null default 'envie'
     check (statut in ('envie', 'preselection', 'planifiee', 'faite', 'archivee', 'manquee')),
-  score_couple_manuel smallint check (score_couple_manuel between 0 and 10),
+  score_couple_manuel numeric(3,1) check (score_couple_manuel between 0 and 10),
   recurrence_mois integer check (recurrence_mois > 0),
   image_path text,
   source_url text,
