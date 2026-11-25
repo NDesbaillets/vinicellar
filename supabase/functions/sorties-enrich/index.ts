@@ -18,6 +18,7 @@ if (configuredOrigin) origins.add(configuredOrigin);
 const decodeQR = (typeof jsQR === "function" ? jsQR : jsQR.default) as typeof jsQR.default;
 
 class ImportError extends Error {}
+class IncompleteExtraction extends ImportError {}
 
 function reply(origin: string, payload: unknown, status = 200) {
   return new Response(payload == null ? null : JSON.stringify(payload), {
@@ -157,10 +158,17 @@ Décode le QR s’il est lisible. Pour une source inutilisable renvoie {"titre":
     throw new ImportError("Le service d’enrichissement est indisponible. La fiche reste à compléter.");
   }
   const body = await res.json();
-  const answer = (body.content || []).filter((part: { type: string }) => part.type === "text")
-    .map((part: { text: string }) => part.text).join("").trim();
-  try { return JSON.parse(answer.replace(/^```(?:json)?\s+|\s+```$/g, "")); }
-  catch { throw new ImportError("Lecture incomplète. La fiche reste à compléter."); }
+  const parts: string[] = (body.content || []).filter((part: { type: string }) => part.type === "text")
+    .map((part: { text: string }) => part.text);
+  const answer = parts.join("\n");
+  const fenced = [...answer.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)].map((match) => match[1]);
+  for (const candidate of [answer, ...fenced.reverse(), ...parts.reverse()]) {
+    try {
+      const value = JSON.parse(candidate.trim());
+      if (value && typeof value === "object" && !Array.isArray(value)) return value;
+    } catch { /* La recherche web peut ajouter du texte avant le JSON final. */ }
+  }
+  throw new IncompleteExtraction("Claude n’a pas renvoyé de fiche lisible. La fiche reste à compléter.");
 }
 
 async function processJob(job: Job) {
@@ -186,7 +194,15 @@ async function processJob(job: Job) {
       if (remaining <= 0) throw new ImportError("Délai d’enrichissement dépassé. La fiche reste à compléter.");
       return claude(key, source, image, reference, Math.min(remaining, instagram ? 28_000 : 55_000), judge);
     });
-    const raw = scraped?.video && !scraped.caption && !scraped.comments ? null : await extract(body, !!instagram);
+    let raw = null;
+    if (!scraped?.video || scraped.caption || scraped.comments) {
+      try {
+        raw = await extract(body, !!instagram);
+      } catch (error) {
+        if (!scraped?.video || !(error instanceof IncompleteExtraction)) throw error;
+        // Une sortie JSON manquante ne doit pas couper le chemin vidéo.
+      }
+    }
     let result = normalize(raw, reference, scraped?.thumbnail ?? null);
     if (scraped && (!result.titre || raw?.video_necessaire === true)) {
       try {
@@ -202,7 +218,9 @@ async function processJob(job: Job) {
         if (!extracted.titre) throw new ImportError("La vidéo ne permet pas d’identifier la sortie.");
         result = extracted;
       } catch (error) {
-        const reason = error instanceof ImportError ? error.message : "La vidéo du reel n’a pas pu être analysée.";
+        const reason = error instanceof IncompleteExtraction
+          ? "La vidéo a été lue, mais Claude n’a pas renvoyé de fiche lisible."
+          : error instanceof ImportError ? error.message : "La vidéo du reel n’a pas pu être analysée.";
         if (!result.titre) throw new ImportError(reason);
         result.a_verifier.video = reason;
       }
