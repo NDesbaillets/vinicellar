@@ -194,6 +194,7 @@ horaires indicatifs), « Repas et pauses : », « À prévoir : » (matériel, b
 Remplis format, categorie et preavis_semaines comme suggestions. Laisse les dates à null sauf si la source donne une date explicite.
 Laisse budget_min et budget_max à null sauf estimation prudente, signalée dans a_verifier. Dans a_verifier, indique pour chaque
 champ estimé la raison en quelques mots.
+Réponds uniquement en appelant l’outil enregistrer_fiche, sans texte avant ni après.
 ${champs}`;
   }
   if (mode === "verifier") {
@@ -208,6 +209,7 @@ Propose image_url uniquement si c’est une URL HTTPS directe d’une image offi
     return `${base}
 Utilise uniquement la transcription, la légende et les commentaires fournis. Renseigne la fiche avec l’outil enregistrer_fiche.
 Laisse null quand il n’y a pas de preuve.
+Réponds uniquement en appelant l’outil enregistrer_fiche, sans texte avant ni après.
 ${champs}`;
   }
   return `${base}
@@ -225,7 +227,7 @@ async function claude(key: string, source: unknown, image: Awaited<ReturnType<ty
   if (image) content.push({ type: "image", source: { type: "base64", media_type: image.mime, data: image.base64 } });
   const web = (uses: number) => ({ name: "web_search", type: "web_search_20250305", max_uses: uses });
   const setup = mode === "complet" || mode === "structure"
-    ? { tools: [ficheTool], tool_choice: { type: "tool", name: ficheTool.name }, tokens: mode === "complet" ? 4500 : 3000 }
+    ? { tools: [ficheTool], tool_choice: undefined, tokens: mode === "complet" ? 4500 : 3000 }
     : mode === "verifier"
       ? { tools: [web(3), verifTool], tool_choice: undefined, tokens: 3000 }
       : { tools: [web(2), ficheTool], tool_choice: undefined, tokens: 4500 };
@@ -233,7 +235,8 @@ async function claude(key: string, source: unknown, image: Awaited<ReturnType<ty
   const limit = Date.now() + timeout;
   const messages: unknown[] = [{ role: "user", content }];
   let body;
-  for (let turn = 0; turn < 4; turn++) {
+  let nudged = false;
+  for (let turn = 0; turn < 5; turn++) {
     const left = limit - Date.now();
     if (left < 2_000) throw new ImportError("Délai d’enrichissement dépassé. La fiche reste à compléter.");
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -250,8 +253,19 @@ async function claude(key: string, source: unknown, image: Awaited<ReturnType<ty
       throw new ImportError("Le service d’enrichissement est indisponible. La fiche reste à compléter.");
     }
     body = await res.json();
-    if (body.stop_reason !== "pause_turn") break;
-    messages.push({ role: "assistant", content: body.content });
+    if (body.stop_reason === "pause_turn") {
+      messages.push({ role: "assistant", content: body.content });
+      continue;
+    }
+    const called = (body.content || []).some((part: { type: string; name?: string }) =>
+      part.type === "tool_use" && part.name === wanted);
+    if (!called && !nudged && body.stop_reason === "end_turn" && body.content?.length) {
+      nudged = true;
+      messages.push({ role: "assistant", content: body.content },
+        { role: "user", content: [{ type: "text", text: "Appelle maintenant l’outil " + wanted + " avec le résultat." }] });
+      continue;
+    }
+    break;
   }
   const blocks: { type: string; name?: string; input?: unknown; text?: string }[] = body?.content || [];
   const block = blocks.find((part) => part.type === "tool_use" && part.name === wanted);
