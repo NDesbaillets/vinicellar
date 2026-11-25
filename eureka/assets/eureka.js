@@ -24,14 +24,56 @@
   function renderDescription(target, text = "") {
     const heading = /^([^\S\n]*(?:Idée|Programme suggéré|Repas et pauses|À prévoir|Points d'attention|Points d’attention|Vérifié sur le web)[^\S\n]*:)/i;
     const output = document.createDocumentFragment();
+    let verified = false;
     for (const [index, line] of (text || "").replace(/\r\n?/g, "\n").split("\n").entries()) {
       if (index) output.append("\n");
       const label = line.match(heading)?.[0];
-      if (label) output.append(el("strong", label, "description-heading"));
+      if (label) {
+        output.append(el("strong", label, "description-heading"));
+        verified = /^\s*Vérifié sur le web\s*:/i.test(label);
+      }
       const parts = line.slice(label?.length ?? 0).split(/(\([^\S\n]*à[^\S\n]+vérifier[^\S\n]*\))/gi);
-      parts.forEach((part, index) => output.append(index % 2 ? el("mark", part, "description-check") : part));
+      parts.forEach((part, index) => {
+        if (index % 2) output.append(el("mark", part, "description-check"));
+        else appendSources(output, part, verified);
+      });
     }
     target.replaceChildren(output);
+  }
+
+  function appendSources(target, text, verified) {
+    const pattern = /\[([^\[\]]+)\]\((https:\/\/[^\s()<>"']+)\)|(https:\/\/[^\s<>"'\[\]]+)|\(([a-z\d-]+(?:\.[a-z\d-]+)*\.[a-z]{2,})\)(?=\s*$)/gi;
+    let offset = 0;
+    for (const match of text.matchAll(pattern)) {
+      const [original, label, markdown, plain, host] = match;
+      let value = plain || "";
+      if (plain) {
+        const opens = (plain.match(/\(/g) || []).length;
+        const closes = (plain.match(/\)/g) || []).length;
+        value = plain.replace(/[.,;:!?]+$/, "");
+        for (let i = opens; i < closes && value.endsWith(")"); i++) value = value.slice(0, -1);
+      }
+      const href = safeUrl(markdown || value || (verified && host ? "https://" + host : ""));
+      target.append(text.slice(offset, match.index));
+      if (href && !new URL(href).username && !new URL(href).password) {
+        const anchor = link(label || value || host, href, "description-source");
+        anchor.target = "_blank";
+        anchor.rel = "noopener noreferrer";
+        if (host) target.append("(", anchor, ")");
+        else target.append(anchor, plain ? plain.slice(value.length) : "");
+      } else target.append(original);
+      offset = match.index + original.length;
+    }
+    target.append(text.slice(offset));
+  }
+
+  async function clipboardPhotos(extensions) {
+    const photos = [];
+    for (const item of await navigator.clipboard.read()) {
+      const mime = item.types.find((type) => extensions[type]);
+      if (mime) photos.push(new File([await item.getType(mime)], "Photo collée." + extensions[mime], { type: mime }));
+    }
+    return photos;
   }
 
   function verificationEntries(checks) {
@@ -327,6 +369,6 @@
   window.Eureka = {
     sb, $, params, formats, statuts, modalites, mois, number, currency, el, link, url, safeUrl,
     visual, signedPhotos, options, date, meta, data, pages, message, bind, UserError, mustUpdate, boot, ideaById,
-    ideaGone, watchIdea, cleanDeletedPhotos, renderDescription, verificationEntries
+    ideaGone, watchIdea, cleanDeletedPhotos, renderDescription, verificationEntries, clipboardPhotos
   };
 })();

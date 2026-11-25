@@ -63,11 +63,7 @@
   });
   $("#paste").addEventListener("click", async () => {
     try {
-      const images = [];
-      for (const item of await navigator.clipboard.read()) {
-        const mime = item.types.find((key) => extensions[key]);
-        if (mime) images.push(new File([await item.getType(mime)], "Photo collée." + extensions[mime], { type: mime }));
-      }
+      const images = await E.clipboardPhotos(extensions);
       if (!images.length) throw new Error();
       take(images);
     } catch {

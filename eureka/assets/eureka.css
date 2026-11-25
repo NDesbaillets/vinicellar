@@ -192,3 +192,4 @@ section h2 { margin-bottom: 12px; }
 .description-preview h2 { font-size: 15px; margin-bottom: 8px; }
 .description-preview dl { margin: 12px 0 0; }
 .description-preview dd { margin: 4px 0 0; }
+.description-source { color: var(--terre); text-underline-offset: 2px; }

@@ -209,20 +209,44 @@
       for (const [selector, category] of [["#illustration-form", "illustration"], ["#souvenirs-form", "souvenir"]]) {
         const form = $(selector);
         const input = form.elements.photos;
+        const paste = $(".paste-photo", form);
         const feedback = $(".photo-status", form);
         let uploads = [];
-        input.addEventListener("change", () => {
-          uploads = [...input.files].map((file) => ({
+        function selectPhotos(files, fromClipboard = false) {
+          const chosen = category === "illustration" ? files.slice(0, 1) : files;
+          const selected = chosen.map((file) => ({
             file, name: crypto.randomUUID() + "." + extensions[file.type], complete: false
           }));
-          E.message(feedback);
+          uploads = fromClipboard && category === "souvenir" ? [...uploads, ...selected] : selected;
+          const count = uploads.filter((upload) => !upload.complete).length;
+          E.message(feedback, count === 1 ? "1 photo prête à ajouter." :
+            count ? count + " photos prêtes à ajouter." : "");
+        }
+        input.addEventListener("change", () => selectPhotos([...input.files]));
+        paste.addEventListener("click", async () => {
+          try {
+            const files = await E.clipboardPhotos(extensions);
+            if (!files.length) throw new Error();
+            if (input.disabled) return;
+            input.value = "";
+            selectPhotos(files, true);
+          } catch {
+            E.message(feedback, "Aucune image accessible dans le presse-papiers. Copiez une image ou choisissez un fichier.", true);
+          }
+        });
+        form.addEventListener("paste", (event) => {
+          const files = [...event.clipboardData.files].filter((file) => extensions[file.type]);
+          if (!files.length || input.disabled) return;
+          event.preventDefault();
+          input.value = "";
+          selectPhotos(files, true);
         });
         form.hidden = false;
         E.bind(form, feedback, async () => {
           if (!uploads.length || uploads.some(({ file }) => !extensions[file.type] || !file.size || file.size > 5_000_000)) {
             throw new E.UserError("Choisis des images JPEG, PNG ou WebP de 5 Mo maximum chacune.");
           }
-          input.disabled = true;
+          input.disabled = paste.disabled = true;
           try {
             for (const upload of uploads) {
               if (upload.complete) continue;
@@ -243,7 +267,7 @@
             uploads = [];
             return category === "illustration" ? "Photo de couverture mise à jour." : "Photos souvenirs ajoutées.";
           } finally {
-            input.disabled = false;
+            input.disabled = paste.disabled = false;
             const updated = await E.ideaById(ctx, id).catch(() => null);
             if (updated) {
               idea = updated;

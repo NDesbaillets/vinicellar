@@ -289,10 +289,6 @@ async function claude(key: string, source: unknown, image: Awaited<ReturnType<ty
   throw new IncompleteExtraction("Claude n’a pas renvoyé de fiche lisible. La fiche reste à compléter.");
 }
 
-function hostOf(value: unknown) {
-  try { return new URL(String(value)).hostname.replace(/^www\./, ""); } catch { return null; }
-}
-
 function merge(raw: Record<string, unknown>, verified: Record<string, unknown>) {
   const out: Record<string, unknown> = { ...raw };
   for (const field of ["site_reservation", "telephone", "adresse", "ville", "image_url", "date_debut", "date_fin",
@@ -302,12 +298,17 @@ function merge(raw: Record<string, unknown>, verified: Record<string, unknown>) 
   const facts = (Array.isArray(verified.faits_verifies) ? verified.faits_verifies : []).slice(0, 8)
     .map((fact: { sujet?: unknown; constat?: unknown; source?: unknown }) => {
       const subject = text(fact?.sujet, 80), found = text(fact?.constat, 260);
-      const host = hostOf(fact?.source);
-      return subject && found ? "- " + subject + " : " + found + (host ? " (" + host + ")" : "") : null;
-    }).filter(Boolean);
+      const url = https(fact?.source);
+      const host = url ? new URL(url).hostname.replace(/^www\./, "") : null;
+      const address = url?.replaceAll("(", "%28").replaceAll(")", "%29");
+      const source = host ? " (" + (address && address.length <= 400 ? "[" + host + "](" + address + ")" : host) + ")" : "";
+      return subject && found ? "- " + subject + " : " + found + source : null;
+    }).filter((fact): fact is string => fact !== null);
   const checks = { ...(raw.a_verifier && typeof raw.a_verifier === "object" ? raw.a_verifier as Record<string, string> : {}) };
   if (facts.length) {
-    out.description = (text(raw.description, 3800) ?? "") + "\n\nVérifié sur le web :\n" + facts.join("\n");
+    const initial = (text(raw.description, 3800) ?? "") + "\n\nVérifié sur le web :";
+    out.description = facts.reduce((description, fact) =>
+      description.length + fact.length + 1 <= 5000 ? description + "\n" + fact : description, initial);
     checks.web = "Faits vérifiés sur le web, ajoutés en fin de description. Le reste reste à confirmer.";
   } else {
     checks.web = "Aucun fait confirmé sur le web. Horaires, tarifs et disponibilités à vérifier.";
