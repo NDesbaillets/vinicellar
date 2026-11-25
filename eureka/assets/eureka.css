@@ -183,3 +183,5 @@ section h2 { margin-bottom: 12px; }
 #delete-idea dialog::backdrop { background: rgb(33 28 25 / 55%); }
 #delete-idea form { margin-top: 16px; gap: 12px; }
 .delete-status:not(:empty), #listing-notice:not(:empty) { margin: 10px 0; }
+.photo-form { margin-top: 12px; }
+.photo-form .photo-status:empty { display: none; }

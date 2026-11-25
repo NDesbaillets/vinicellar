@@ -58,7 +58,7 @@
   }
 
   function privatePhoto(value) {
-    return typeof value === "string" && /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/[0-9a-f-]{36}\/[1-5]\.(jpg|png|webp)$/.test(value);
+    return typeof value === "string" && /^[0-9a-f-]{36}\/[0-9a-f-]{36}\/(?:[0-9a-f-]{36}\/[1-5]|fiche\/[0-9a-f-]{36}\/[0-9a-f-]{36})\.(jpg|png|webp)$/.test(value);
   }
 
   async function signedPhotos(paths) {

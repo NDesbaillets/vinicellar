@@ -32,12 +32,29 @@
       <p id="import-status" role="status"></p>
       <button id="retry-import" type="button" hidden>Relancer l’enrichissement</button>
     </section>
-    <section id="gallery-section" hidden><h2>Photos</h2><div id="gallery" class="gallery"></div></section>
+    <section id="gallery-section" hidden>
+      <h2>Illustrations</h2>
+      <div id="gallery" class="gallery"></div>
+      <form id="illustration-form" class="photo-form actions" hidden>
+        <label class="grow">Photo de couverture <input name="photos" type="file" accept="image/jpeg,image/png,image/webp" required></label>
+        <button>Ajouter l’illustration</button>
+        <p class="photo-status wide-feedback" role="status"></p>
+      </form>
+    </section>
     <section><h2>Envie</h2><div id="scores" class="scores"></div></section>
     <section id="description-section" hidden><h2>Ce qui vous attend</h2><p id="description" class="prose"></p></section>
     <section><h2>Organiser</h2><dl id="details" class="rows"></dl><div id="map"></div></section>
     <section id="options-section" hidden><h2>Options</h2><ul id="options" class="rows list"></ul></section>
     <section><h2>Occurrences</h2><div id="occurrences" class="rows"></div></section>
+    <section id="souvenirs-section" hidden>
+      <h2>Photos souvenirs</h2>
+      <div id="souvenirs-gallery" class="gallery"></div>
+      <form id="souvenirs-form" class="photo-form actions" hidden>
+        <label class="grow">Photos de l’activité <input name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple required></label>
+        <button>Ajouter les photos</button>
+        <p class="photo-status wide-feedback" role="status"></p>
+      </form>
+    </section>
     <section id="following" hidden>
       <h2>Suivre cette idée</h2>
       <div id="following-controls" class="rows"></div>
