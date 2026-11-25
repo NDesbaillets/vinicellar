@@ -85,7 +85,7 @@
   E.boot("ajout", async (ctx) => {
     if (!ctx.editor) throw new E.UserError("Cet espace est en lecture seule pour votre compte.");
     const idea = id ? await E.ideaById(ctx, id) : {};
-    if (!idea) throw new E.UserError("Cette idée n’est pas accessible.");
+    if (!idea) return E.ideaGone(ctx);
     if (id) $("#editor-title").textContent = "Modifier l’idée";
     const back = E.url(id ? "fiche.html" : "", { id, espace: ctx.space.id });
     $("#cancel-top").href = back;
@@ -103,5 +103,6 @@
       return "Idée enregistrée.";
     });
     form.hidden = false;
+    if (id) E.watchIdea(ctx, idea);
   });
 })();

@@ -42,7 +42,26 @@
     return article;
   }
 
-  E.boot(page, async ({ space, spaces }) => {
+  window.addEventListener("pageshow", (event) => { if (event.persisted) location.reload(); });
+
+  E.boot(page, async (ctx) => {
+    const { space, spaces } = ctx;
+    const notice = $("#listing-notice");
+    const status = params.get("avis");
+    const messages = {
+      supprimee: "Fiche supprimée.",
+      photos: "Fiche supprimée. Le nettoyage des photos est en attente.",
+      introuvable: "Cette fiche n’existe plus"
+    };
+    if (Object.hasOwn(messages, status)) {
+      E.message(notice, messages[status]);
+      const address = new URL(location.href);
+      address.searchParams.delete("avis");
+      history.replaceState(null, "", address);
+    }
+    if (ctx.editor) E.cleanDeletedPhotos(ctx).then((clean) => {
+      if (clean && status === "photos") E.message(notice, messages.supprimee);
+    }).catch(() => {});
     const entries = (fields = "id,titre,accroche,categorie,format,type_lieu,ville,distance_nyon_km,image_path,urgence,statut,meilleure_periode,modalite") =>
       sb.from("sorties_idees").select(fields).eq("espace_id", space.id).is("fusionnee_dans", null).order("id");
     const [ideas, scores] = await Promise.all([

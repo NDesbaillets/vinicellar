@@ -56,6 +56,18 @@
       <a id="edit" class="button" href="editer.html">Modifier l’idée</a>
       <p id="action-status" role="status"></p>
     </section>
+  <section id="delete-idea" hidden>
+    <button class="delete-link" type="button">Supprimer la fiche</button>
+    <dialog aria-labelledby="delete-title" aria-describedby="delete-description">
+      <h2 id="delete-title">Supprimer la fiche</h2>
+      <p id="delete-description"></p>
+      <form method="dialog" class="actions">
+        <button value="cancel" autofocus>Annuler</button>
+        <button value="delete" class="delete-link">Supprimer définitivement</button>
+      </form>
+      <p class="delete-status" role="status"></p>
+    </dialog>
+  </section>
   </article>
   </main>
   <nav id="nav" class="nav" aria-label="Eurêka" hidden></nav>
