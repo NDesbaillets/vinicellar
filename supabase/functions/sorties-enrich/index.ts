@@ -5,6 +5,8 @@ import { PNG } from "npm:pngjs@7.0.0";
 import { Buffer } from "node:buffer";
 import { https, MAX_PHOTO, normalize, reel, text, today, UUID } from "./extraction.ts";
 
+import { transcribeVideo } from "./video.ts";
+
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void };
 const project = Deno.env.get("SUPABASE_URL")!;
 const admin = createClient(project, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -57,7 +59,7 @@ function maximum(name: string): number {
 
 type Job = { id: string; tentative: string; type: string; contenu: string | null; image_path: string | null };
 
-async function paid<T>(job: Job, kind: "apify" | "claude", max: number, run: () => Promise<T>): Promise<T> {
+async function paid<T>(job: Job, kind: "apify" | "claude" | "gemini", max: number, run: () => Promise<T>): Promise<T> {
   const { data: log, error } = await admin.rpc("sorties_reserver_enrichissement", {
     p_inbox: job.id, p_tentative: job.tentative, p_kind: "sorties-" + kind, p_chf: max,
   });
@@ -85,10 +87,18 @@ async function apify(url: string, token: string) {
   }
   const rows = await res.json();
   const row = Array.isArray(rows) ? rows[0] : null;
-  if (!row || row.error || !text(row.caption, 6000) && !https(row.displayUrl)) {
+  const caption = text(row?.caption, 8000);
+  const thumbnail = https(row?.displayUrl);
+  const video = typeof row?.videoUrl === "string" ? row.videoUrl : null;
+  const author = text(row?.ownerUsername, 80)?.toLowerCase();
+  const comments = (Array.isArray(row?.latestComments) ? row.latestComments : [])
+    .filter((item: { ownerUsername?: unknown } | null) =>
+      author && text(item?.ownerUsername, 80)?.toLowerCase() === author)
+    .map((item: { text?: unknown }) => text(item.text, 3000)).filter(Boolean).join("\n\n").slice(0, 6000);
+  if (!row || row.error || !caption && !comments && !video && !thumbnail) {
     throw new ImportError("Reel introuvable ou privé. La fiche reste à compléter.");
   }
-  return { caption: text(row.caption, 6000), thumbnail: https(row.displayUrl) };
+  return { caption, thumbnail, comments, video, duration: Number(row.videoDuration) || null };
 }
 
 function qr(bytes: Uint8Array, mime: string): string | null {
@@ -117,11 +127,12 @@ async function photo(path: string) {
   return { mime, base64: Buffer.from(bytes).toString("base64"), qr: qr(bytes, mime) };
 }
 
-async function claude(key: string, source: unknown, image: Awaited<ReturnType<typeof photo>> | null, reference: string) {
+async function claude(key: string, source: unknown, image: Awaited<ReturnType<typeof photo>> | null, reference: string,
+  timeout = 55_000, judgeReel = false) {
   const content: unknown[] = [{ type: "text", text: JSON.stringify(source) }];
   if (image) content.push({ type: "image", source: { type: "base64", media_type: image.mime, data: image.base64 } });
   const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST", redirect: "error", signal: AbortSignal.timeout(55_000),
+    method: "POST", redirect: "error", signal: AbortSignal.timeout(timeout),
     headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "Content-Type": "application/json" },
     body: JSON.stringify({
       model: Deno.env.get("EUREKA_ANTHROPIC_MODEL") || "claude-sonnet-4-6",
@@ -136,7 +147,8 @@ categorie, format (demi_journee|journee|week_end|sejour), adresse, ville, site_r
 budget_min et budget_max (CHF uniquement), date_debut, date_fin, date_limite_reservation, preavis_semaines,
 image_url, a_verifier (objet champ vers raison). Pour une date sans année, écris MM-JJ. N'invente jamais un numéro,
 une date ou une adresse. Préavis et format sont des suggestions, signale-les dans a_verifier s'ils sont estimés.
-Décode le QR s’il est lisible. Pour une source inutilisable renvoie seulement {"titre":null}.`,
+Décode le QR s’il est lisible. Pour une source inutilisable renvoie {"titre":null}.${judgeReel ?
+  ' Ajoute video_necessaire (booléen), vrai si la légende et les commentaires ne permettent pas d’identifier précisément la sortie, son lieu ou sa date lorsque l’activité est datée. Un prix ou un horaire manquant à lui seul ne justifie pas de lire la vidéo.' : ''}`,
       messages: [{ role: "user", content }],
     }),
   });
@@ -152,6 +164,7 @@ Décode le QR s’il est lisible. Pour une source inutilisable renvoie seulement
 }
 
 async function processJob(job: Job) {
+  const deadline = Date.now() + 125_000;
   const finish = (result: unknown, error: string | null) => admin.rpc("sorties_terminer_import", {
     p_inbox: job.id, p_tentative: job.tentative, p_resultat: result, p_erreur: error,
   });
@@ -166,9 +179,34 @@ async function processJob(job: Job) {
       ? await paid(job, "apify", maximum("EUREKA_APIFY_MAX_CHF"), () => apify(instagram, token))
       : null;
     const reference = today();
-    const body = { type: job.type, contenu: job.contenu, legende_reel: scraped?.caption, qr: image?.qr };
-    const raw = await paid(job, "claude", claudeMax, () => claude(key, body, image, reference));
-    const result = normalize(raw, reference, scraped?.thumbnail ?? null);
+    const body = { type: job.type, contenu: job.contenu, legende_reel: scraped?.caption,
+      commentaires_auteur: scraped?.comments || undefined, qr: image?.qr };
+    const extract = (source: unknown, judge = false) => paid(job, "claude", claudeMax, () => {
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) throw new ImportError("Délai d’enrichissement dépassé. La fiche reste à compléter.");
+      return claude(key, source, image, reference, Math.min(remaining, instagram ? 28_000 : 55_000), judge);
+    });
+    const raw = scraped?.video && !scraped.caption && !scraped.comments ? null : await extract(body, !!instagram);
+    let result = normalize(raw, reference, scraped?.thumbnail ?? null);
+    if (scraped && (!result.titre || raw?.video_necessaire === true)) {
+      try {
+        if (!scraped.video) throw new ImportError("La vidéo du reel n’est pas accessible.");
+        if (scraped.duration && scraped.duration > 300) throw new ImportError("La vidéo dépasse cinq minutes.");
+        const geminiKey = Deno.env.get("GEMINI_API_KEY");
+        if (!geminiKey) throw new ImportError("La lecture vidéo Gemini n’est pas configurée.");
+        const videoDeadline = deadline - 22_000;
+        if (Date.now() >= videoDeadline) throw new ImportError("Le temps disponible pour lire la vidéo est dépassé.");
+        const transcript = await paid(job, "gemini", maximum("EUREKA_GEMINI_MAX_CHF"),
+          () => transcribeVideo(scraped.video!, geminiKey, videoDeadline));
+        const extracted = normalize(await extract({ ...body, transcription_video: transcript }), reference, scraped.thumbnail);
+        if (!extracted.titre) throw new ImportError("La vidéo ne permet pas d’identifier la sortie.");
+        result = extracted;
+      } catch (error) {
+        const reason = error instanceof ImportError ? error.message : "La vidéo du reel n’a pas pu être analysée.";
+        if (!result.titre) throw new ImportError(reason);
+        result.a_verifier.video = reason;
+      }
+    }
     if (!result.titre) throw new ImportError("Source illisible. La fiche reste à compléter.");
     if (instagram && !token) result.a_verifier.source_url = "Légende Instagram inaccessible. Résultat à vérifier.";
     const { error } = await finish(result, null);

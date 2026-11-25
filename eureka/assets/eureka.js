@@ -215,6 +215,90 @@
     return data(sb.from("sorties_idees").select("*").eq("espace_id", ctx.space.id).eq("id", id).maybeSingle());
   }
 
+  function ideaGone(ctx) {
+    location.replace(url("", { espace: ctx.space.id, avis: "introuvable" }));
+  }
+
+  function pendingPhotos(ctx, ideaId) {
+    const query = sb.from("sorties_photos_a_supprimer").select("chemin").eq("espace_id", ctx.space.id);
+    return ideaId ? query.eq("idee_id", ideaId) : query;
+  }
+
+  async function cleanDeletedPhotos(ctx, ideaId) {
+    const rows = await data(pendingPhotos(ctx, ideaId).order("chemin").limit(50));
+    if (!rows.length) return true;
+    const paths = rows.map((row) => row.chemin);
+    await sb.storage.from("eureka-photos").remove(paths);
+    const remaining = await data(sb.rpc("sorties_confirmer_suppression_photos", {
+      p_espace: ctx.space.id, p_chemins: paths
+    }));
+    return remaining === 0;
+  }
+
+  function watchIdea(ctx, idea) {
+    const area = $("#delete-idea");
+    const dialog = $("dialog", area);
+    let busy = false;
+    let checking = false;
+
+    async function check() {
+      if (busy || checking || document.hidden) return;
+      checking = true;
+      try {
+        const row = await data(sb.from("sorties_idees").select("id")
+          .eq("espace_id", ctx.space.id).eq("id", idea.id).maybeSingle());
+        if (!row && !busy) ideaGone(ctx);
+      } catch { /* Une panne réseau ne confirme pas une suppression. */ }
+      finally { checking = false; }
+    }
+    setInterval(check, 15000);
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("pageshow", (event) => { if (event.persisted) check(); });
+    if (!ctx.editor) return;
+
+    const feedback = $(".delete-status", dialog);
+    const buttons = [...dialog.querySelectorAll("button")];
+    area.hidden = false;
+    $(".delete-link", area).addEventListener("click", () => {
+      $("#delete-description", dialog).textContent = "La suppression de « " + idea.titre +
+        " » est définitive, photos, scores, rappels et créneaux provisoires compris.";
+      message(feedback);
+      dialog.showModal();
+    });
+    dialog.addEventListener("cancel", (event) => { if (busy) event.preventDefault(); });
+    $("form", dialog).addEventListener("submit", async (event) => {
+      if (event.submitter?.value !== "delete") return;
+      event.preventDefault();
+      if (busy) return;
+      busy = true;
+      buttons.forEach((button) => { button.disabled = true; });
+      message(feedback, "Suppression en cours…");
+      try {
+        await data(pendingPhotos(ctx, idea.id).limit(1));
+      } catch {
+        message(feedback, "La suppression n’est pas disponible pour le moment. Réessayez.", true);
+        busy = false;
+        buttons.forEach((button) => { button.disabled = false; });
+        return;
+      }
+      try {
+        const rows = await data(sb.from("sorties_idees").delete()
+          .eq("espace_id", ctx.space.id).eq("id", idea.id).select("id"));
+        if (!rows.length) {
+          message(feedback, "Suppression refusée. Cette fiche a déjà disparu ou vous n’avez plus le droit de la supprimer.", true);
+          return;
+        }
+        const clean = await cleanDeletedPhotos(ctx, idea.id).catch(() => false);
+        location.replace(url("", { espace: ctx.space.id, avis: clean ? "supprimee" : "photos" }));
+      } catch {
+        message(feedback, "La fiche n’a pas pu être supprimée. Réessayez.", true);
+      } finally {
+        busy = false;
+        buttons.forEach((button) => { button.disabled = false; });
+      }
+    });
+  }
+
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
       navigator.serviceWorker.register("/eureka/sw.js", { scope: "/eureka/" }).catch(() => {});
@@ -223,6 +307,7 @@
 
   window.Eureka = {
     sb, $, params, formats, statuts, modalites, mois, number, currency, el, link, url, safeUrl,
-    visual, signedPhotos, options, date, meta, data, pages, message, bind, UserError, mustUpdate, boot, ideaById
+    visual, signedPhotos, options, date, meta, data, pages, message, bind, UserError, mustUpdate, boot, ideaById,
+    ideaGone, watchIdea, cleanDeletedPhotos
   };
 })();

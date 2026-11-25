@@ -168,7 +168,7 @@
 
   E.boot("fiche", async (ctx) => {
     let idea = await E.ideaById(ctx, id);
-    if (!idea) throw new E.UserError("Cette idée n’est pas accessible.");
+    if (!idea) return E.ideaGone(ctx);
     const scope = { espace: ctx.space.id };
     $(".back").href = E.url("", scope);
     $("#edit").href = E.url("editer.html", { ...scope, id });
@@ -359,6 +359,7 @@
     await Promise.all([scores(), occurrences()]);
     $("#edit-actions").hidden = !ctx.editor;
     $("#idea").hidden = false;
+    E.watchIdea(ctx, idea);
     followControls(ctx, members).catch(() => E.message($("#following-status"), "Le suivi est indisponible.", true));
 
     let importId = E.params.get("import");
