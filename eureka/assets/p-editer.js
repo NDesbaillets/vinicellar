@@ -115,7 +115,7 @@
     return panel;
   }
 
-  function payload(values) {
+  function payload(values, idea) {
     const result = {};
     for (const [name, , config = {}] of fields) {
       const value = values.get(name).trim();
@@ -123,8 +123,10 @@
     }
     const mode = values.get("repetition");
     result.recurrence_mois = mode === "mois" ? Number(values.get("recurrence_mois")) : null;
-    result.saison_debut_mois = mode === "annee" ? Number(values.get("saison_debut_mois")) : null;
-    result.saison_fin_mois = mode === "annee" ? Number(values.get("saison_fin_mois")) : null;
+    if (mode === "annee" || idea.saison_debut_mois != null) {
+      result.saison_debut_mois = mode === "annee" ? Number(values.get("saison_debut_mois")) : null;
+      result.saison_fin_mois = mode === "annee" ? Number(values.get("saison_fin_mois")) : null;
+    }
     result.tags = (result.tags || "").split(",").map((item) => item.trim()).filter(Boolean);
     result.meilleure_periode = values.getAll("mois").map(Number);
     if (!result.titre) throw new E.UserError("Saisissez un titre.");
@@ -153,12 +155,17 @@
     const description = form.elements.description;
     description.closest("label").after(descriptionPreview(description, idea.a_verifier));
     E.bind(form, $("#form-status"), async (values) => {
-      const body = payload(values);
+      const body = payload(values, idea);
       const table = sb.from("sorties_idees");
       const request = id
         ? table.update(body).eq("id", id).eq("espace_id", ctx.space.id)
         : table.insert({ ...body, espace_id: ctx.space.id });
-      const saved = await data(request.select("id").single());
+      const saved = await data(request.select("id").single()).catch((error) => {
+        if (values.get("repetition") === "annee" && ["PGRST204", "42703"].includes(error.code)) {
+          throw new E.UserError("La récurrence annuelle sera disponible après la mise à jour de la base.");
+        }
+        throw error;
+      });
       location.assign(E.url("fiche.html", { id: saved.id, espace: ctx.space.id }));
       return "Idée enregistrée.";
     });
