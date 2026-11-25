@@ -42,7 +42,10 @@ create policy sorties_calendriers_perso on public.sorties_calendriers for select
 grant select (id, user_id, nom, actif, mode, ecriture, professionnel, disponible, modifiable, synchro_le)
   on public.sorties_calendriers to authenticated;
 create policy sorties_occupation_perso on public.sorties_occupation for select to authenticated
-  using (exists (select 1 from public.sorties_calendriers c where c.id = calendrier_id and c.actif and c.disponible));
+  using (exists (
+    select 1 from public.sorties_calendriers c
+    where c.id = calendrier_id and c.user_id = (select auth.uid()) and c.actif and c.disponible
+  ));
 grant select (calendrier_id, debut, fin, titre) on public.sorties_occupation to authenticated;
 
 -- Retire tout titre déjà conservé, dans la même transaction que le changement
