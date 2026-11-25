@@ -21,7 +21,25 @@
     return node;
   }
 
-  function annualSeasons(idea, today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Zurich" }).format(new Date())) {
+  const swissDayFormat = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Zurich" });
+  function swissDay(instant = new Date()) {
+    return swissDayFormat.format(instant);
+  }
+
+  async function annualPlanningTasks(space) {
+    const ideas = await pages(() => sb.from("sorties_idees")
+      .select("id,titre,saison_debut_mois,saison_fin_mois,sorties_occurrences(date_cible,date_realisee,statut)")
+      .eq("espace_id", space).not("saison_debut_mois", "is", null)
+      .neq("statut", "archivee").is("fusionnee_dans", null).order("id"));
+    const tasks = ideas.flatMap((idea) => {
+      const [season] = annualSeasons(idea);
+      return season && !seasonOccurrences(season, idea.sorties_occurrences || []).length ? [{ idea, season }] : [];
+    });
+    tasks.sort((a, b) => a.season.start.localeCompare(b.season.start) || a.idea.titre.localeCompare(b.idea.titre, "fr"));
+    return tasks;
+  }
+
+  function annualSeasons(idea, today = swissDay()) {
     const first = idea.saison_debut_mois;
     const last = idea.saison_fin_mois;
     if (!mois[first] || !mois[last]) return [];
@@ -223,14 +241,14 @@
     const nav = $("#nav");
     const entries = [
       ["Idées", url("", { espace: ctx.space.id }), "idees"],
-      ["Planifié", url("", { espace: ctx.space.id, statut: "planifiee" }), "planifiee"],
+      ["Planification", url("planification.html", { espace: ctx.space.id }), "planification"],
       ["Souvenirs", url("", { espace: ctx.space.id, statut: "faite" }), "faite"]
     ];
     entries.push(["Rappels", url("rappels.html", { espace: ctx.space.id }), "rappels"]);
     if (ctx.editor) entries.splice(2, 0, ["Ajouter une idée", url("ajouter.html", { espace: ctx.space.id }), "ajout"]);
     for (const [name, href, key] of entries) {
       const item = link(name, href);
-      if (key === page) item.setAttribute("aria-current", "page");
+      if (key === page || key === "planification" && page === "planifiee") item.setAttribute("aria-current", "page");
       if (key === "ajout") {
         item.className = page === "idees" || page === "planifiee" || page === "faite" ? "add add-primary" : "add";
         item.setAttribute("aria-label", name);
@@ -394,6 +412,6 @@
   window.Eureka = {
     sb, $, params, formats, statuts, modalites, mois, number, currency, el, link, url, safeUrl,
     visual, signedPhotos, options, date, meta, data, pages, message, bind, UserError, mustUpdate, boot, ideaById,
-    ideaGone, watchIdea, cleanDeletedPhotos, renderDescription, verificationEntries, clipboardPhotos, annualSeasons, seasonOccurrences, seasonLabel
+    ideaGone, watchIdea, cleanDeletedPhotos, renderDescription, verificationEntries, clipboardPhotos, annualSeasons, seasonOccurrences, seasonLabel, annualPlanningTasks, swissDay
   };
 })();

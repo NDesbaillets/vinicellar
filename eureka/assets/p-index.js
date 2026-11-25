@@ -45,15 +45,7 @@
   window.addEventListener("pageshow", (event) => { if (event.persisted) location.reload(); });
 
   async function annualTasks(space) {
-    const ideas = await pages(() => sb.from("sorties_idees")
-      .select("id,titre,saison_debut_mois,saison_fin_mois,sorties_occurrences(date_cible,date_realisee,statut)")
-      .eq("espace_id", space).not("saison_debut_mois", "is", null)
-      .neq("statut", "archivee").is("fusionnee_dans", null).order("id"));
-    const tasks = ideas.flatMap((idea) => {
-      const [season] = E.annualSeasons(idea);
-      return season && !E.seasonOccurrences(season, idea.sorties_occurrences || []).length ? [{ idea, season }] : [];
-    });
-    tasks.sort((a, b) => a.season.start.localeCompare(b.season.start) || a.idea.titre.localeCompare(b.idea.titre, "fr"));
+    const tasks = await E.annualPlanningTasks(space);
     $("#annual-task-list").replaceChildren(...tasks.map(({ idea, season }) => {
       const row = el("li");
       row.append(E.link(idea.titre, E.url("fiche.html", { espace: space, id: idea.id, saison: season.start }) + "#annual-season"),

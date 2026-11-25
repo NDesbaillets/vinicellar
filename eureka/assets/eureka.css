@@ -197,3 +197,16 @@ section h2 { margin-bottom: 12px; }
 #annual-tasks { margin: 0 0 24px; }
 #annual-task-list a { min-height: 44px; }
 #annual-state { margin-top: 4px; }
+.planning { max-width: 760px; }
+.planning-agenda { margin-top: 0; }
+.agenda-controls { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 8px; }
+.agenda-controls .agenda-date { grid-column: 1 / -1; margin-top: 4px; }
+#agenda-range { margin: 14px 0 8px; font-weight: 600; }
+#agenda-status:not(:empty) { margin-bottom: 10px; }
+.agenda-day { border-block-start: 1px solid var(--filet); padding: 10px 0; }
+.agenda-day h3 { font-size: 25px; }
+.agenda-day ul { margin: 6px 0 0; }
+.agenda-day li { display: flex; flex-wrap: wrap; gap: 0 10px; align-items: center; overflow-wrap: anywhere; min-height: 44px; }
+.agenda-day li > a, #planning-tasks a, #planning-suggestions a { min-height: 44px; }
+.agenda-empty { color: var(--doux); }
+.planning-shortcuts { margin-bottom: 20px; }
