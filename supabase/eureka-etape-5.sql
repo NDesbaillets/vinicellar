@@ -1,4 +1,4 @@
--- Eurêka · suppression des fiches. À appliquer après eureka-etape-2.sql.
+-- Eurêka · suppression des fiches, photos et budget des reels. À appliquer après eureka-etape-2.sql.
 begin;
 
 -- L'entrée d'import appartient à cette fiche. La conserver après suppression
@@ -30,7 +30,11 @@ begin
   insert into public.sorties_photos_a_supprimer (espace_id, idee_id, chemin)
   select old.espace_id, old.id, p.chemin from public.sorties_photos p
   where p.idee_id = old.id
-    and p.chemin ~ ('^' || old.espace_id || '/[0-9a-f-]{36}/[0-9a-f-]{36}/[1-5]\.(jpg|png|webp)$')
+    and p.chemin ~ ('^' || old.espace_id || '/[0-9a-f-]{36}/([0-9a-f-]{36}/[1-5]|fiche/[0-9a-f-]{36}/[0-9a-f-]{36})\.(jpg|png|webp)$')
+  union
+  select old.espace_id, old.id, o.name from storage.objects o
+  where o.bucket_id = 'eureka-photos'
+    and o.name ~ ('^' || old.espace_id || '/[0-9a-f-]{36}/fiche/' || old.id || '/[0-9a-f-]{36}\.(jpg|png|webp)$')
   on conflict (chemin) do nothing;
   return old;
 end;
@@ -115,5 +119,79 @@ begin
   return journal;
 end;
 $$;
+
+-- Les imports existants restent des illustrations, avec le même ordre.
+alter table public.sorties_photos
+  add column if not exists categorie text not null default 'illustration',
+  drop constraint if exists sorties_photos_position_check,
+  drop constraint if exists sorties_photos_idee_id_position_key,
+  drop constraint if exists sorties_photos_categorie_check,
+  drop constraint if exists sorties_photos_idee_categorie_position_key,
+  add constraint sorties_photos_position_check check (position > 0),
+  add constraint sorties_photos_categorie_check check (categorie in ('illustration', 'souvenir')),
+  add constraint sorties_photos_idee_categorie_position_key unique (idee_id, categorie, position);
+
+-- Lecture par colonne : sans ce droit, le client ne voit pas la catégorie des photos.
+grant select (categorie) on public.sorties_photos to authenticated;
+
+create or replace function public.sorties_peut_deposer_photo_fiche(p_chemin text, p_verifier_fiche boolean default true) returns boolean
+language sql stable set search_path = '' as $$
+  select split_part(p_chemin, '/', 2) = (select auth.uid())::text and exists (
+    select 1 from public.sorties_espaces e where e.id::text = split_part(p_chemin, '/', 1)
+      and public.sorties_is_editor(e.id)
+      and (not p_verifier_fiche or exists (
+        select 1 from public.sorties_idees i where i.espace_id = e.id and i.id::text = split_part(p_chemin, '/', 4)
+      ))
+  ) and p_chemin ~ '^[0-9a-f-]{36}/[0-9a-f-]{36}/fiche/[0-9a-f-]{36}/[0-9a-f-]{36}\.(jpg|png|webp)$';
+$$;
+revoke execute on function public.sorties_peut_deposer_photo_fiche(text, boolean) from public, anon, authenticated;
+grant execute on function public.sorties_peut_deposer_photo_fiche(text, boolean) to authenticated;
+
+drop policy if exists sorties_photos_fiche_depot on storage.objects;
+create policy sorties_photos_fiche_depot on storage.objects for insert to authenticated
+  with check (bucket_id = 'eureka-photos' and (select public.sorties_peut_deposer_photo_fiche(objects.name)));
+
+-- Le déposant peut effacer son fichier si le rattachement échoue.
+drop policy if exists sorties_photos_fiche_depot_lecture on storage.objects;
+create policy sorties_photos_fiche_depot_lecture on storage.objects for select to authenticated
+  using (bucket_id = 'eureka-photos' and (select public.sorties_peut_deposer_photo_fiche(objects.name, false)));
+
+drop policy if exists sorties_photos_fiche_depot_annulation on storage.objects;
+create policy sorties_photos_fiche_depot_annulation on storage.objects for delete to authenticated
+  using (bucket_id = 'eureka-photos' and (select public.sorties_peut_deposer_photo_fiche(objects.name, false))
+    and not exists (select 1 from public.sorties_photos p where p.chemin = objects.name));
+
+create or replace function public.sorties_ajouter_photo_fiche(
+  p_espace uuid, p_idee uuid, p_nom text, p_categorie text
+) returns void language plpgsql security definer set search_path = '' as $$
+declare
+  v_chemin text;
+  v_position integer;
+begin
+  if not public.sorties_is_editor(p_espace) then
+    raise exception 'Fiche inaccessible' using errcode = '42501';
+  end if;
+  if p_nom is null or p_nom !~ '^[0-9a-f-]{36}\.(jpg|png|webp)$'
+    or p_categorie is null or p_categorie not in ('illustration', 'souvenir') then
+    raise exception 'Photo invalide' using errcode = '22023';
+  end if;
+  perform 1 from public.sorties_idees where id = p_idee and espace_id = p_espace for update;
+  if not found then raise exception 'Fiche inaccessible' using errcode = '42501'; end if;
+  v_chemin := p_espace || '/' || auth.uid() || '/fiche/' || p_idee || '/' || p_nom;
+  if exists (select 1 from public.sorties_photos p where p.chemin = v_chemin and p.idee_id = p_idee) then return; end if;
+  if not exists (select 1 from storage.objects o where o.bucket_id = 'eureka-photos' and o.name = v_chemin) then
+    raise exception 'Photo introuvable' using errcode = '22023';
+  end if;
+  select coalesce(max(position), 0) + 1 into v_position
+    from public.sorties_photos where idee_id = p_idee and categorie = p_categorie;
+  insert into public.sorties_photos (idee_id, chemin, position, categorie)
+    values (p_idee, v_chemin, v_position, p_categorie);
+  if p_categorie = 'illustration' then
+    update public.sorties_idees set image_path = v_chemin where id = p_idee;
+  end if;
+end;
+$$;
+revoke execute on function public.sorties_ajouter_photo_fiche(uuid, uuid, text, text) from public, anon, authenticated;
+grant execute on function public.sorties_ajouter_photo_fiche(uuid, uuid, text, text) to authenticated;
 
 commit;

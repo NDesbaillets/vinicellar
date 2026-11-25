@@ -172,17 +172,26 @@
     const scope = { espace: ctx.space.id };
     $(".back").href = E.url("", scope);
     $("#edit").href = E.url("editer.html", { ...scope, id });
+    let photoEditing = false;
     async function showIdea() {
-      const photos = await pages(() => sb.from("sorties_photos")
-        .select("chemin,position").eq("idee_id", id).order("position")).catch(() => []);
+      const query = (columns) => pages(() => sb.from("sorties_photos")
+        .select(columns).eq("idee_id", id).order("position").order("chemin"));
+      const photos = await query("chemin,position,categorie").then((rows) => {
+        photoEditing = ctx.editor;
+        return rows;
+      }).catch(() => query("chemin,position").catch(() => []));
       const signed = await E.signedPhotos([idea.image_path, ...photos.map((row) => row.chemin)]).catch(() => new Map());
       const cover = E.visual(signed.get(idea.image_path) || idea.image_path);
       const old = $("#hero > .visual");
       if (old) old.replaceWith(cover);
       else $("#hero").prepend(cover);
       const extras = photos.filter((row) => row.chemin !== idea.image_path && signed.has(row.chemin));
-      $("#gallery").replaceChildren(...extras.map((row) => E.visual(signed.get(row.chemin))));
-      $("#gallery-section").hidden = !extras.length;
+      const memories = extras.filter((row) => row.categorie === "souvenir");
+      const illustrations = extras.filter((row) => row.categorie !== "souvenir");
+      $("#gallery").replaceChildren(...illustrations.map((row) => E.visual(signed.get(row.chemin))));
+      $("#souvenirs-gallery").replaceChildren(...memories.map((row) => E.visual(signed.get(row.chemin))));
+      $("#gallery-section").hidden = !illustrations.length && !photoEditing;
+      $("#souvenirs-section").hidden = !memories.length && !photoEditing;
       $("#urgent").hidden = idea.urgence < 4;
       $("#meta").textContent = E.meta(idea);
       $("#title").textContent = idea.titre;
@@ -196,6 +205,56 @@
       map(idea);
     }
     await showIdea();
+
+    if (photoEditing) {
+      const extensions = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+      for (const [selector, category] of [["#illustration-form", "illustration"], ["#souvenirs-form", "souvenir"]]) {
+        const form = $(selector);
+        const input = form.elements.photos;
+        const feedback = $(".photo-status", form);
+        let uploads = [];
+        input.addEventListener("change", () => {
+          uploads = [...input.files].map((file) => ({
+            file, name: crypto.randomUUID() + "." + extensions[file.type], complete: false
+          }));
+          E.message(feedback);
+        });
+        form.hidden = false;
+        E.bind(form, feedback, async () => {
+          if (!uploads.length || uploads.some(({ file }) => !extensions[file.type] || !file.size || file.size > 5_000_000)) {
+            throw new E.UserError("Choisis des images JPEG, PNG ou WebP de 5 Mo maximum chacune.");
+          }
+          input.disabled = true;
+          try {
+            for (const upload of uploads) {
+              if (upload.complete) continue;
+              const path = [ctx.space.id, ctx.user.id, "fiche", id, upload.name].join("/");
+              const storage = sb.storage.from("eureka-photos");
+              const { error } = await storage.upload(path, upload.file, { contentType: upload.file.type });
+              if (error && error.error !== "Duplicate" && String(error.statusCode) !== "409") throw error;
+              const linked = await sb.rpc("sorties_ajouter_photo_fiche", {
+                p_espace: ctx.space.id, p_idee: id, p_nom: upload.name, p_categorie: category
+              });
+              if (linked.error) {
+                if (["22023", "42501"].includes(linked.error.code)) await storage.remove([path]);
+                throw linked.error;
+              }
+              upload.complete = true;
+            }
+            input.value = "";
+            uploads = [];
+            return category === "illustration" ? "Photo de couverture mise à jour." : "Photos souvenirs ajoutées.";
+          } finally {
+            input.disabled = false;
+            const updated = await E.ideaById(ctx, id).catch(() => null);
+            if (updated) {
+              idea = updated;
+              await showIdea().catch(() => {});
+            }
+          }
+        }, "L’ajout des photos n’a pas pu se terminer. Réessaie avec la même sélection.");
+      }
+    }
 
     const [members, options] = await Promise.all([
       pages(() => sb.from("sorties_espace_membres").select("user_id,prenom_affiche").eq("espace_id", ctx.space.id).order("user_id")),
