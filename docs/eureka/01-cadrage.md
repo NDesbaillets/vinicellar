@@ -1,4 +1,4 @@
-[01-cadrage.md](https://github.com/user-attachments/files/35358394/01-cadrage.md)
+[01-cadrage.md](https://github.com/user-attachments/files/35358697/01-cadrage.md)
 # Eurêka, Vivcolas ! Cadrage fonctionnel et technique
 
 État au 24.11.2026. Ce document fait foi. Toute décision qui s'en écarte se pose au propriétaire du projet (Nicolas Desbaillets). Interface en français, dates JJ.MM.AAAA, unités métriques, devise CHF.

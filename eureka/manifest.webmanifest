@@ -1,0 +1,18 @@
+{
+  "id": "/eureka/",
+  "name": "Eurêka",
+  "short_name": "Eurêka",
+  "description": "Les idées de sorties de Viviane et Nicolas.",
+  "lang": "fr",
+  "start_url": "/eureka/",
+  "scope": "/eureka/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F3ECE6",
+  "theme_color": "#9A4A2B",
+  "icons": [
+    { "src": "/eureka/assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/eureka/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/eureka/assets/monogramme.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
