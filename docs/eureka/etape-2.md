@@ -16,6 +16,12 @@ Les photos restent dans un bucket privé et sont affichées via des URL signées
 
 Avant chaque appel externe, le coût maximal configuré est réservé dans le mois courant (heure de Zurich) et l’appel est inscrit dans `public.ai_calls` avec un type `sorties-*`. Le verrou par espace évite que deux demandes simultanées dépassent le plafond réservé. À partir de 70 %, le suivi de l’ajout affiche une alerte. Une réservation reste comptée si l’appel échoue ou si son coût exact est inférieur. Le registre est donc une estimation prudente, à condition de tenir à jour les bornes configurées.
 
-Les renseignements et l’image externe dépendent des sources accessibles aux fournisseurs. La vidéo d’un reel n’est pas analysée. Si l’exécution d’arrière-plan est interrompue, une relance est disponible depuis la fiche après expiration du bail. Le raccourci transfère le texte ou le lien à l’écran d’ajout. Pour une photo, il utilise le presse-papiers et demande un appui sur « Coller une photo » dans Eurêka.
+Les renseignements et l’image externe dépendent des sources accessibles aux fournisseurs. Pour un reel, Claude lit la légende et les commentaires de l’auteur. Si ces informations sont insuffisantes, Gemini lit la vidéo, puis Claude complète la fiche à partir de la transcription. Si l’exécution d’arrière-plan est interrompue, une relance est disponible depuis la fiche après expiration du bail. Le raccourci transfère le texte ou le lien à l’écran d’ajout. Pour une photo, il utilise le presse-papiers et demande un appui sur « Coller une photo » dans Eurêka.
 
 Vérifié avec Chromium, le SDK Supabase et des réponses HTTP simulées, avec Deno pour les appels fournisseurs simulés, et avec PostgreSQL en mémoire pour les droits de lecture et d’écriture, la relance et le plafond. La fonction et le SQL restent à mettre en service dans le projet Supabase.
+
+### Mise à jour de l’import des reels
+
+Appliquer ou rejouer [`supabase/eureka-etape-5.sql`](../../supabase/eureka-etape-5.sql) pour autoriser les réservations `sorties-gemini` dans le plafond de l’espace. Vérifier le secret `GEMINI_API_KEY` déjà utilisé par ARÔMES et renseigner `EUREKA_GEMINI_MAX_CHF` avec la borne haute par analyse, puis redéployer uniquement `sorties-enrich`. `GEMINI_MODEL` est facultatif et utilise par défaut le même modèle qu’ARÔMES.
+
+La vidéo n’est demandée que si le texte disponible ne permet pas d’identifier la sortie, son lieu ou sa date pour un événement daté. Le traitement vidéo accepte les reels jusqu’à cinq minutes et les fichiers jusqu’à 45 Mo, dans le délai de la fonction. Une lecture vidéo indisponible conserve le brouillon issu du texte et signale la limite dans la fiche.
