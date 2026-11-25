@@ -193,3 +193,7 @@ section h2 { margin-bottom: 12px; }
 .description-preview dl { margin: 12px 0 0; }
 .description-preview dd { margin: 4px 0 0; }
 .description-source { color: var(--terre); text-underline-offset: 2px; }
+.recurrence-fields { display: grid; gap: 12px; min-width: 0; border: 1px solid var(--filet); padding: 12px; }
+#annual-tasks { margin: 0 0 24px; }
+#annual-task-list a { min-height: 44px; }
+#annual-state { margin-top: 4px; }

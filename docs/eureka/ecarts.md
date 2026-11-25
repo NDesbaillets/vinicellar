@@ -30,3 +30,11 @@ Dans PostgreSQL en mémoire, un second membre du même espace obtient zéro cale
 L’illustration ajoutée par un éditeur devient la couverture. Les autres illustrations restent dans la fiche. Les photos souvenirs sont rattachées à la même fiche dans une galerie distincte et ne changent pas la couverture. Tous les fichiers restent dans le bucket privé. Les photos importées avant cette mise à jour sont classées comme illustrations.
 
 Le formulaire accepte les JPEG, PNG et WebP de 5 Mo maximum, comme l’ajout rapide. Pour activer les formulaires et le nettoyage des nouveaux chemins de photos, appliquer ou rejouer [`supabase/eureka-etape-5.sql`](../../supabase/eureka-etape-5.sql) avant la publication du site. Cette fonctionnalité photo ne demande aucun redéploiement de fonction. Le redéploiement de `sorties-enrich` reste nécessaire pour le correctif des reels.
+
+## Activités à prévoir chaque année
+
+Dans la fiche à modifier, choisir **Récurrence → Chaque année**, puis les premier et dernier mois de la saison. Une saison peut traverser le Nouvel An. Deux mois identiques correspondent à un seul mois. Les récurrences exprimées en nombre de mois restent disponibles.
+
+L’accueil liste les saisons à planifier. Une occurrence prévue dans la période, ou une occurrence réalisée pendant celle-ci, satisfait la tâche annuelle. Les occurrences annulées restent dans l’historique et ne satisfont pas la tâche. L’année suivante, la fiche retrouve une nouvelle période à planifier. Cet affichage fonctionne dans l’application et n’ajoute aucun envoi de notification.
+
+Pour mettre en service, appliquer [`supabase/eureka-etape-6.sql`](../../supabase/eureka-etape-6.sql) avant la publication du site. La migration ajoute deux mois à la fiche et laisse les politiques RLS en place. Aucun redéploiement de fonction n’est nécessaire pour la récurrence annuelle.

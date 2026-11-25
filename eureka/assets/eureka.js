@@ -21,6 +21,31 @@
     return node;
   }
 
+  function annualSeasons(idea, today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Zurich" }).format(new Date())) {
+    const first = idea.saison_debut_mois;
+    const last = idea.saison_fin_mois;
+    if (!mois[first] || !mois[last]) return [];
+    const year = Number(today.slice(0, 4));
+    return [year - 1, year, year + 1, year + 2].map((startYear) => {
+      const endYear = startYear + Number(last < first);
+      const start = new Date(Date.UTC(startYear, first - 1, 1)).toISOString().slice(0, 10);
+      const end = new Date(Date.UTC(endYear, last, 0)).toISOString().slice(0, 10);
+      return { start, end };
+    }).filter((season) => season.end >= today).slice(0, 2);
+  }
+
+  function seasonOccurrences(season, occurrences) {
+    return occurrences.filter((item) => {
+      if (item.statut !== "prevue" && item.statut !== "faite") return false;
+      const day = item.statut === "faite" ? item.date_realisee || item.date_cible : item.date_cible;
+      return day >= season.start && day <= season.end;
+    });
+  }
+
+  function seasonLabel(season) {
+    return "Du " + date(season.start) + " au " + date(season.end);
+  }
+
   function renderDescription(target, text = "") {
     const heading = /^([^\S\n]*(?:Idée|Programme suggéré|Repas et pauses|À prévoir|Points d'attention|Points d’attention|Vérifié sur le web)[^\S\n]*:)/i;
     const output = document.createDocumentFragment();
@@ -369,6 +394,6 @@
   window.Eureka = {
     sb, $, params, formats, statuts, modalites, mois, number, currency, el, link, url, safeUrl,
     visual, signedPhotos, options, date, meta, data, pages, message, bind, UserError, mustUpdate, boot, ideaById,
-    ideaGone, watchIdea, cleanDeletedPhotos, renderDescription, verificationEntries, clipboardPhotos
+    ideaGone, watchIdea, cleanDeletedPhotos, renderDescription, verificationEntries, clipboardPhotos, annualSeasons, seasonOccurrences, seasonLabel
   };
 })();

@@ -68,7 +68,11 @@
     row("Réserver avant", E.date(idea.date_limite_reservation));
     row("Préavis", idea.preavis_semaines == null ? null : idea.preavis_semaines + " sem.");
     row("Meilleure période", idea.meilleure_periode.map((month) => E.mois[month]).join(", "));
-    row("Récurrence", idea.recurrence_mois ? "Tous les " + idea.recurrence_mois + " mois" : null);
+    const firstMonth = E.mois[idea.saison_debut_mois];
+    const lastMonth = E.mois[idea.saison_fin_mois];
+    row("Récurrence", firstMonth && lastMonth
+      ? "Chaque année · " + (firstMonth === lastMonth ? firstMonth : firstMonth + " à " + lastMonth)
+      : idea.recurrence_mois ? "Tous les " + idea.recurrence_mois + " mois" : null);
     row("Sortie", E.modalites[idea.modalite]);
     row("Mots-clés", idea.tags.join(", "));
     row("Notes", idea.notes);
@@ -343,6 +347,34 @@
     }
 
     let history = [];
+    const seasons = E.annualSeasons(idea);
+    const seasonSelect = planForm.elements.saison;
+    const dateInput = planForm.elements.date;
+    if (seasons.length) {
+      $("#season-picker").hidden = false;
+      $("#annual-season").hidden = false;
+      seasonSelect.disabled = false;
+      E.options(seasonSelect, Object.fromEntries(seasons.map((season) => [season.start, E.seasonLabel(season)])));
+      const requested = E.params.get("saison");
+      if (seasons.some((season) => season.start === requested)) seasonSelect.value = requested;
+      seasonSelect.addEventListener("change", updateSeason);
+    }
+
+    function updateSeason() {
+      const season = seasons.find((item) => item.start === seasonSelect.value);
+      if (!season) return;
+      dateInput.min = season.start;
+      dateInput.max = season.end;
+      if (dateInput.value && (dateInput.value < season.start || dateInput.value > season.end)) dateInput.value = "";
+      $("#annual-period").textContent = E.seasonLabel(season);
+      const matches = E.seasonOccurrences(season, history);
+      const completed = matches.find((item) => item.statut === "faite");
+      $("#annual-state").textContent = completed
+        ? "Réalisée cette saison le " + E.date(completed.date_realisee || completed.date_cible) + "."
+        : matches.length ? "Déjà planifiée pour cette saison."
+        : "À planifier au moins une fois cette saison.";
+    }
+
     async function occurrences() {
       history = await pages(() => sb.from("sorties_occurrences")
         .select("id,date_cible,date_realisee,statut,sorties_notes_occurrence(user_id,note,commentaire)")
@@ -411,11 +443,12 @@
         return node;
       });
       $("#occurrences").replaceChildren(...(rows.length ? rows : [el("p", "Aucune occurrence pour cette idée.")]));
+      updateSeason();
     }
 
     E.options(statusForm.elements.statut, E.statuts);
     statusForm.elements.statut.value = idea.statut;
-    planForm.elements.date.value = idea.date_debut || "";
+    dateInput.value = seasons.length ? "" : idea.date_debut || "";
     E.bind(statusForm, output, async (values) => {
       await changeIdea({ statut: values.get("statut") });
       return "Statut enregistré.";
@@ -423,6 +456,10 @@
     let savedDate;
     E.bind(planForm, output, async (values) => {
       const date = values.get("date");
+      const season = seasons.find((item) => item.start === values.get("saison"));
+      if (seasons.length && (!season || date < season.start || date > season.end)) {
+        throw new E.UserError("Choisis une date dans la saison sélectionnée.");
+      }
       if (savedDate !== date && !history.some((item) => item.date_cible === date && item.statut === "prevue")) {
         await data(sb.from("sorties_occurrences").insert({ idee_id: id, date_cible: date }));
         savedDate = date;

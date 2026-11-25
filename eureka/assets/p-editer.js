@@ -24,7 +24,6 @@
     ["urgence", "Urgence", { options: { 1: "1", 2: "2", 3: "3", 4: "4", 5: "5" }, default: 1, numeric: true }],
     ["statut", "Statut", { options: E.statuts, default: "envie" }],
     ["score_couple_manuel", "Score couple (vide = moyenne)", { type: "number", min: 0, max: 10, step: "0.1" }],
-    ["recurrence_mois", "Récurrence (mois)", { type: "number", min: 1 }],
     ["tags", "Mots-clés (séparés par des virgules)", { wide: true }],
     ["image_path", "URL HTTPS du visuel", { wide: true }],
     ["source_url", "URL de la source", { type: "url", wide: true }],
@@ -62,6 +61,34 @@
     return group;
   }
 
+  function recurrenceFields(idea) {
+    const group = el("fieldset", null, "wide recurrence-fields");
+    group.append(el("legend", "Récurrence"));
+    group.append(
+      field(["repetition", "Répéter", { options: { unique: "Une seule fois", mois: "Tous les X mois", annee: "Chaque année" }, default: "unique" }],
+        idea.saison_debut_mois ? "annee" : idea.recurrence_mois ? "mois" : "unique"),
+      field(["recurrence_mois", "Nombre de mois", { type: "number", min: 1 }], idea.recurrence_mois),
+      field(["saison_debut_mois", "Premier mois de la saison", { options: E.mois }], idea.saison_debut_mois),
+      field(["saison_fin_mois", "Dernier mois de la saison", { options: E.mois }], idea.saison_fin_mois)
+    );
+    const hint = el("p", "Planifie au moins une occurrence dans cette période chaque année.", "wide");
+    group.append(hint);
+    const mode = $("select[name=repetition]", group);
+    function toggle() {
+      for (const [name, visible] of [["recurrence_mois", mode.value === "mois"],
+        ["saison_debut_mois", mode.value === "annee"], ["saison_fin_mois", mode.value === "annee"]]) {
+        const control = $("[name=" + name + "]", group);
+        control.closest("label").hidden = !visible;
+        control.disabled = !visible;
+        control.required = visible;
+      }
+      hint.hidden = mode.value !== "annee";
+    }
+    mode.addEventListener("change", toggle);
+    toggle();
+    return group;
+  }
+
   function descriptionPreview(input, checks) {
     const panel = el("div", null, "wide description-preview");
     const preview = el("div", null, "prose");
@@ -94,6 +121,10 @@
       const value = values.get(name).trim();
       result[name] = value && (config.type === "number" || config.numeric) ? Number(value) : value || null;
     }
+    const mode = values.get("repetition");
+    result.recurrence_mois = mode === "mois" ? Number(values.get("recurrence_mois")) : null;
+    result.saison_debut_mois = mode === "annee" ? Number(values.get("saison_debut_mois")) : null;
+    result.saison_fin_mois = mode === "annee" ? Number(values.get("saison_fin_mois")) : null;
     result.tags = (result.tags || "").split(",").map((item) => item.trim()).filter(Boolean);
     result.meilleure_periode = values.getAll("mois").map(Number);
     if (!result.titre) throw new E.UserError("Saisissez un titre.");
@@ -118,6 +149,7 @@
     $("#cancel").href = back;
     $("#idea-fields").append(...fields.map((definition) => field(definition, idea[definition[0]])),
       period(idea.meilleure_periode || []));
+    form.elements.statut.closest("label").after(recurrenceFields(idea));
     const description = form.elements.description;
     description.closest("label").after(descriptionPreview(description, idea.a_verifier));
     E.bind(form, $("#form-status"), async (values) => {
