@@ -94,7 +94,7 @@ export function normalize(raw: unknown, reference: string, thumbnail: string | n
   return {
     titre: text(doc.titre, 160),
     accroche: text(doc.accroche, 200)?.replace(/\s*\n\s*/g, " ") ?? null,
-    description: text(doc.description, 3000),
+    description: text(doc.description, 5000),
     categorie: text(doc.categorie, 60),
     format: proposedFormat && formats.has(proposedFormat) ? proposedFormat : null,
     adresse: text(doc.adresse, 300), ville: text(doc.ville, 100),
