@@ -21,6 +21,25 @@
     return node;
   }
 
+  function renderDescription(target, text = "") {
+    const heading = /^([^\S\n]*(?:Idée|Programme suggéré|Repas et pauses|À prévoir|Points d'attention|Points d’attention|Vérifié sur le web)[^\S\n]*:)/i;
+    const output = document.createDocumentFragment();
+    for (const [index, line] of (text || "").replace(/\r\n?/g, "\n").split("\n").entries()) {
+      if (index) output.append("\n");
+      const label = line.match(heading)?.[0];
+      if (label) output.append(el("strong", label, "description-heading"));
+      const parts = line.slice(label?.length ?? 0).split(/(\([^\S\n]*à[^\S\n]+vérifier[^\S\n]*\))/gi);
+      parts.forEach((part, index) => output.append(index % 2 ? el("mark", part, "description-check") : part));
+    }
+    target.replaceChildren(output);
+  }
+
+  function verificationEntries(checks) {
+    return Object.entries(checks || {})
+      .filter(([, reason]) => typeof reason === "string")
+      .map(([field, reason]) => [field === "import" ? "Import" : "À vérifier · " + field.replaceAll("_", " "), reason]);
+  }
+
   function link(text, href, className) {
     const node = el("a", text, className);
     node.href = href;
@@ -308,6 +327,6 @@
   window.Eureka = {
     sb, $, params, formats, statuts, modalites, mois, number, currency, el, link, url, safeUrl,
     visual, signedPhotos, options, date, meta, data, pages, message, bind, UserError, mustUpdate, boot, ideaById,
-    ideaGone, watchIdea, cleanDeletedPhotos
+    ideaGone, watchIdea, cleanDeletedPhotos, renderDescription, verificationEntries
   };
 })();

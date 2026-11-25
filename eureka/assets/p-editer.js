@@ -62,6 +62,32 @@
     return group;
   }
 
+  function descriptionPreview(input, checks) {
+    const panel = el("div", null, "wide description-preview");
+    const preview = el("div", null, "prose");
+    const caption = el("h2", "Aperçu de la description");
+    panel.append(caption, preview);
+    const entries = E.verificationEntries(checks);
+    if (entries.length) {
+      const list = el("dl", null, "rows");
+      for (const [label, reason] of entries) {
+        const item = el("div");
+        item.append(el("dt", label, "description-heading"), el("dd", reason, "prose"));
+        list.append(item);
+      }
+      panel.append(list);
+    }
+    function update() {
+      const empty = !input.value.trim();
+      caption.hidden = preview.hidden = empty;
+      panel.hidden = empty && !entries.length;
+      E.renderDescription(preview, input.value);
+    }
+    input.addEventListener("input", update);
+    update();
+    return panel;
+  }
+
   function payload(values) {
     const result = {};
     for (const [name, , config = {}] of fields) {
@@ -92,6 +118,8 @@
     $("#cancel").href = back;
     $("#idea-fields").append(...fields.map((definition) => field(definition, idea[definition[0]])),
       period(idea.meilleure_periode || []));
+    const description = form.elements.description;
+    description.closest("label").after(descriptionPreview(description, idea.a_verifier));
     E.bind(form, $("#form-status"), async (values) => {
       const body = payload(values);
       const table = sb.from("sorties_idees");

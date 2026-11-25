@@ -73,9 +73,7 @@
     row("Mots-clés", idea.tags.join(", "));
     row("Notes", idea.notes);
     row("Source", external("Consulter la source", idea.source_url));
-    for (const [field, reason] of Object.entries(idea.a_verifier)) {
-      if (typeof reason === "string") row(field === "import" ? "Import" : "À vérifier · " + field.replaceAll("_", " "), reason);
-    }
+    for (const [label, reason] of E.verificationEntries(idea.a_verifier)) row(label, reason);
   }
 
   function scoreCell(label, value, accent) {
@@ -197,7 +195,7 @@
       $("#title").textContent = idea.titre;
       $("#pitch").textContent = idea.accroche || "";
       $("#pitch").hidden = !idea.accroche;
-      $("#description").textContent = idea.description || "";
+      E.renderDescription($("#description"), idea.description);
       $("#description-section").hidden = !idea.description;
       document.title = idea.titre + " · Eurêka";
       details(idea);

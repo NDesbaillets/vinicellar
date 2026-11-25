@@ -185,3 +185,10 @@ section h2 { margin-bottom: 12px; }
 .delete-status:not(:empty), #listing-notice:not(:empty) { margin: 10px 0; }
 .photo-form { margin-top: 12px; }
 .photo-form .photo-status:empty { display: none; }
+
+.description-heading { font-weight: 650; color: var(--terre); }
+.description-check { color: var(--encre); background: var(--rose); font-weight: 600; }
+.description-preview { background: var(--papier); border: 1px solid var(--filet); padding: 14px; }
+.description-preview h2 { font-size: 15px; margin-bottom: 8px; }
+.description-preview dl { margin: 12px 0 0; }
+.description-preview dd { margin: 4px 0 0; }
