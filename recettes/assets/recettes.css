@@ -727,3 +727,25 @@ input[type=radio]{width:24px;height:24px;min-height:0;accent-color:var(--or-text
 .mn-ed{padding:12px 0;border-bottom:1px solid var(--filet)}
 .mn-ed-t{font-family:var(--titre);font-weight:300;font-size:20px;line-height:1.25;margin:0 0 8px;overflow-wrap:anywhere}
 .mn-ed select{width:auto;flex:1 1 150px;min-width:0}
+
+/* ---- « Ce soir », composer un menu, « Peut aussi être servi en » (contrat 10) */
+.ce-soir{margin:0 0 18px;text-align:center}
+.ce-soir .cs-btn{width:100%;max-width:420px;white-space:normal}
+.cs-liste{list-style:none;margin:14px 0 0;padding:0}
+.cs-sugg{border-bottom:1px solid var(--filet);padding:6px 0 10px}
+.cs-sugg .se-prop{margin:8px 0}
+#cs-corps .se-prop-t a{color:var(--encre);text-decoration:none}
+#cs-corps .se-prop-b{margin-top:6px}
+#cs-corps .se-prop-b .btn{flex:1 1 140px}
+#cs-corps .sa-qui{border:0;margin:12px 0 0;padding:0}
+.se-feuille select{width:100%}
+.alt-bloc{grid-column:1/-1;border:0;margin:0;padding:0;min-width:0}
+.alt-bloc legend{padding:0;margin-bottom:2px}
+.alt-cases{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+.cp-rang{border-top:1px solid var(--filet);padding:16px 0 18px}
+.cp-tete{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px}
+.cp-tete .btn.lien{min-height:44px;flex:none}
+.cp-choix{font-family:var(--titre);font-weight:300;font-size:22px;line-height:1.25;margin:0 0 10px;overflow-wrap:anywhere}
+.cp-choix a{color:var(--encre);text-decoration:none}
+.cp-rang .rangee .btn{flex:1 1 140px}
+.cp-ajout{display:flex;flex-wrap:wrap;gap:10px;padding-top:14px;border-top:1px solid var(--filet)}

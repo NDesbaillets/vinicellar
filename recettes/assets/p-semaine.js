@@ -193,8 +193,7 @@
       zonePick.innerHTML = `<p class="chargement">Recherche de suggestions…</p>`;
       try {
         const m = +day.slice(5, 7), wd = AR.weekdayOf(day) < 5;
-        const { data, error } = await sb.rpc("recipe_suggestions", { p_book_ids: [st.book], p_for_users: null, p_month: m, p_limit: 12, p_weekday: wd });
-        if (error) throw error;
+        const data = await AR.suggestCourses({ p_book_ids: [st.book], p_for_users: null, p_month: m, p_limit: 12, p_weekday: wd }, ["plat"]);
         const cards = await AR.fetchCards((data || []).map((x) => x.recipe_id));
         const rows = AR.dedupeVersions((data || []).filter((x) => cards.has(x.recipe_id)), (x) => cards.get(x.recipe_id).version_group);
         zonePick.innerHTML = rows.length ? `<ul class="se-choix">${rows.map((x) => { const c = cards.get(x.recipe_id); return `<li class="se-sug"><button type="button" class="se-choix-b" data-rid="${esc(c.id)}"><span class="se-ch-t">${esc(c.title)}</span></button><ul class="sa-raisons">${(x.raisons || []).map((t) => `<li>${esc(t)}</li>`).join("")}</ul></li>`; }).join("")}</ul>` : `<p class="muted italique">Aucune suggestion pour ce jour.</p>`;
@@ -281,7 +280,7 @@
     body.innerHTML = `<p class="chargement">Recherche de suggestions…</p>`;
     let pools;
     try {
-      const get = async (wd) => { const { data, error } = await sb.rpc("recipe_suggestions", { p_book_ids: [st.book], p_for_users: null, p_month: +st.week.slice(5, 7), p_limit: 40, p_weekday: wd }); if (error) throw error; return data || []; };
+      const get = (wd) => AR.suggestCourses({ p_book_ids: [st.book], p_for_users: null, p_month: +st.week.slice(5, 7), p_limit: 40, p_weekday: wd }, ["plat"]);
       const [a, b] = await Promise.all([get(true), get(false)]);
       const cards = await AR.fetchCards([...new Set([...a, ...b].map((x) => x.recipe_id))]);
       const clean = (l) => AR.dedupeVersions(l.filter((x) => cards.has(x.recipe_id)), (x) => cards.get(x.recipe_id).version_group).map((x) => ({ ...x, card: cards.get(x.recipe_id) }));
@@ -391,6 +390,7 @@
   document.addEventListener("visibilitychange", () => { if (!document.hidden) load(true); });
   window.addEventListener("pagehide", () => { if (channel) sb.removeChannel(channel); stopPoll(); });
 
+  AR.ceSoir($("#ce-soir"), { books, user: ctx.user, getBook: () => st.book, onChange: () => { lastSig = ""; load(true); } });
   await load();
   subscribe();
 })();

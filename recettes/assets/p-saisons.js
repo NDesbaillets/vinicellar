@@ -93,8 +93,7 @@
       const gids = [...st.guests];
       const args = { p_book_ids: scope(), p_for_users: who.length === 1 && who[0] === me ? null : who, p_month: st.month, p_limit: 40 };
       if (gids.length) { args.p_guest_ids = gids; args.p_hide_served = st.hideServed; }
-      const { data, error } = await sb.rpc("recipe_suggestions", args);
-      if (error) throw error;
+      const data = await AR.suggestCourses(args, ["plat"]); // des plats seulement (contrat 10)
       const cards = await AR.fetchCards((data || []).map((x) => x.recipe_id));
       if (my !== seq) return;
       const rows = AR.dedupeVersions((data || []).filter((x) => cards.has(x.recipe_id)), (x) => cards.get(x.recipe_id).version_group).slice(0, 12);

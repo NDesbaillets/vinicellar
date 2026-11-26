@@ -685,7 +685,206 @@
     toast("Source retirée : enregistrez pour confirmer.");
   });
 
-  window.AR = { callPdfJob, MENU_RUBRIQUES, rubriqueReception, menuErr, fmtPages, TIP_CATS, tipErr, relatedTips, tipReason, tipsListHtml, callImport, retype, sb, cfg, $, $$, esc, norm, fmtDate, fmtDay, todayIso, parseDay, fmtQty, fmtUnit, fmtMin, host, safeUrl, errMsg, toast, setMsg, safeNext, getBookPref, setBookPref,
+  // ---- « Qu'est-ce qu'on mange ce soir ? » et suggestions par type de plat (contrat 10-ce-soir-composer-contrat.md)
+  const rpcMissing = (res) => !!res && !!res.error && (res.status === 404 || res.error.code === "PGRST202" || /Could not find the function|schema cache/i.test(String(res.error.message || "")));
+  let noSuggestCourses = false; // RPC recipe_suggest_courses absente du serveur : repli sur recipe_suggestions + filtre côté client
+  // Suggestions limitées à des types de plats. args : paramètres de recipe_suggestions (p_limit compris) ; courses : types voulus (défaut : plat).
+  // Renvoie la liste de lignes { recipe_id, raisons, … }. Lève l'erreur Supabase si ce n'est pas une absence de la fonction.
+  async function suggestCourses(args, courses) {
+    const want = courses && courses.length ? courses : ["plat"];
+    if (!noSuggestCourses) {
+      const res = await sb.rpc("recipe_suggest_courses", { ...args, p_courses: want });
+      if (!res.error) return res.data || [];
+      if (!rpcMissing(res)) throw res.error;
+      noSuggestCourses = true;
+    }
+    const limit = args.p_limit || 12;
+    const res = await sb.rpc("recipe_suggestions", { ...args, p_limit: Math.min(Math.max(limit * 6, 40), 100) });
+    if (res.error) throw res.error;
+    const rows = res.data || [];
+    if (!rows.length) return [];
+    const c = await sb.from("recipes").select("id,course").in("id", rows.map((x) => x.recipe_id));
+    if (c.error) throw c.error;
+    const course = new Map((c.data || []).map((x) => [x.id, x.course]));
+    const ok = (id) => { const k = course.get(id); return k ? want.includes(k) : want.includes("plat"); };
+    return rows.filter((x) => course.has(x.recipe_id) && ok(x.recipe_id)).map((x) => ({ ...x, course: course.get(x.recipe_id) || null })).slice(0, limit);
+  }
+
+  // Panneau « Ce soir » : un bouton dans box ; opts : { books, user, getBook() (carnet courant de la page), onChange() après écriture de la case }.
+  function ceSoir(box, opts) {
+    const books = (opts && opts.books) || [], me = opts && opts.user && opts.user.id;
+    const pool = books.filter((b) => b.role !== "reader").length ? books.filter((b) => b.role !== "reader") : books;
+    if (!box || !pool.length || !me) return;
+    box.innerHTML = `<button type="button" class="btn cs-btn" aria-haspopup="dialog">Qu'est-ce qu'on mange ce soir ?</button>`;
+    const btn = $("button", box);
+    const day = todayIso();
+    const S = { book: null, who: new Set([me]), people: [], shown: new Set(), seq: 0 };
+    let sheet = null;
+    const editorOf = (id) => { const b = books.find((x) => x.id === id); return !!b && b.role !== "reader"; };
+    const composerHref = () => `/recettes/menu.html?composer=1&book=${encodeURIComponent(S.book)}&jour=${day}&creneau=soir`;
+
+    const onEsc = (e) => { if (e.key === "Escape" && sheet) close(); }; // le focus peut être perdu quand le contenu est redessiné
+    function close() {
+      if (!sheet) return;
+      document.removeEventListener("keydown", onEsc);
+      sheet.remove(); sheet = null; document.body.classList.remove("se-ouvert");
+      if (document.contains(btn)) btn.focus();
+    }
+    function open() {
+      close();
+      const want = opts.getBook ? opts.getBook() : null;
+      S.book = pool.some((b) => b.id === want) ? want : pickBook(pool);
+      sheet = document.createElement("div");
+      sheet.className = "se-fond";
+      sheet.innerHTML = `<section class="se-feuille" role="dialog" aria-modal="true" aria-labelledby="cs-t"><div class="se-f-tete"><div><h2 id="cs-t">Ce soir</h2><p class="libelle or" style="margin:2px 0 0">${esc(dayLabel(day))}</p></div><button type="button" class="btn sec petit" data-close>Fermer</button></div>
+        ${pool.length > 1 ? `<label for="cs-book">Carnet<select id="cs-book">${pool.map((b) => `<option value="${esc(b.id)}">${esc(b.name)}</option>`).join("")}</select></label>` : ""}
+        <div id="cs-corps" aria-live="polite"></div></section>`;
+      document.body.append(sheet); document.body.classList.add("se-ouvert");
+      document.addEventListener("keydown", onEsc);
+      const sel = $("#cs-book", sheet); if (sel) sel.value = S.book;
+      sheet.addEventListener("click", onClick);
+      sheet.addEventListener("change", onChange);
+      sheet.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") return close();
+        if (e.key !== "Tab") return;
+        const f = $$("button:not([disabled]), input, select, a[href]", sheet).filter((x) => !x.hidden && x.offsetParent !== null);
+        if (!f.length) return;
+        const first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      });
+      start();
+    }
+
+    // La case du soir : RPC recipe_tonight, repli sur une lecture directe de recipe_meal_plan si la fonction est absente.
+    async function fetchTonight(book) {
+      const res = await sb.rpc("recipe_tonight", { p_book: book });
+      if (!res.error) { const d = Array.isArray(res.data) ? res.data[0] : res.data; return d && (d.plan_id || d.recipe_id || d.menu_id || d.state) ? d : null; }
+      if (!rpcMissing(res)) throw res.error;
+      const p = await sb.from("recipe_meal_plan").select("*").eq("book_id", book).eq("day", day).eq("slot", "soir").maybeSingle();
+      if (p.error) throw p.error;
+      if (!p.data) return null;
+      const d = { plan_id: p.data.id, state: p.data.state, recipe_id: p.data.recipe_id, menu_id: p.data.menu_id, servings: p.data.servings, title: null };
+      if (d.recipe_id) { const r = await sb.from("recipes").select("title").eq("id", d.recipe_id).maybeSingle(); d.title = r.data ? r.data.title : null; }
+      else if (d.menu_id) { const m = await sb.from("recipe_menus").select("title").eq("id", d.menu_id).maybeSingle(); d.title = m.data ? m.data.title : null; }
+      return d;
+    }
+    const corps = () => $("#cs-corps", sheet);
+    async function start() {
+      const my = ++S.seq, c = corps();
+      c.innerHTML = `<p class="chargement">Chargement de ce soir…</p>`;
+      try {
+        const row = await fetchTonight(S.book);
+        if (my !== S.seq || !sheet) return;
+        if (row && (row.recipe_id || row.menu_id || row.state === "dehors" || row.state === "travail")) return void renderTonight(row);
+        suggest(true);
+      } catch (e) { if (my === S.seq && sheet) c.innerHTML = `<p class="msg erreur" role="alert">${esc(errMsg(e, "Impossible de lire le planning."))}</p>`; }
+    }
+    async function renderTonight(row, card) {
+      const my = S.seq, c = corps(), ed = editorOf(S.book);
+      const changer = ed ? `<button type="button" class="btn sec" data-w="change">Changer</button>` : "";
+      if (!row.recipe_id && !row.menu_id) { c.innerHTML = `<p class="se-prop-t">Ce soir : ${row.state === "travail" ? "au travail" : "dehors"}.</p><p class="muted italique">Aucun repas à préparer.</p><div class="rangee">${changer}</div>`; const g = $("[data-w=change]", c); if (g) g.focus(); return; }
+      if (row.menu_id && !row.recipe_id) {
+        c.innerHTML = `<p class="libelle or">Ce soir, au menu</p><p class="se-prop-t"><a href="/recettes/menu.html?id=${encodeURIComponent(row.menu_id)}">${esc(row.title || "Menu")}</a></p>
+          <div class="rangee se-prop-b"><a class="btn" href="/recettes/menu.html?id=${encodeURIComponent(row.menu_id)}">Voir le menu</a>${changer}</div>`;
+        return;
+      }
+      let cv = card || null;
+      if (!cv) { try { cv = (await fetchCards([row.recipe_id])).get(row.recipe_id) || null; } catch (e) { console.error(e); } if (my !== S.seq || !sheet) return; }
+      const title = (cv && cv.title) || row.title || "Recette";
+      const srv = row.servings != null ? row.servings : null;
+      c.innerHTML = `<p class="libelle or">Ce soir, au menu</p>
+        <div class="se-prop"><div class="se-prop-photo"><a href="/recettes/fiche.html?id=${encodeURIComponent(row.recipe_id)}" aria-label="${esc(title)}"><div class="passe-partout"><div class="cadre">${cv && cv.cover ? `<img src="${esc(cv.cover)}" alt="">` : `<span class="vide">Sans photo</span>`}</div></div></a></div>
+        <div><p class="se-prop-t"><a href="/recettes/fiche.html?id=${encodeURIComponent(row.recipe_id)}">${esc(title)}</a></p>${srv ? `<p class="muted">${srv} convive${srv > 1 ? "s" : ""}</p>` : ""}</div></div>
+        <div class="rangee se-prop-b"><a class="btn" href="/recettes/cuisine.html?id=${encodeURIComponent(row.recipe_id)}${srv ? "&amp;p=" + srv : ""}">Cuisiner</a>${changer}</div>`;
+    }
+
+    // ---- suggestions de plats : 3 à la fois ; « Autres idées » demande les suivantes et écarte celles déjà montrées
+    async function loadPeople() {
+      const r = await sb.rpc("book_people", { b: S.book });
+      const m = new Map();
+      (r.data || []).forEach((x) => { if (!m.has(x.user_id)) m.set(x.user_id, x.full_name || x.email || "Membre"); });
+      S.people = [[me, "Moi"], ...[...m].filter(([id]) => id !== me)];
+      S.who = new Set([...S.who].filter((id) => S.people.some((p) => p[0] === id)));
+      if (!S.who.size) S.who.add(me);
+    }
+    function whoHtml() {
+      if (S.people.length < 2) return "";
+      return `<fieldset class="sa-qui"><legend class="libelle or">Pour qui ?</legend><div class="sa-personnes">${S.people.map(([id, n]) => `<label class="case pf-case"><input type="checkbox" data-who="${esc(id)}"${S.who.has(id) ? " checked" : ""}> ${esc(n)}</label>`).join("")}</div></fieldset>`;
+    }
+    async function suggest(fresh) {
+      const my = ++S.seq, c = corps(), ed = editorOf(S.book);
+      if (fresh) { S.shown = new Set(); try { await loadPeople(); } catch (e) { console.error(e); S.people = [[me, "Moi"]]; S.who = new Set([me]); } if (my !== S.seq || !sheet) return; }
+      c.innerHTML = `${whoHtml()}<div id="cs-liste"><p class="chargement">Recherche de suggestions…</p></div><div class="rangee se-prop-b" id="cs-pied"></div>`;
+      const box = $("#cs-liste", c);
+      try {
+        const who = [...S.who];
+        const data = await suggestCourses({ p_book_ids: [S.book], p_for_users: who.length === 1 && who[0] === me ? null : who, p_month: +day.slice(5, 7), p_limit: S.shown.size + 3, p_weekday: weekdayOf(day) < 5 }, ["plat"]);
+        const fresh3 = (data || []).filter((x) => !S.shown.has(x.recipe_id));
+        const cards = await fetchCards(fresh3.map((x) => x.recipe_id));
+        if (my !== S.seq || !sheet) return;
+        const rows = dedupeVersions(fresh3.filter((x) => cards.has(x.recipe_id)), (x) => cards.get(x.recipe_id).version_group).slice(0, 3);
+        rows.forEach((x) => S.shown.add(x.recipe_id));
+        const tail = `<a class="btn lien" href="${composerHref()}">Composer un menu</a>`;
+        if (!rows.length) {
+          box.innerHTML = `<div class="vide-etat"><p class="italique">${S.shown.size ? "Plus d'idées pour l'instant : modifiez les personnes ou ouvrez le carnet." : "Aucune suggestion de plat pour ce soir. Élargissez le carnet ou retirez une contrainte."}</p></div>`;
+          $("#cs-pied", c).innerHTML = (S.shown.size ? `<button type="button" class="btn sec" data-w="restart">Revoir depuis le début</button>` : "") + tail;
+          return;
+        }
+        box.innerHTML = `<ol class="cs-liste">${rows.map((x) => { const k = cards.get(x.recipe_id);
+          return `<li class="cs-sugg" data-id="${esc(k.id)}"><div class="se-prop"><div class="se-prop-photo"><a href="/recettes/fiche.html?id=${encodeURIComponent(k.id)}" aria-label="${esc(k.title)}"><div class="passe-partout"><div class="cadre">${k.cover ? `<img src="${esc(k.cover)}" alt="" loading="lazy">` : `<span class="vide">Sans photo</span>`}</div></div></a></div>
+            <div><p class="se-prop-t"><a href="/recettes/fiche.html?id=${encodeURIComponent(k.id)}">${esc(k.title)}</a></p><ul class="sa-raisons">${(x.raisons || []).map((t) => `<li>${esc(t)}</li>`).join("")}</ul>
+            ${ed ? `<button type="button" class="btn" data-pick="${esc(k.id)}">Ce sera ça</button>` : ""}</div></div></li>`; }).join("")}</ol>`;
+        S.cards = cards;
+        $("#cs-pied", c).innerHTML = `<button type="button" class="btn sec" data-w="more">Autres idées</button>${tail}`;
+      } catch (e) { if (my === S.seq && sheet) box.innerHTML = `<p class="msg erreur" role="alert">${esc(errMsg(e, "Impossible de calculer les suggestions."))}</p>`; }
+    }
+
+    // Écriture de la case du soir : même méthode que La semaine (mise à jour si la case existe, insertion sinon ; 23505 = case créée entre-temps).
+    async function write(card, retry) {
+      const ex = await sb.from("recipe_meal_plan").select("*").eq("book_id", S.book).eq("day", day).eq("slot", "soir").maybeSingle();
+      if (ex.error) throw ex.error;
+      const cur = ex.data; let res;
+      if (cur) {
+        const patch = { recipe_id: card.id, menu_id: null, state: cur.state === "invites" ? "invites" : "prevu" };
+        if (!cur.servings && card.servings) patch.servings = card.servings;
+        res = await sb.from("recipe_meal_plan").update(patch).eq("id", cur.id).select("*").single();
+      } else {
+        res = await sb.from("recipe_meal_plan").insert({ id: uuid(), book_id: S.book, day, slot: "soir", state: "prevu", recipe_id: card.id, menu_id: null, servings: card.servings || null, created_by: me }).select("*").single();
+        if (res.error && res.error.code === "23505" && !retry) return write(card, true);
+      }
+      if (res.error) throw res.error;
+      return res.data;
+    }
+    async function pick(id, b) {
+      const card = S.cards && S.cards.get(id); if (!card) return;
+      $$("#cs-corps button", sheet).forEach((x) => (x.disabled = true));
+      try {
+        const row = await write(card);
+        S.seq++;
+        toast("C'est noté : « " + card.title + " » ce soir.");
+        if (opts.onChange) opts.onChange();
+        await renderTonight({ plan_id: row.id, state: row.state, recipe_id: card.id, menu_id: null, servings: row.servings, title: card.title }, card);
+        const f = $("a.btn", corps()); if (f) f.focus();
+      } catch (e) { $$("#cs-corps button", sheet).forEach((x) => (x.disabled = false)); toast(errMsg(e, "Le planning n'a pas pu être modifié."), "erreur"); if (b) b.focus(); }
+    }
+    function onClick(e) {
+      if (e.target === sheet || e.target.closest("[data-close]")) return close();
+      const p = e.target.closest("[data-pick]"); if (p) return void pick(p.dataset.pick, p);
+      const w = e.target.closest("[data-w]"); if (!w) return;
+      if (w.dataset.w === "change" || w.dataset.w === "restart") return void suggest(true);
+      if (w.dataset.w === "more") return void suggest(false);
+    }
+    function onChange(e) {
+      if (e.target.id === "cs-book") { S.book = e.target.value; S.who = new Set([me]); S.people = []; return void start(); }
+      const w = e.target.closest("[data-who]"); if (!w) return;
+      if (w.checked) S.who.add(w.dataset.who); else S.who.delete(w.dataset.who);
+      if (!S.who.size) { S.who.add(me); toast("Au moins une personne : « Moi » reste cochée."); }
+      S.shown = new Set(); suggest(false).then(() => { const n = $(`[data-who="${CSS.escape(w.dataset.who)}"]`, sheet); if (n) n.focus(); });
+    }
+    btn.addEventListener("click", open);
+  }
+
+  window.AR = { suggestCourses, ceSoir, callPdfJob, MENU_RUBRIQUES, rubriqueReception, menuErr, fmtPages, TIP_CATS, tipErr, relatedTips, tipReason, tipsListHtml, callImport, retype, sb, cfg, $, $$, esc, norm, fmtDate, fmtDay, todayIso, parseDay, fmtQty, fmtUnit, fmtMin, host, safeUrl, errMsg, toast, setMsg, safeNext, getBookPref, setBookPref,
     signedUrls, compressImage, scaleQty: window.ARPure.scaleQty, portionFactor: window.ARPure.portionFactor, showOffline, clearOfflineData, uuid, extractUrl, alertText, diffLines, fmtLine, lineKey, getUser, loadBooks, boot, registerSW, ROLES, COURSES, DIFFICULTES, UNITES,
     VAPID_PUBLIC: AR_VAPID_PUBLIC, ALLERGENES, REGIMES, RAYONS, MOIS, JOURS, cap, addDays, weekdayOf, mondayOf, dayLabel, debounce, fmtShop, fnMessage,
     RUBRIQUES, CRENEAUX, rubriqueDe, prenom, guestPills, loadCatalog, catalogFind, catalogByName, catalogPicker, fetchCards, plancheHtml, dedupeVersions, pickBook, isNetErr, push, swipeBack, sourceFields };

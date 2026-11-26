@@ -49,7 +49,7 @@
   // ---- recettes
   const cover = (r) => { const p = (r.recipe_photos || []).find((x) => x.is_cover); return p ? p.storage_path : null; };
   const sourceOf = (r) => r.source_author || AR.host(r.source_url || "") || "";
-  let seq = 0;
+  let seq = 0, altOk = true;
   function load() { return st.type === "astuces" ? loadTips() : st.type === "menus" ? loadMenus() : loadRecipes(); }
   async function loadRecipes() {
     const my = ++seq;
@@ -64,19 +64,27 @@
       // Une photo de page à relire n'entre au carnet qu'après validation : visible seulement sous « À vérifier ».
       else q = q.or("source_type.neq.photo_page,review_state.neq.a_verifier");
       if (st.statut === "famille") q = q.eq("family", true);
-      if (st.course) q = q.eq("course", st.course);
+      // « Type de plat » : inclut les recettes qui peuvent aussi être servies ainsi (courses_alt), si la colonne existe.
+      if (st.course) q = altOk ? q.or(`course.eq.${st.course},courses_alt.cs.{${st.course}}`) : q.eq("course", st.course);
       return q.order("created_at", { ascending: false }).limit(300);
     };
     let res, titleOnly = false;
-    if (st.q) {
-      // La recherche plein texte est calculée sur du texte sans accent (f_unaccent) : on retire les accents de la requête.
-      res = await base().textSearch("search", norm(st.q), { config: "french", type: "websearch" });
-      if (!res.error && !(res.data || []).length) {
-        const like = st.q.replace(/[%_\\,()]/g, " ").trim();
-        res = await base().ilike("title", `%${like}%`);
-        titleOnly = true;
+    const run = async () => {
+      if (st.q) {
+        // La recherche plein texte est calculée sur du texte sans accent (f_unaccent) : on retire les accents de la requête.
+        let r = await base().textSearch("search", norm(st.q), { config: "french", type: "websearch" });
+        titleOnly = false;
+        if (!r.error && !(r.data || []).length) {
+          const like = st.q.replace(/[%_\\,()]/g, " ").trim();
+          r = await base().ilike("title", `%${like}%`);
+          titleOnly = true;
+        }
+        return r;
       }
-    } else res = await base();
+      return base();
+    };
+    res = await run();
+    if (res.error && altOk && st.course && /courses_alt/.test(String(res.error.message || ""))) { altOk = false; res = await run(); }
     if (my !== seq) return;
     liste.setAttribute("aria-busy", "false");
     if (res.error) { liste.innerHTML = ""; setMsg(msg, errMsg(res.error, "Impossible de charger les recettes."), "erreur"); return; }
@@ -173,7 +181,7 @@
       const withPhoto = its.map((x) => (x.recipes.recipe_photos || []).find((p) => p.is_cover)).find(Boolean);
       return { ...m, n: its.length, path: withPhoto ? withPhoto.storage_path : null };
     });
-    const nouveau = (() => { const ed = books.filter((b) => b.role !== "reader"); const b = ed.find((x) => x.id === st.book) || ed.find((x) => x.id === AR.getBookPref()) || ed[0]; return b ? `<a class="btn" href="/recettes/menu.html?nouveau=1&amp;book=${encodeURIComponent(b.id)}">Nouveau menu</a>` : ""; })();
+    const nouveau = (() => { const ed = books.filter((b) => b.role !== "reader"); const b = ed.find((x) => x.id === st.book) || ed.find((x) => x.id === AR.getBookPref()) || ed[0]; return b ? `<a class="btn" href="/recettes/menu.html?composer=1&amp;book=${encodeURIComponent(b.id)}">Composer un menu</a><a class="btn sec" href="/recettes/menu.html?nouveau=1&amp;book=${encodeURIComponent(b.id)}">Nouveau menu</a>` : ""; })();
     if (!rows.length) {
       liste.innerHTML = st.q
         ? `<div class="vide-etat"><p>Aucun menu ne correspond à votre recherche.</p><button type="button" class="btn sec petit" id="reset">Effacer la recherche</button></div>`
@@ -186,7 +194,7 @@
     if (my !== seq) return;
     const multi = books.length > 1 && st.book === "all";
     const bookName = (id) => (books.find((b) => b.id === id) || {}).name || "";
-    liste.innerHTML = `${nouveau ? `<p style="margin:0 0 16px">${nouveau}</p>` : ""}<ul class="liste-astuces">${rows.map((m) => {
+    liste.innerHTML = `${nouveau ? `<div class="rangee" style="margin:0 0 16px">${nouveau}</div>` : ""}<ul class="liste-astuces">${rows.map((m) => {
       const sub = [`${m.n} recette${m.n > 1 ? "s" : ""}`, multi ? bookName(m.book_id) : ""].filter(Boolean).join(" · ");
       return `<li><a class="astuce-carte" href="/recettes/menu.html?id=${encodeURIComponent(m.id)}">
         ${m.path && urls[m.path] ? `<img class="astuce-vignette" src="${esc(urls[m.path])}" alt="" loading="lazy">` : `<span class="astuce-vignette menu-sans" aria-hidden="true"></span>`}
@@ -330,6 +338,7 @@
   $("#cat").addEventListener("change", (e) => { st.cat = e.target.value; load(); });
   $("#book").addEventListener("change", (e) => { st.book = e.target.value; AR.setBookPref(st.book); if (st.mode === "question") { if (nl.f) runFilters(); return; } load(); });
 
+  AR.ceSoir($("#ce-soir"), { books, user: ctx.user, getBook: () => (st.book === "all" ? AR.getBookPref() : st.book) });
   loadInvites();
   syncType(false);
   load();

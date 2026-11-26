@@ -8,10 +8,178 @@
   const qs = new URLSearchParams(location.search);
   const menuId = qs.get("id"), creating = !menuId && qs.get("nouveau") === "1";
   const fail = (t) => { main.setAttribute("aria-busy", "false"); main.innerHTML = `<div class="vide-etat"><p role="alert">${esc(t)}</p><a class="btn sec petit" href="/recettes/?type=menus">Retour aux menus</a></div>`; };
-  if (!menuId && !creating) return fail("Aucun menu indiqué.");
-
   const RUB_IDX = new Map(AR.MENU_RUBRIQUES.map(([k], i) => [k, i]));
   const RUB_LAB = Object.fromEntries(AR.MENU_RUBRIQUES);
+  // ---- composer un menu (contrat 10 §3) : trois rangs (entrée, plat, dessert) à remplir par choix ou par suggestion
+  async function composer() {
+    const editable = ctx.books.filter((b) => b.role !== "reader");
+    if (!editable.length) return fail("Votre rôle de lecteur ne permet pas de créer un menu.");
+    const qb = qs.get("book"), me = ctx.user.id;
+    const S = { book: editable.some((b) => b.id === qb) ? qb : AR.pickBook(editable), rungs: ["entree", "plat", "dessert"].map((k) => ({ k, rid: null, title: "", course: null })), busy: false };
+    const jq = qs.get("jour"), cq = qs.get("creneau");
+    const jour = /^\d{4}-\d{2}-\d{2}$/.test(jq || "") && !isNaN(Date.parse(jq)) ? jq : null, creneau = cq === "midi" || cq === "soir" ? cq : null;
+    const slot = jour && creneau ? { day: jour, slot: creneau } : null;
+    S.title = `Menu du ${AR.fmtDay(jour || AR.todayIso())}`;
+    const COURSES_OF = { entree: ["entree"], plat: ["plat"], dessert: ["dessert"], accompagnement: ["accompagnement"], aperitif: ["entree", "autre"], fromage: ["autre"] };
+    const OPTIONAL = ["aperitif", "accompagnement", "fromage"];
+    const order = (k) => RUB_IDX.get(k);
+    const lab = (k) => RUB_LAB[k] || k;
+    document.title = "Composer un menu · ARÔMES V&N";
+    main.setAttribute("aria-busy", "false");
+
+    function draw() {
+      const have = new Set(S.rungs.map((r) => r.k)), more = OPTIONAL.filter((k) => !have.has(k));
+      main.innerHTML = `<p><a class="btn lien" href="/recettes/?type=menus">← Le carnet</a></p>
+        <h1 class="chapitre">Composer un menu</h1><span class="filet" aria-hidden="true"></span>
+        <form id="cp-form" class="champs" novalidate>
+          ${editable.length > 1 ? `<label for="cp-book">Carnet<select id="cp-book">${editable.map((b) => `<option value="${esc(b.id)}">${esc(b.name)}</option>`).join("")}</select></label>` : ""}
+          <label for="cp-titre">Nom du menu<input id="cp-titre" maxlength="200" autocomplete="off" value="${esc(S.title)}"></label>
+          ${slot ? `<p class="libelle or" style="margin:0">Pour ${esc(AR.dayLabel(slot.day))} · ${slot.slot === "midi" ? "midi" : "soir"}</p>` : ""}
+          <div id="cp-rangs">${S.rungs.map(rungHtml).join("")}</div>
+          ${more.length ? `<div class="cp-ajout" role="group" aria-label="Ajouter un rang">${more.map((k) => `<button type="button" class="btn sec petit" data-add="${k}">+ ${esc(lab(k))}</button>`).join("")}</div>` : ""}
+          <div class="rangee"><button type="submit" class="btn" id="cp-save">Enregistrer le menu</button><a class="btn sec" href="/recettes/?type=menus">Annuler</a></div>
+          <p class="msg" id="cp-msg" role="status" aria-live="polite"></p></form>`;
+      const sel = $("#cp-book"); if (sel) sel.value = S.book;
+    }
+    function rungHtml(r) {
+      return `<section class="cp-rang" data-k="${r.k}" aria-label="${esc(lab(r.k))}"><div class="cp-tete"><h2 class="menu-rub">${esc(lab(r.k))}</h2><button type="button" class="btn lien" data-rm="${r.k}" aria-label="Retirer le rang ${esc(lab(r.k))}">Retirer ce rang</button></div>
+        ${r.rid ? `<p class="cp-choix"><a href="/recettes/fiche.html?id=${encodeURIComponent(r.rid)}">${esc(r.title)}</a></p>
+          <div class="rangee"><button type="button" class="btn sec petit" data-pick="${r.k}" data-tab="carnet">Changer</button><button type="button" class="btn lien" data-clear="${r.k}" aria-label="Retirer le choix : ${esc(r.title)}">Retirer le choix</button></div>`
+        : `<div class="rangee"><button type="button" class="btn sec" data-pick="${r.k}" data-tab="carnet">Choisir</button><button type="button" class="btn sec" data-pick="${r.k}" data-tab="idees">Suggérer</button></div>`}</section>`;
+    }
+    const redrawRung = (k, focus) => {
+      const r = S.rungs.find((x) => x.k === k), el = $(`.cp-rang[data-k="${k}"]`); if (!r || !el) return;
+      el.outerHTML = rungHtml(r);
+      if (focus) { const b = $(`.cp-rang[data-k="${k}"] [data-pick], .cp-rang[data-k="${k}"] [data-clear]`); if (b) b.focus(); }
+    };
+
+    // ---- feuille de choix d'une recette pour un rang
+    let sheet = null, opener = null, recipes = null;
+    const used = (k) => new Set(S.rungs.filter((r) => r.rid && r.k !== k).map((r) => r.rid));
+    const onEsc = (e) => { if (e.key === "Escape" && sheet) closeSheet(); };
+    function closeSheet() { if (!sheet) return; document.removeEventListener("keydown", onEsc); sheet.remove(); sheet = null; document.body.classList.remove("se-ouvert"); if (opener && document.contains(opener)) opener.focus(); opener = null; }
+    async function loadRecipes() {
+      if (recipes && recipes.book === S.book) return recipes.rows;
+      let r = await sb.from("recipes").select("id,title,course,courses_alt,servings").eq("book_id", S.book).is("deleted_at", null).is("archived_at", null).order("title").limit(500);
+      if (r.error && /courses_alt/.test(String(r.error.message || ""))) r = await sb.from("recipes").select("id,title,course,servings").eq("book_id", S.book).is("deleted_at", null).is("archived_at", null).order("title").limit(500);
+      if (r.error) throw r.error;
+      recipes = { book: S.book, rows: r.data || [] };
+      return recipes.rows;
+    }
+    function openSheet(k, tab, from) {
+      closeSheet(); opener = from;
+      const wide = COURSES_OF[k] ? OPTIONAL.includes(k) : true, my = { shown: new Set(), cards: new Map(), all: wide, seq: 0 };
+      sheet = document.createElement("div");
+      sheet.className = "se-fond";
+      sheet.innerHTML = `<section class="se-feuille" role="dialog" aria-modal="true" aria-labelledby="cp-f-t"><div class="se-f-tete"><div><h2 id="cp-f-t">${esc(lab(k))}</h2><p class="libelle or" style="margin:2px 0 0">Choisir une recette</p></div><button type="button" class="btn sec petit" data-close>Fermer</button></div>
+        <div class="onglets" role="group" aria-label="Origine du choix"><button type="button" class="onglet" data-t="carnet" aria-pressed="${tab === "carnet"}">Dans le carnet</button><button type="button" class="onglet" data-t="idees" aria-pressed="${tab === "idees"}">Idées</button></div><div id="cp-pick" class="panneau"></div></section>`;
+      document.body.append(sheet); document.body.classList.add("se-ouvert"); document.addEventListener("keydown", onEsc);
+      const zone = $("#cp-pick", sheet);
+      const choose = (id, title, course) => { const r = S.rungs.find((x) => x.k === k); r.rid = id; r.title = title; r.course = course || null; closeSheet(); redrawRung(k, true); };
+      async function tabCarnet() {
+        zone.innerHTML = `<label for="cp-rech" class="sr-only">Chercher dans le carnet</label><input id="cp-rech" type="search" placeholder="Chercher dans le carnet…" autocomplete="off">
+          <label class="case pf-case"><input type="checkbox" id="cp-tout"${my.all ? " checked" : ""}> Toutes les recettes du carnet</label><div id="cp-res" class="se-res"><p class="chargement">Chargement…</p></div>`;
+        let rows;
+        try { rows = await loadRecipes(); } catch (e) { if ($("#cp-res", sheet)) $("#cp-res", sheet).innerHTML = `<p class="msg erreur" role="alert">${esc(AR.errMsg(e, "Impossible de lire le carnet."))}</p>`; return; }
+        if (!sheet || !$("#cp-rech", sheet)) return;
+        const want = COURSES_OF[k] || [], u = used(k);
+        const show = () => {
+          const n = AR.norm($("#cp-rech", sheet).value), all = $("#cp-tout", sheet).checked; my.all = all;
+          const f = rows.filter((r) => !u.has(r.id) && (all || want.includes(r.course) || (r.courses_alt || []).some((c) => want.includes(c))) && (!n || AR.norm(r.title).includes(n))).slice(0, 80);
+          $("#cp-res", sheet).innerHTML = f.length ? `<ul class="se-choix">${f.map((r) => `<li><button type="button" class="se-choix-b" data-rid="${esc(r.id)}"><span class="se-ch-t">${esc(r.title)}</span><span class="se-ch-m">${esc([AR.COURSES[r.course] || "", (r.courses_alt || []).length ? "aussi en " + r.courses_alt.map((c) => (AR.COURSES[c] || c).toLowerCase()).join(", ") : ""].filter(Boolean).join(" · "))}</span></button></li>`).join("")}</ul>` : `<p class="muted italique">Aucune recette ne correspond${all ? "" : " : cochez « Toutes les recettes du carnet » pour élargir"}.</p>`;
+        };
+        $("#cp-rech", sheet).addEventListener("input", show); $("#cp-tout", sheet).addEventListener("change", show); show(); $("#cp-rech", sheet).focus();
+      }
+      async function tabIdees(more) {
+        const id = ++my.seq;
+        zone.innerHTML = `<p class="chargement">Recherche d'idées…</p>`;
+        try {
+          const u = used(k);
+          if (!more) my.shown = new Set();
+          const data = await AR.suggestCourses({ p_book_ids: [S.book], p_for_users: null, p_month: +(jour || AR.todayIso()).slice(5, 7), p_limit: my.shown.size + u.size + 3 }, COURSES_OF[k] || ["plat"]);
+          const fresh = (data || []).filter((x) => !my.shown.has(x.recipe_id) && !u.has(x.recipe_id));
+          const cards = await AR.fetchCards(fresh.map((x) => x.recipe_id));
+          if (!sheet || id !== my.seq) return;
+          const rows = AR.dedupeVersions(fresh.filter((x) => cards.has(x.recipe_id)), (x) => cards.get(x.recipe_id).version_group).slice(0, 3);
+          rows.forEach((x) => { my.shown.add(x.recipe_id); my.cards.set(x.recipe_id, cards.get(x.recipe_id)); });
+          const pied = `<div class="rangee se-prop-b">${my.shown.size ? `<button type="button" class="btn sec" data-more>Autres idées</button>` : ""}</div>`;
+          zone.innerHTML = rows.length ? `<ul class="se-choix">${rows.map((x) => { const c = cards.get(x.recipe_id); return `<li class="se-sug"><button type="button" class="se-choix-b" data-rid="${esc(c.id)}"><span class="se-ch-t">${esc(c.title)}</span></button><ul class="sa-raisons">${(x.raisons || []).map((t) => `<li>${esc(t)}</li>`).join("")}</ul></li>`; }).join("")}</ul>${pied}`
+            : `<p class="muted italique">${more ? "Plus d'idées pour l'instant." : "Aucune idée pour ce rang."}</p>${pied}`;
+        } catch (e) { if (sheet) zone.innerHTML = `<p class="msg erreur" role="alert">${esc(AR.errMsg(e, "Impossible de calculer les suggestions."))}</p>`; }
+      }
+      sheet.addEventListener("click", (e) => {
+        if (e.target === sheet || e.target.closest("[data-close]")) return closeSheet();
+        const t = e.target.closest("[data-t]");
+        if (t) { $$("[data-t]", sheet).forEach((b) => b.setAttribute("aria-pressed", String(b === t))); return void (t.dataset.t === "carnet" ? tabCarnet() : tabIdees(false)); }
+        if (e.target.closest("[data-more]")) return void tabIdees(true);
+        const b = e.target.closest("[data-rid]"); if (!b) return;
+        const c = my.cards.get(b.dataset.rid) || (recipes && recipes.rows.find((x) => x.id === b.dataset.rid));
+        if (c) choose(c.id, c.title, c.course);
+      });
+      sheet.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") return closeSheet();
+        if (e.key !== "Tab") return;
+        const f = $$("button:not([disabled]), input, a[href]", sheet).filter((x) => x.offsetParent !== null);
+        if (!f.length) return;
+        const first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      });
+      tab === "idees" ? tabIdees(false) : tabCarnet();
+    }
+
+    // ---- enregistrement : menu, plats par rang, puis case du planning si jour et créneau sont donnés
+    async function save() {
+      if (S.busy) return;
+      const out = $("#cp-msg"), title = $("#cp-titre").value.replace(/\s+/g, " ").trim(), chosen = S.rungs.filter((r) => r.rid);
+      S.title = title;
+      if (!title) { setMsg(out, "Donnez un nom au menu.", "erreur"); return void $("#cp-titre").focus(); }
+      if (!chosen.length) return setMsg(out, "Choisissez au moins une recette avant d'enregistrer.", "erreur");
+      S.busy = true; $$("#cp-form button").forEach((b) => (b.disabled = true)); setMsg(out, "Enregistrement…");
+      let id = null;
+      try {
+        id = AR.uuid();
+        const ins = await sb.from("recipe_menus").insert({ id, book_id: S.book, title, note: null, source_type: "manuel", created_by: me }).select("*").single();
+        if (ins.error) { id = null; throw ins.error; }
+        const it = await sb.from("recipe_menu_items").insert(chosen.map((r, i) => ({ menu_id: id, recipe_id: r.rid, position: i, rubrique: r.k })));
+        if (it.error) { await sb.from("recipe_menus").update({ deleted_at: new Date().toISOString() }).eq("id", id); throw it.error; }
+      } catch (e) {
+        S.busy = false; $$("#cp-form button").forEach((b) => (b.disabled = false));
+        return setMsg(out, AR.menuErr(e, "Le menu n'a pas pu être enregistré."), "erreur");
+      }
+      const go = `/recettes/menu.html?id=${encodeURIComponent(id)}`;
+      if (slot) {
+        try {
+          const ex = await sb.from("recipe_meal_plan").select("*").eq("book_id", S.book).eq("day", slot.day).eq("slot", slot.slot).maybeSingle();
+          if (ex.error) throw ex.error;
+          if (ex.data && (ex.data.recipe_id || ex.data.menu_id) && !confirm("Ce repas a déjà une recette ou un menu. Le remplacer ?")) { location.assign(go); return; }
+          const patch = { menu_id: id, recipe_id: null, state: ex.data && ex.data.state === "invites" ? "invites" : "prevu" };
+          const res = ex.data ? await sb.from("recipe_meal_plan").update(patch).eq("id", ex.data.id) : await sb.from("recipe_meal_plan").insert({ id: AR.uuid(), book_id: S.book, day: slot.day, slot: slot.slot, created_by: me, ...patch });
+          if (res.error) throw res.error;
+          AR.setBookPref(S.book);
+        } catch (e) {
+          S.busy = false;
+          out.className = "msg erreur"; out.innerHTML = `Menu enregistré, mais le repas n'a pas pu être placé au planning : ${esc(AR.menuErr(e, "erreur du planning"))} <a href="${go}">Ouvrir le menu</a>`;
+          return;
+        }
+      }
+      location.assign(go);
+    }
+
+    main.addEventListener("input", (e) => { if (e.target.id === "cp-titre") S.title = e.target.value; });
+    main.addEventListener("change", (e) => { if (e.target.id === "cp-book") { S.book = e.target.value; recipes = null; S.rungs.forEach((r) => { r.rid = null; r.title = ""; }); draw(); } });
+    main.addEventListener("submit", (e) => { if (e.target.id === "cp-form") { e.preventDefault(); save(); } });
+    main.addEventListener("click", (e) => {
+      const p = e.target.closest("[data-pick]"); if (p) return void openSheet(p.dataset.pick, p.dataset.tab, p);
+      const c = e.target.closest("[data-clear]"); if (c) { const r = S.rungs.find((x) => x.k === c.dataset.clear); r.rid = null; r.title = ""; return void redrawRung(r.k, true); }
+      const rm = e.target.closest("[data-rm]"); if (rm) { S.rungs = S.rungs.filter((x) => x.k !== rm.dataset.rm); draw(); const f = $("[data-pick]"); if (f) f.focus(); return; }
+      const a = e.target.closest("[data-add]"); if (a) { S.rungs.push({ k: a.dataset.add, rid: null, title: "", course: null }); S.rungs.sort((x, y) => order(x.k) - order(y.k)); draw(); const f = $(`.cp-rang[data-k="${a.dataset.add}"] [data-pick]`); if (f) f.focus(); }
+    });
+    draw();
+  }
+
+  if (qs.get("composer") === "1" && !menuId) return composer();
+  if (!menuId && !creating) return fail("Aucun menu indiqué.");
+
   const rubOf = (course) => (RUB_IDX.has(course) ? course : "autre");
   let menu = null, bookId = null, items = [], saved = new Map();
   const itemOf = (row, urls) => {
