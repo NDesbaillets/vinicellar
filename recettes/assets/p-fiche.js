@@ -287,7 +287,8 @@
     if (r.time_active_min != null) chiffres.push(["Préparation", AR.fmtMin(r.time_active_min), r.time_active_estimated]);
     if (r.time_total_min != null) chiffres.push(["Temps total", AR.fmtMin(r.time_total_min), r.time_total_estimated]);
     if (r.difficulty) chiffres.push(["Difficulté", AR.DIFFICULTES[r.difficulty] || "", false]);
-    const meta = [r.course ? AR.COURSES[r.course] : "", r.cuisine || ""].filter(Boolean).join(" · ");
+    const alt = (r.courses_alt || []).filter((k) => AR.COURSES[k] && k !== r.course);
+    const meta = [r.course ? AR.COURSES[r.course] : "", alt.length ? "aussi en " + alt.map((k) => AR.COURSES[k].toLowerCase()).join(", ") : "", r.cuisine || ""].filter(Boolean).join(" · ");
     const srcUrl = AR.safeUrl(r.source_url || "");
     const source = [r.source_type === "note" ? "Importée d'une note" : "", r.source_author ? esc(r.source_author) : "", srcUrl ? `<a href="${esc(srcUrl)}" target="_blank" rel="noopener noreferrer">${esc(AR.host(srcUrl))}</a>` : ""].filter(Boolean).join(" · ");
     const trash = r.deleted_at

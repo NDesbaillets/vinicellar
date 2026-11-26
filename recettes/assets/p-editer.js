@@ -35,6 +35,9 @@
   }
   document.title = (rec ? "Modifier la recette" : "Écrire une recette") + " · ARÔMES V&N";
   const v = (x) => (x == null ? "" : x);
+  const ALT_COURSES = [["entree", "Entrée"], ["plat", "Plat"], ["dessert", "Dessert"], ["accompagnement", "Accompagnement"]];
+  // Colonne courses_alt absente du serveur (migration non appliquée) : la rubrique est masquée pour une recette existante.
+  const hasAlt = !rec || "courses_alt" in rec;
 
   main.setAttribute("aria-busy", "false");
   main.innerHTML = `<h1 class="chapitre">${rec ? "Modifier la recette" : "Écrire une recette"}</h1><span class="filet" aria-hidden="true"></span>
@@ -44,6 +47,7 @@
       <label>Titre d'origine (facultatif)<input name="title_original" maxlength="200" value="${esc(v(rec && rec.title_original))}"></label>
       <div class="grille2">
         <label>Type de plat<select name="course"><option value="">—</option>${Object.entries(AR.COURSES).map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join("")}</select></label>
+        <fieldset class="alt-bloc" id="alt-bloc"><legend class="etiquette">Peut aussi être servi en</legend><div class="alt-cases">${ALT_COURSES.map(([k, l]) => `<label class="case pf-case"><input type="checkbox" name="alt" value="${k}"> ${esc(l)}</label>`).join("")}</div></fieldset>
         <label>Cuisine<input name="cuisine" maxlength="80" placeholder="ex. italienne" value="${esc(v(rec && rec.cuisine))}"></label>
         <label>Portions<input name="servings" type="number" inputmode="numeric" min="1" max="999" value="${esc(v(rec && rec.servings))}"></label>
         <label>Difficulté<select name="difficulty"><option value="">—</option>${Object.entries(AR.DIFFICULTES).map(([k, l]) => `<option value="${k}">${esc(l)}</option>`).join("")}</select></label>
@@ -74,6 +78,11 @@
   const f = $("#form"), out = $("#msg");
   f.book.value = state.bookId;
   if (rec) { f.course.value = rec.course || ""; f.difficulty.value = rec.difficulty || ""; }
+  $("#alt-bloc").hidden = !hasAlt;
+  if (rec) $$("[name=alt]", f).forEach((c) => { c.checked = (rec.courses_alt || []).includes(c.value); });
+  // Le type principal ne peut pas être aussi un autre type : sa case est désactivée et décochée.
+  function syncAlt() { $$("[name=alt]", f).forEach((c) => { const same = c.value === f.course.value; if (same) c.checked = false; c.disabled = same; }); }
+  f.course.addEventListener("change", syncAlt); syncAlt();
   state.orig = rec ? { servings: rec.servings, time_active_min: rec.time_active_min, time_total_min: rec.time_total_min } : {};
 
   // ---- photo
@@ -196,6 +205,8 @@
         servings, time_active_min: ta, time_total_min: tt, difficulty: num(f.difficulty.value),
         ...AR.sourceFields(f)
       };
+      const alts = $$("[name=alt]:checked", f).map((c) => c.value).filter((k) => k !== f.course.value);
+      if (hasAlt && (alts.length || (rec && "courses_alt" in rec))) fields.courses_alt = alts;
       // Une valeur modifiée à la main n'est plus « estimée ».
       if (rec) {
         if (servings !== state.orig.servings) fields.servings_estimated = false;
