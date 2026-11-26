@@ -255,4 +255,4 @@ section h2 { margin-bottom: 12px; }
 }
 .weather-days li { padding: .5rem; border: 1px solid var(--border, #c9b9ac); }
 .weather-days small { display: block; }
-#weather > a { display: inline-flex; align-items: center; min-height: 44px; }
+#weather > a:not([hidden]) { display: inline-flex; align-items: center; min-height: 44px; }
