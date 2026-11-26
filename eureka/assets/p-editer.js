@@ -138,8 +138,7 @@
     for (const [key, label] of [["site_reservation", "de réservation"], ["source_url", "de la source"]]) {
       if (result[key] && !E.safeUrl(result[key])) throw new E.UserError("Utilisez une URL HTTPS " + label + ".");
     }
-    result.parametres_creneau = window.EurekaSlots.read(values);
-    return result;
+    return { ...result, ...window.EurekaSlots.read(values, idea) };
   }
 
   E.boot("ajout", async (ctx) => {
@@ -152,7 +151,8 @@
     $("#cancel").href = back;
     $("#idea-fields").append(...fields.map((definition) => field(definition, idea[definition[0]])),
       period(idea.meilleure_periode || []));
-    form.elements.statut.closest("label").after(recurrenceFields(idea), window.EurekaSlots.fields(idea));
+    form.elements.titre.closest("label").after(window.EurekaSlots.fields(idea));
+    form.elements.statut.closest("label").after(recurrenceFields(idea));
     const description = form.elements.description;
     description.closest("label").after(descriptionPreview(description, idea.a_verifier));
     E.bind(form, $("#form-status"), async (values) => {
@@ -162,6 +162,10 @@
         ? table.update(body).eq("id", id).eq("espace_id", ctx.space.id)
         : table.insert({ ...body, espace_id: ctx.space.id });
       const saved = await data(request.select("id").single()).catch((error) => {
+        if (Object.hasOwn(body, "brouillon_creneau") && ["PGRST204", "42703"].includes(error.code)
+            && error.message?.includes("brouillon_creneau")) {
+          throw new E.UserError("L’enregistrement des créneaux partiels sera disponible après la mise à jour de la base.");
+        }
         if (values.get("repetition") === "annee" && ["PGRST204", "42703"].includes(error.code)) {
           throw new E.UserError("La récurrence annuelle sera disponible après la mise à jour de la base.");
         }

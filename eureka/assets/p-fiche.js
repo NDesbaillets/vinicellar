@@ -82,7 +82,8 @@
       if (planning.weekend) row("Week-end", (planning.vendredi_soir ? "Départ de Nyon vendredi à "
         + planning.heure_vendredi + " · " : "") + "Départ du lieu " + days[(5 + planning.retour_decalage) % 7]
         + " à " + planning.heure_retour);
-    } else row("Créneau à réserver", idea.proposition_creneau ? "Proposition de Claude à confirmer" : "À compléter");
+    } else row("Créneau à réserver", idea.brouillon_creneau ? "Brouillon enregistré · à compléter"
+      : idea.proposition_creneau ? "Proposition de Claude à confirmer" : "À compléter");
     row("Sortie", E.modalites[idea.modalite]);
     row("Mots-clés", idea.tags.join(", "));
     row("Notes", idea.notes);

@@ -202,7 +202,7 @@ section h2 { margin-bottom: 12px; }
 }
 .slot-fields, .slot-weekend { display: grid; gap: 12px; }
 .slot-fields legend { padding-inline: 4px; font-weight: 600; }
-.slot-fields select, .slot-fields input:not([type="checkbox"]) { font-size: 16px; }
+.slot-fields select, .slot-fields input:not([type="checkbox"], [type="radio"]) { font-size: 16px; }
 .slot-fields input[type="time"] { min-inline-size: 0; max-inline-size: 100%; }
 .slot-pair, .slot-day-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .slot-pair { align-items: end; }
@@ -216,7 +216,7 @@ section h2 { margin-bottom: 12px; }
 .slot-choice:has(input:checked) { border-color: var(--terre); background: var(--ivoire); }
 .slot-choice input { width: 20px; height: 20px; min-height: 0; margin: 0; padding: 0; accent-color: var(--terre); }
 @media (min-width: 540px) {
-  .slot-day-choices { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .slot-days .slot-day-choices { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 #annual-tasks { margin: 0 0 24px; }
 #annual-task-list a { min-height: 44px; }

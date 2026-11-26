@@ -106,11 +106,16 @@
       .order("debut").order("fin").order("calendrier_id"));
   }
 
+  function needsConfirmation(idea) {
+    return !idea.parametres_creneau && !!idea.proposition_creneau;
+  }
+
   function fields(idea) {
-    const value = idea.parametres_creneau || idea.proposition_creneau || {};
+    const value = idea.brouillon_creneau || idea.parametres_creneau || idea.proposition_creneau || {};
     const box = el("fieldset", null, "wide slot-fields");
     box.append(el("legend", "Créneau à réserver"));
-    const proposed = !idea.parametres_creneau && !!idea.proposition_creneau;
+    box.append(el("p", "Tu peux enregistrer la fiche et compléter le créneau plus tard."));
+    const proposed = needsConfirmation(idea);
     if (proposed) box.append(el("p", "Claude propose ces valeurs. Vérifie-les, notamment les horaires et les trajets depuis Nyon."));
     const controls = {};
     function choice(caption, node) {
@@ -126,7 +131,6 @@
       if (type === "checkbox") node.checked = value[name] ?? false;
       else {
         node.value = value[name] ?? "";
-        node.required = true;
         if (min != null) node.min = min;
         if (max != null) node.max = max;
       }
@@ -135,21 +139,20 @@
       label.append(node);
       return label;
     }
-    const presetLabel = el("label", "Plage de l’activité");
-    const presetSelect = el("select");
-    presetSelect.name = "plage_activite";
-    const custom = el("option", "Horaires personnalisés");
-    custom.value = "";
-    presetSelect.append(custom);
-    for (const preset of activityPresets) {
-      const option = el("option", preset.label);
-      option.value = preset.id;
-      presetSelect.append(option);
+    const modes = el("div", null, "slot-day-choices");
+    modes.setAttribute("role", "group");
+    modes.setAttribute("aria-label", "Plage de l’activité");
+    const modeControls = new Map();
+    for (const [id, caption] of [...activityPresets.map(({ id, label }) => [id, label]),
+      ["weekend", "Week-end ou week-end prolongé"], ["", "Horaires personnalisés"]]) {
+      const radio = el("input");
+      radio.type = "radio";
+      radio.name = "plage_activite";
+      radio.value = id;
+      modeControls.set(id, radio);
+      modes.append(choice(caption, radio));
     }
-    const weekendOption = el("option", "Week-end ou week-end prolongé");
-    weekendOption.value = "weekend";
-    presetSelect.append(weekendOption);
-    presetLabel.append(presetSelect);
+    const selectedMode = () => modes.querySelector("input:checked")?.value ?? "";
     const presetHelp = el("p", "Les trajets sont ajoutés avant et après la plage choisie.");
     const times = el("div", null, "slot-pair");
     times.append(input("duree_minutes", "Durée (min)", "number", 1, 10080),
@@ -159,23 +162,23 @@
     trips.append(input("aller_minutes", "Aller (min)", "number", 0, 1440),
       input("retour_minutes", "Retour (min)", "number", 0, 1440));
     transport.append(el("legend", "Trajets depuis et vers Nyon"), trips);
-    box.append(presetLabel, presetHelp, times, transport);
+    box.append(modes, presetHelp, times, transport);
     function showTimes() {
-      const flexible = presetSelect.value === "flexible";
+      const flexible = selectedMode() === "flexible";
       times.hidden = flexible;
       presetHelp.textContent = flexible
         ? "L’agenda cherchera 4 heures libres entre 8 h et 20 h. Les trajets s’ajoutent à cette durée."
         : "Les trajets sont ajoutés avant et après la plage choisie.";
     }
     function matchPreset() {
-      if (presetSelect.value === "weekend") return;
+      if (selectedMode() === "weekend") return;
       const matching = activityPresets.find(({ id, start, duration }) =>
         id !== "flexible" && controls.heure_activite.value === start && Number(controls.duree_minutes.value) === duration);
-      presetSelect.value = matching?.id ?? "";
+      modeControls.get(matching?.id ?? "").checked = true;
       showTimes();
     }
-    presetSelect.addEventListener("change", () => {
-      const selected = activityPresets.find(({ id }) => id === presetSelect.value);
+    modes.addEventListener("change", () => {
+      const selected = activityPresets.find(({ id }) => id === selectedMode());
       if (selected) {
         controls.heure_activite.value = selected.start;
         controls.duree_minutes.value = selected.duration;
@@ -185,8 +188,8 @@
     controls.heure_activite.addEventListener("input", matchPreset);
     controls.duree_minutes.addEventListener("input", matchPreset);
     matchPreset();
-    if (value.weekend ?? idea.format === "week_end") presetSelect.value = "weekend";
-    else if (value.demi_journee_flexible) presetSelect.value = "flexible";
+    if (value.weekend ?? idea.format === "week_end") modeControls.get("weekend").checked = true;
+    else if (value.demi_journee_flexible) modeControls.get("flexible").checked = true;
     const days = el("fieldset", null, "slot-days");
     const dayChoices = el("div", null, "slot-day-choices");
     days.append(el("legend", "Jours possibles"));
@@ -212,6 +215,9 @@
     const returnLabel = el("label", "Jour du retour");
     const returnDay = el("select");
     returnDay.name = "retour_decalage";
+    const unspecified = el("option", "À préciser");
+    unspecified.value = "";
+    returnDay.append(unspecified);
     for (const [index, day] of ["Samedi", "Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"].entries()) {
       const option = el("option", day);
       option.value = index;
@@ -224,13 +230,12 @@
       input("heure_retour", "Heure de départ pour le retour", "time"));
     box.append(days, extra);
     function toggle() {
-      const multi = presetSelect.value === "weekend";
+      const multi = selectedMode() === "weekend";
       extra.hidden = !multi;
       presetHelp.hidden = multi;
       showTimes();
       days.hidden = multi;
       for (const node of extra.querySelectorAll("input,select")) node.disabled = !multi;
-      returnDay.required = multi;
       friday.hidden = !controls.vendredi_soir.checked;
       controls.heure_vendredi.disabled = !multi || friday.hidden;
     }
@@ -239,29 +244,41 @@
     if (proposed) {
       const confirm = el("input");
       confirm.type = "checkbox";
-      confirm.required = true;
+      confirm.name = "confirmer_creneau";
       box.append(choice("Je confirme les durées, les jours et les horaires.", confirm));
     }
     return box;
   }
 
-  function read(values) {
-    const weekend = values.get("plage_activite") === "weekend";
+  function read(values, idea) {
+    const mode = values.get("plage_activite");
+    const weekend = mode === "weekend";
+    const number = (name) => {
+      const value = values.get(name);
+      return value == null || value === "" ? null : Number(value);
+    };
     const result = {
-      duree_minutes: Number(values.get("duree_minutes")), aller_minutes: Number(values.get("aller_minutes")),
-      retour_minutes: Number(values.get("retour_minutes")), heure_activite: values.get("heure_activite"),
+      duree_minutes: number("duree_minutes"), aller_minutes: number("aller_minutes"),
+      retour_minutes: number("retour_minutes"), heure_activite: values.get("heure_activite") || null,
       jours: weekend ? [6] : values.getAll("jours_creneau").map(Number), weekend
     };
-    if (!weekend && values.get("plage_activite") === "flexible") result.demi_journee_flexible = true;
-    if (!result.jours.length) throw new E.UserError("Choisis au moins un jour possible.");
+    if (mode === "flexible") result.demi_journee_flexible = true;
     if (weekend) {
       result.vendredi_soir = values.has("vendredi_soir");
-      if (result.vendredi_soir) result.heure_vendredi = values.get("heure_vendredi");
-      result.retour_decalage = Number(values.get("retour_decalage"));
-      result.heure_retour = values.get("heure_retour");
-      if (!slot(result, "2024-01-13")) throw new E.UserError("Vérifie que l’aller se termine avant l’activité et que le retour commence après.");
+      if (result.vendredi_soir) result.heure_vendredi = values.get("heure_vendredi") || null;
+      result.retour_decalage = number("retour_decalage");
+      result.heure_retour = values.get("heure_retour") || null;
     }
-    return result;
+    const enough = result.duree_minutes != null && result.aller_minutes != null && result.retour_minutes != null
+      && result.heure_activite && result.jours.length && (!weekend || (result.retour_decalage != null && result.heure_retour
+        && (!result.vendredi_soir || result.heure_vendredi) && slot(result, "2024-01-13")));
+    const confirmed = !needsConfirmation(idea) || values.has("confirmer_creneau");
+    if (enough && confirmed) {
+      return { parametres_creneau: result, ...(idea.brouillon_creneau ? { brouillon_creneau: null } : {}) };
+    }
+    const started = mode || result.jours.length || [result.duree_minutes, result.aller_minutes, result.retour_minutes,
+      result.heure_activite].some((value) => value != null) || idea.brouillon_creneau || idea.parametres_creneau;
+    return started ? { parametres_creneau: null, brouillon_creneau: result } : {};
   }
 
   window.EurekaSlots = { slot, canPlan, candidates, occurrence, findForDate, bounds, eventSlot, overlap, describe, fields, read };
