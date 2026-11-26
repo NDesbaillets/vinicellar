@@ -298,7 +298,7 @@ end $$;
 -- limite aux carnets de l'appelant. Tous les filtres sont optionnels (null ou vide = ignoré).
 --   p_texte : texte libre, tolérant aux accents (websearch français sur `search`) et aux fautes (trigrammes sur le
 --             titre, word_similarity >= 0,35)
---   p_course : entree | plat | dessert | accompagnement | boisson | autre
+--   p_course : entree | plat | dessert | accompagnement | boisson | autre (inclut les recettes dont courses_alt le contient)
 --   p_inc / p_exc : ids du catalogue à avoir / à ne pas avoir ; p_inc_txt / p_exc_txt : mêmes contraintes en texte
 --             libre sur le libellé d'origine des lignes (ingrédients que le catalogue ne reconnaît pas)
 --   p_month : « de saison » = au moins un ingrédient saisonnier de saison et au moins la moitié des
@@ -353,7 +353,7 @@ begin
     from recipes r
    where r.book_id = any(p_book_ids)
      and r.deleted_at is null and r.archived_at is null
-     and (p_course is null or r.course = p_course)
+     and (p_course is null or r.course = p_course or p_course = any(r.courses_alt))
      and (cu is null or strpos(public.f_unaccent(lower(coalesce(r.cuisine, ''))), cu) > 0)
      and (p_time_max is null or r.time_total_min <= p_time_max)
      and (p_diff_max is null or r.difficulty <= p_diff_max)

@@ -23,7 +23,7 @@ export type RawIngredient = {
 export type RawStep = { text: string; textOriginal: string | null; timerSeconds: number | null; source: string | null };
 export type Structured = {
   title: string | null; titleOriginal: string | null; lang: string | null; summary: string | null;
-  course: typeof COURSES[number] | null; cuisine: string | null;
+  course: typeof COURSES[number] | null; coursesAlt: typeof COURSES[number][]; cuisine: string | null;
   servings: { value: number | null; estimated: boolean };
   timeActive: { value: number | null; estimated: boolean };
   timeTotal: { value: number | null; estimated: boolean };
@@ -376,10 +376,14 @@ export function sanitizeStructured(raw: Record<string, unknown>): Structured {
   const lang = typeof raw.langue_originale === "string" && /^[a-z]{2,3}$/i.test(raw.langue_originale.trim()) ? raw.langue_originale.trim().toLowerCase() : null;
   const diff = intOrNull(raw.difficulte, 1, 3);
   const course = typeof raw.type_plat === "string" ? (COURSES as readonly string[]).find((c) => c === raw.type_plat) : undefined;
+  // « autres_types » : types sous lesquels la recette peut aussi être servie ; sans doublon, sans le type principal.
+  const coursesAlt = [...new Set((Array.isArray(raw.autres_types) ? raw.autres_types : [])
+    .map((x) => typeof x === "string" ? x.trim().toLowerCase() : "")
+    .filter((x) => (COURSES as readonly string[]).includes(x) && x !== course))] as Structured["coursesAlt"];
   const comp = raw.completude === "complete" || raw.completude === "insuffisante" ? raw.completude : "partielle";
   return {
     title: str(raw.titre, 200), titleOriginal: str(raw.titre_original, 200), lang, summary: str(raw.resume, 1000),
-    course: (course as Structured["course"]) ?? null, cuisine: str(raw.cuisine, 80),
+    course: (course as Structured["course"]) ?? null, coursesAlt, cuisine: str(raw.cuisine, 80),
     servings: { value: intOrNull(sv.value, 1, 200), estimated: sv.estimated },
     timeActive: { value: intOrNull(ta.value, 0, 43200), estimated: ta.estimated },
     timeTotal: { value: intOrNull(tt.value, 0, 43200), estimated: tt.estimated },

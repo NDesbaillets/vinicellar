@@ -302,6 +302,7 @@ const SCHEMA = `{
   "langue_originale": "fr|it|en|de|es|…|null",
   "resume": "string|null",
   "type_plat": "entree|plat|dessert|accompagnement|base|boisson|autre|null",
+  "autres_types": ["entree|plat|dessert|accompagnement|boisson|autre"],
   "cuisine": "string|null",
   "portions": {"valeur": "int|null", "estime": "bool"},
   "temps_actif_min": {"valeur": "int|null", "estime": "bool"},
@@ -338,6 +339,7 @@ Un seul objet JSON, du type choisi. Les règles ci-dessous (RÈGLES) valent pour
 
 RÈGLES
 - « type_plat » : « base » pour une préparation de base destinée à d'autres plats (sauce, fond, jus, pâte brisée ou feuilletée, crème pâtissière, praliné, condiment, marinade) ; sinon le type du plat servi.
+- « autres_types » : types sous lesquels la recette peut aussi être servie, sans répéter « type_plat » (liste vide par défaut). Une salade, une soupe, une tarte salée ou une quiche peuvent être entrée et plat. Ne remplis que si c'est un usage courant.
 - Aucune quantité, durée ou température inventée : ce qui est absent vaut null (« à l'œil » : quantite null, precision « à l'œil »). Ne complète rien de mémoire.
 - Quantités : recopie le nombre et l'unité TELS QU'ILS SONT ÉCRITS, sans rien convertir (cups, oz, lb, sticks, °F restent tels quels : la conversion métrique est faite ensuite par un autre programme). Fractions en décimal (1/2 = 0.5). Fourchette (« 2 à 3 ») : quantite null, precision « 2 à 3 ».
 - « unite_origine » : l'unité écrite dans la source (« cups », « oz », « càs », « tbsp », « boîte »…), ou null. « unite » : l'unité de la liste autorisée si l'unité écrite en est une ou un synonyme direct (tbsp = cas, tsp = cac, clove = gousse…), sinon null. Un ingrédient compté (2 oignons) : unite « piece » ou null.
@@ -812,7 +814,7 @@ async function pipeline(c: Ctx): Promise<Outcome> {
   const notFr = !!s.lang && s.lang !== "fr";
   const { data: rec, error: re } = await admin.from("recipes").insert({
     book_id: row.book_id, title, title_original: notFr ? s.titleOriginal : null, lang_original: notFr ? s.lang : null,
-    summary: s.summary, course: s.course, cuisine: s.cuisine,
+    summary: s.summary, course: s.course, courses_alt: s.coursesAlt, cuisine: s.cuisine,
     servings: s.servings.value, servings_estimated: s.servings.value !== null && s.servings.estimated,
     time_active_min: s.timeActive.value, time_active_estimated: s.timeActive.value !== null && s.timeActive.estimated,
     time_total_min: s.timeTotal.value, time_total_estimated: s.timeTotal.value !== null && s.timeTotal.estimated,

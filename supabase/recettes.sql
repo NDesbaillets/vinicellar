@@ -227,6 +227,7 @@ create table if not exists public.recipes (
   lang_original text,
   summary text,
   course text check (course in ('entree','plat','dessert','accompagnement','base','boisson','autre')),
+  courses_alt text[] not null default '{}',                   -- « peut aussi être servi en » (types, sans le type principal)
   cuisine text,
   servings int check (servings > 0),
   servings_estimated boolean not null default false,
@@ -247,7 +248,8 @@ create table if not exists public.recipes (
   created_by uuid default auth.uid() references auth.users on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  search tsvector                                              -- maintenu par trigger
+  search tsvector,                                             -- maintenu par trigger
+  constraint recipes_courses_alt_chk check (courses_alt <@ array['entree','plat','dessert','accompagnement','base','boisson','autre']::text[] and not (course = any(courses_alt)))
 );
 create index if not exists recipes_book_idx on public.recipes (book_id, created_at desc) where deleted_at is null and archived_at is null;
 create index if not exists recipes_book_course_idx on public.recipes (book_id, course);

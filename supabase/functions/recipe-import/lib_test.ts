@@ -684,3 +684,11 @@ Deno.test("extractInstruction : titre dans une balise, balise parasite neutralis
   assertEquals(hostile.split("</titre_recette>").length, 2);              // une seule fermeture : celle de la balise
   assert(hostile.includes("[balise retirée]"));
 });
+
+Deno.test("sanitizeStructured : autres_types devient coursesAlt (valides, sans doublon, sans le type principal)", () => {
+  const base = { titre: "Salade", ingredients: [], etapes: [] };
+  assertEquals(sanitizeStructured({ ...base, type_plat: "entree", autres_types: ["plat", "Plat", "entree", "bidule", 3, null, " dessert "] }).coursesAlt, ["plat", "dessert"]);
+  assertEquals(sanitizeStructured({ ...base, type_plat: "plat", autres_types: "entree" }).coursesAlt, []);
+  assertEquals(sanitizeStructured({ ...base, type_plat: "plat" }).coursesAlt, []);
+  assertEquals(sanitizeStructured({ ...base, autres_types: ["plat"] }).coursesAlt, ["plat"]);
+});
