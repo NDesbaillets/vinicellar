@@ -53,6 +53,29 @@ function record(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
+function planningProposal(raw: unknown) {
+  const value = record(raw);
+  const fields: Record<string, unknown> = {};
+  for (const [key, min, max] of [
+    ["duree_minutes", 1, 10080], ["aller_minutes", 0, 1440], ["retour_minutes", 0, 1440], ["retour_decalage", 0, 6],
+  ] as const) {
+    const number = value[key];
+    if (typeof number === "number" && Number.isInteger(number) && number >= min && number <= max) fields[key] = number;
+  }
+  for (const key of ["heure_activite", "heure_vendredi", "heure_retour"]) {
+    const hour = value[key];
+    if (typeof hour === "string" && /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(hour)) fields[key] = hour;
+  }
+  for (const key of ["weekend", "vendredi_soir"]) {
+    if (typeof value[key] === "boolean") fields[key] = value[key];
+  }
+  if (Array.isArray(value.jours)) {
+    const days = [...new Set(value.jours.filter((day) => Number.isInteger(day) && day >= 1 && day <= 7))];
+    if (days.length) fields.jours = days;
+  }
+  return Object.keys(fields).length ? fields : null;
+}
+
 export function normalize(raw: unknown, reference: string, thumbnail: string | null) {
   const doc = record(raw);
   const expected = [
@@ -102,6 +125,7 @@ export function normalize(raw: unknown, reference: string, thumbnail: string | n
     budget_min, budget_max, ...dates, urgence,
     preavis_semaines: typeof preavis === "number" && Number.isInteger(preavis) && preavis >= 0 && preavis <= 52 ? preavis : null,
     image_url: thumbnail ?? https(doc.image_url),
+    proposition_creneau: planningProposal(doc.proposition_creneau),
     a_verifier: checks,
   };
 }

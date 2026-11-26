@@ -26,9 +26,9 @@
     return swissDayFormat.format(instant);
   }
 
-  async function annualPlanningTasks(space) {
+  async function annualPlanningTasks(space, planning = false) {
     const ideas = await pages(() => sb.from("sorties_idees")
-      .select("id,titre,accroche,description,ville,image_path,meilleure_periode,saison_debut_mois,saison_fin_mois,sorties_occurrences(date_cible,date_realisee,statut)")
+      .select("id,titre,accroche,description,ville,image_path,meilleure_periode,saison_debut_mois,saison_fin_mois,sorties_occurrences(date_cible,date_realisee,statut)" + (planning ? ",parametres_creneau,lat,lng" : ""))
       .eq("espace_id", space).not("saison_debut_mois", "is", null)
       .neq("statut", "archivee").is("fusionnee_dans", null).order("id"));
     const tasks = ideas.flatMap((idea) => {

@@ -73,6 +73,16 @@
     row("Récurrence", firstMonth && lastMonth
       ? "Chaque année · " + (firstMonth === lastMonth ? firstMonth : firstMonth + " à " + lastMonth)
       : idea.recurrence_mois ? "Tous les " + idea.recurrence_mois + " mois" : null);
+    const planning = idea.parametres_creneau;
+    if (planning) {
+      const days = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+      row("Temps à prévoir", planning.duree_minutes + " min d’activité · " + planning.aller_minutes
+        + " min depuis Nyon · " + planning.retour_minutes + " min de retour");
+      row("Jours possibles", planning.jours.map((day) => days[day - 1]).join(", ") + " à " + planning.heure_activite);
+      if (planning.weekend) row("Week-end", (planning.vendredi_soir ? "Départ de Nyon vendredi à "
+        + planning.heure_vendredi + " · " : "") + "Départ du lieu " + days[(5 + planning.retour_decalage) % 7]
+        + " à " + planning.heure_retour);
+    } else row("Créneau à réserver", idea.proposition_creneau ? "Proposition de Claude à confirmer" : "À compléter");
     row("Sortie", E.modalites[idea.modalite]);
     row("Mots-clés", idea.tags.join(", "));
     row("Notes", idea.notes);
@@ -377,11 +387,12 @@
 
     async function occurrences() {
       history = await pages(() => sb.from("sorties_occurrences")
-        .select("id,date_cible,date_realisee,statut,sorties_notes_occurrence(user_id,note,commentaire)")
+        .select("id,date_cible,date_realisee,statut,debut_planifie,fin_planifie,sorties_notes_occurrence(user_id,note,commentaire)")
         .eq("idee_id", id).order("date_cible", { ascending: false }).order("id"));
       const rows = history.map((item) => {
         const node = el("div", null, "occurrence");
         node.append(el("strong", E.date(item.date_cible) + " · " + occurrenceStates[item.statut]));
+        if (item.debut_planifie) node.append(el("p", window.EurekaSlots.describe(window.EurekaSlots.eventSlot(item))));
         if (item.date_realisee) node.append(el("p", "Réalisée le " + E.date(item.date_realisee)));
         const notes = item.sorties_notes_occurrence;
         const own = notes.find((entry) => entry.user_id === ctx.user.id);
@@ -430,11 +441,12 @@
             E.message(output, "Note enregistrée.");
           });
           node.append(editor);
-          if (item.statut === "faite" && idea.recurrence_mois) {
+          if (item.statut === "faite" && idea.recurrence_mois && idea.parametres_creneau) {
             const next = el("button", "À reprévoir ?");
             next.type = "button";
             next.addEventListener("click", () => {
               planForm.elements.date.value = addMonths(item.date_realisee || item.date_cible, idea.recurrence_mois);
+              planForm.elements.date.dispatchEvent(new Event("input"));
               planForm.elements.date.focus();
             });
             node.append(next);
@@ -453,6 +465,21 @@
       await changeIdea({ statut: values.get("statut") });
       return "Statut enregistré.";
     });
+    const slots = window.EurekaSlots;
+    if (!idea.parametres_creneau) {
+      planForm.before(el("p", "Complète et confirme le créneau dans la modification de la fiche avant de planifier."));
+      planForm.hidden = true;
+    }
+    const plannedRange = el("p");
+    plannedRange.setAttribute("role", "status");
+    planForm.after(plannedRange);
+    function showPlannedRange() {
+      const date = dateInput.value;
+      const range = slots.slot(idea.parametres_creneau, date);
+      plannedRange.textContent = range ? slots.describe(range) : "";
+    }
+    dateInput.addEventListener("input", showPlannedRange);
+    showPlannedRange();
     let savedDate;
     E.bind(planForm, output, async (values) => {
       const date = values.get("date");
@@ -461,7 +488,13 @@
         throw new E.UserError("Choisis une date dans la saison sélectionnée.");
       }
       if (savedDate !== date && !history.some((item) => item.date_cible === date && item.statut === "prevue")) {
-        await data(sb.from("sorties_occurrences").insert({ idee_id: id, date_cible: date }));
+        const range = slots.slot(idea.parametres_creneau, date);
+        if (!range || range.debut <= Date.now()) throw new E.UserError("Choisis un jour et un créneau à venir autorisés sur la fiche.");
+        if ((await slots.busy(ctx.space.id, range)).length) throw new E.UserError("Le créneau chevauche une plage occupée dans ton agenda.");
+        await data(sb.from("sorties_occurrences").insert({ idee_id: id, date_cible: date })).catch((error) => {
+          if (error.code === "23P01") throw new E.UserError("Ce créneau chevauche une sortie déjà planifiée.");
+          throw error;
+        });
         savedDate = date;
       }
       try {

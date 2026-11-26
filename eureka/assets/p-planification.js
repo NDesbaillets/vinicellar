@@ -1,6 +1,7 @@
 (() => {
   const E = window.Eureka;
   const { sb, $, el, data, pages } = E;
+  const slots = window.EurekaSlots;
   const timeZone = "Europe/Zurich";
   const weekday = new Intl.DateTimeFormat("fr-CH", { weekday: "short", timeZone: "UTC" });
   const months = new Intl.DateTimeFormat("fr-CH", { month: "long", year: "numeric", timeZone: "UTC" });
@@ -56,13 +57,14 @@
     const { idea, season } = entry;
     const start = season?.start || idea.date_debut;
     const end = season?.end || idea.date_fin || idea.date_debut;
-    return day >= today && (!start || day >= start) && (!end || day <= end);
+    if (day < today || (start && day < start) || (end && day > end)) return false;
+    return !idea.parametres_creneau || slots.slot(idea.parametres_creneau, day)?.debut > Date.now();
   }
 
-  function suggestedDays(entry, range, today) {
+  function suggestedDays(entry, range, today, limit = Infinity) {
     const days = [];
     const last = range.cutoff && range.cutoff < range.last ? range.cutoff : range.last;
-    for (let day = range.first; day <= last; day = dayPlus(day, 1)) {
+    for (let day = range.first; day <= last && days.length < limit; day = dayPlus(day, 1)) {
       if (eligible(entry, day, today)) days.push(day);
     }
     return days;
@@ -80,7 +82,7 @@
   E.boot("planification", async (ctx) => {
     const today = E.swissDay();
     const scope = { espace: ctx.space.id };
-    const canReadICloud = data(sb.rpc("sorties_agenda_actif", { p_espace: ctx.space.id })).catch(() => false);
+    const canReadICloud = data(sb.rpc("sorties_agenda_actif", { p_espace: ctx.space.id }));
     const drafts = new Map();
     const draftKey = "eureka.planning." + ctx.user.id + "." + scope.espace;
     let active = null;
@@ -104,7 +106,7 @@
         const stored = JSON.parse(sessionStorage.getItem(draftKey) || "[]");
         for (const [id, day] of stored) {
           const entry = entries.find(({ idea }) => idea.id === id);
-          if (entry && /^\d{4}-\d\d-\d\d$/.test(day) && eligible(entry, day, today)) {
+          if (entry?.idea.parametres_creneau && /^\d{4}-\d\d-\d\d$/.test(day) && eligible(entry, day, today)) {
             drafts.set(id, { entry, day, busy: false });
           }
         }
@@ -118,9 +120,9 @@
     }
 
     async function loadCalendar(first, end) {
-      const range = `and(statut.eq.prevue,date_cible.gte.${first},date_cible.lt.${end}),and(statut.eq.faite,date_realisee.gte.${first},date_realisee.lt.${end}),and(statut.eq.faite,date_realisee.is.null,date_cible.gte.${first},date_cible.lt.${end})`;
+      const range = `and(statut.eq.prevue,debut_planifie.lt.${midnight(end).toISOString()},fin_planifie.gt.${midnight(first).toISOString()}),and(statut.eq.prevue,debut_planifie.is.null,date_cible.gte.${first},date_cible.lt.${end}),and(statut.eq.faite,date_realisee.gte.${first},date_realisee.lt.${end}),and(statut.eq.faite,date_realisee.is.null,date_cible.gte.${first},date_cible.lt.${end})`;
       const [events, busy] = await Promise.allSettled([
-        pages(() => sb.from("sorties_occurrences").select("id,idee_id,date_cible,date_realisee,statut,sorties_idees!inner(titre,espace_id)")
+        pages(() => sb.from("sorties_occurrences").select("id,idee_id,date_cible,date_realisee,statut,debut_planifie,fin_planifie,sorties_idees!inner(titre,espace_id)")
           .eq("sorties_idees.espace_id", scope.espace).or(range).order("id")),
         canReadICloud.then((enabled) => enabled ? pages(() => sb.from("sorties_occupation").select("calendrier_id,debut,fin,titre")
           .gt("fin", midnight(first).toISOString()).lt("debut", midnight(end).toISOString())
@@ -139,43 +141,60 @@
       return values.busy.filter((item) => new Date(item.debut) < to && new Date(item.fin) > from);
     }
 
-    function scoreDay(entry, day, availability) {
-      const month = Number(day.slice(5, 7));
-      const best = entry.idea.meilleure_periode || [];
-      return Number(best.length > 0 && !best.includes(month)) * 2 + Number(mondayOffset(day) < 5)
-        + occupied(day, availability).length * 3
-        + availability.events.filter((event) => event.statut === "prevue" && event.date_cible === day).length * 8
-        + [...drafts.values()].filter((draft) => draft.day === day).length * 12;
+    function conflict(range, availability, id) {
+      return availability.busy.some((item) => slots.overlap(item, range))
+        || availability.events.some((event) => event.statut === "prevue" && event.idee_id !== id
+          && slots.overlap(slots.eventSlot(event), range))
+        || [...drafts].some(([other, draft]) => other !== id && slots.overlap(slots.slot(draft.entry.idea.parametres_creneau, draft.day), range));
+    }
+
+    function checkedAvailability(availability) {
+      if (availability.errors.length) throw new E.UserError(availability.errors.join(" "));
+      return availability;
+    }
+
+    async function check(entry, day) {
+      const range = slots.slot(entry.idea.parametres_creneau, day);
+      const availability = checkedAvailability(await loadCalendar(E.swissDay(new Date(range.debut)),
+        dayPlus(E.swissDay(new Date(range.fin)), 1)));
+      if (conflict(range, availability, entry.idea.id)) throw new E.UserError("Ce créneau est déjà occupé, trajets compris.");
     }
 
     async function select(entry, button) {
       if (drafts.has(entry.idea.id) || pending.has(entry.idea.id)) return;
       const days = suggestedDays(entry, suggestionWindow(today, period), today);
       if (!days.length) return;
+      E.message(taskStatus, "Recherche d’un créneau libre…");
       pending.add(entry.idea.id);
       button.disabled = true;
       try {
-        const availability = await loadCalendar(days[0], dayPlus(days.at(-1), 1));
-        const [day] = days.map((candidate) => [candidate, scoreDay(entry, candidate, availability)])
-          .sort((a, b) => a[1] - b[1])[0];
+        const ranges = days.map((day) => ({ day, ...slots.slot(entry.idea.parametres_creneau, day) }));
+        const first = E.swissDay(new Date(ranges[0].debut));
+        const end = dayPlus(E.swissDay(new Date(ranges.at(-1).fin)), 1);
+        const availability = checkedAvailability(await loadCalendar(first, end));
+        const best = entry.idea.meilleure_periode || [];
+        const free = ranges.filter((range) => !conflict(range, availability, entry.idea.id));
+        const choice = free.find(({ day }) => best.includes(Number(day.slice(5, 7)))) || free[0];
+        if (!choice) throw new E.UserError("Aucun créneau libre sur cette période, trajets compris.");
+        const { day } = choice;
+        E.message(taskStatus, "Créneau trouvé le " + E.date(day) + ". Voir le calendrier.");
         drafts.set(entry.idea.id, { entry, day, busy: false });
         active = entry.idea.id;
         saveDrafts();
-        const conflict = occupied(day, availability).length ||
-          availability.events.some((event) => event.statut === "prevue" && event.date_cible === day);
-        E.message(draftStatus, "Date proposée pour « " + entry.idea.titre + " » le " + E.date(day) +
-          (conflict ? ". Ce jour comporte déjà une sortie ou une plage occupée." : "."));
+        E.message(draftStatus, "Date proposée pour « " + entry.idea.titre + " » le " + E.date(day) + ".");
         await openDay(day);
+      } catch (error) {
+        E.message(taskStatus, error instanceof E.UserError ? error.message : "Impossible de proposer une date.", true);
       } finally {
         pending.delete(entry.idea.id);
-        renderTasks();
+        renderTasks(false);
         renderDrafts();
       }
     }
 
-    function renderTasks() {
+    function renderTasks(resetStatus = true) {
       const range = suggestionWindow(today, period);
-      const candidates = entries.filter((entry) => suggestedDays(entry, range, today).length);
+      const candidates = entries.filter((entry) => suggestedDays(entry, range, today, 1).length);
       tasks.replaceChildren(...candidates.map((entry) => {
         const { idea, season } = entry;
         const item = el("li", null, "planning-card");
@@ -184,7 +203,9 @@
         const description = idea.accroche || idea.description?.split("\n").find((line) => line.trim()) || idea.ville;
         if (description) info.append(el("p", description.replace(/^Idée\s*:\s*/i, "").slice(0, 130)));
         if (season) info.append(el("p", E.seasonLabel(season), "eyebrow"));
-        if (ctx.editor) {
+        if (ctx.editor && !idea.parametres_creneau) {
+          info.append(E.link("Compléter le créneau", E.url("editer.html", { ...scope, id: idea.id })));
+        } else if (ctx.editor) {
           const selected = drafts.has(idea.id);
           const button = el("button", selected ? "Voir le provisoire" : "Sélectionner");
           button.type = "button";
@@ -200,7 +221,7 @@
         item.append(E.visual(thumbnails.get(idea.image_path) || idea.image_path), info);
         return item;
       }));
-      E.message(taskStatus, candidates.length ? "" : "Aucune activité à proposer pour cette période.");
+      if (resetStatus) E.message(taskStatus, candidates.length ? "" : "Aucune activité à proposer pour cette période.");
     }
 
     function renderDrafts() {
@@ -221,8 +242,8 @@
         date.value = draft.day;
         date.min = today;
         date.disabled = draft.busy;
-        date.addEventListener("change", () => {
-          if (!moveDraft(id, date.value)) date.value = draft.day;
+        date.addEventListener("change", async () => {
+          if (!await moveDraft(id, date.value)) date.value = draft.day;
         });
         label.append(date);
         const actions = el("div", null, "actions");
@@ -241,24 +262,36 @@
           button.addEventListener("click", action);
           actions.append(button);
         }
-        row.append(name, label, actions);
+        row.append(name, el("small", slots.describe(slots.slot(draft.entry.idea.parametres_creneau, draft.day))), label, actions);
         return row;
       }));
     }
 
-    function moveDraft(id, day) {
+    async function moveDraft(id, day) {
       const draft = drafts.get(id);
       if (!draft || draft.busy) return false;
       if (!/^\d{4}-\d\d-\d\d$/.test(day) || !eligible(draft.entry, day, today)) {
-        E.message(draftStatus, "Choisis une date future dans la période de l’activité.", true);
+        E.message(draftStatus, "Choisis un jour autorisé et un créneau à venir dans la période de l’activité.", true);
         return false;
       }
-      draft.day = day;
-      active = id;
-      saveDrafts();
-      E.message(draftStatus, "Provisoire déplacé au " + E.date(day) + ".");
-      openDay(day);
-      return true;
+      draft.busy = true;
+      renderDrafts();
+      try {
+        await check(draft.entry, day);
+        draft.day = day;
+        active = id;
+        saveDrafts();
+        E.message(draftStatus, "Provisoire déplacé au " + E.date(day) + ".");
+        await openDay(day);
+        return true;
+      } catch (error) {
+        E.message(draftStatus, error instanceof E.UserError ? error.message : "Impossible de vérifier ce créneau.", true);
+        return false;
+      } finally {
+        draft.busy = false;
+        renderDrafts();
+        renderDays();
+      }
     }
 
     async function confirm(id) {
@@ -271,6 +304,8 @@
         const found = await data(sb.from("sorties_occurrences").select("id")
           .eq("idee_id", id).eq("date_cible", draft.day).eq("statut", "prevue").limit(1));
         if (!found.length) {
+          if (!eligible(draft.entry, draft.day, today)) throw new E.UserError("Ce créneau doit être à venir.");
+          await check(draft.entry, draft.day);
           await data(sb.from("sorties_occurrences").insert({ idee_id: id, date_cible: draft.day }));
         }
         await E.mustUpdate(sb.from("sorties_idees").update({ statut: "planifiee" }).eq("id", id).eq("espace_id", scope.espace));
@@ -280,8 +315,10 @@
         if (active === id) active = drafts.keys().next().value ?? null;
         E.message(draftStatus, "« " + draft.entry.idea.titre + " » planifiée le " + E.date(draft.day) + ".");
         await openDay(draft.day, true);
-      } catch {
-        E.message(draftStatus, "La confirmation n’a pas pu se terminer. Réessaie avec cette date.", true);
+      } catch (error) {
+        const message = error.code === "23P01" ? "Une autre sortie occupe déjà ce créneau."
+          : "La confirmation n’a pas pu se terminer. Réessaie avec cette date.";
+        E.message(draftStatus, error instanceof E.UserError ? error.message : message, true);
       } finally {
         draft.busy = false;
         renderTasks();
@@ -291,6 +328,8 @@
     }
 
     function renderDays() {
+      const selection = drafts.get(active);
+      window.EurekaWeather(selection?.entry.idea, selection?.day);
       const { first, end } = windowFor(anchor, view.value);
       const output = document.createDocumentFragment();
       for (let groupStart = first; groupStart < end; groupStart = view.value === "week" ? end : monthPlus(groupStart, 1)) {
@@ -311,10 +350,12 @@
           const list = el("ul", null, "list agenda-items");
           for (const event of calendar.events) {
             const date = event.statut === "faite" ? event.date_realisee || event.date_cible : event.date_cible;
-            if (date !== day || !event.sorties_idees) continue;
+            const visible = event.statut === "prevue" ? slots.overlap(slots.eventSlot(event), slots.bounds(day)) : date === day;
+            if (!visible || !event.sorties_idees) continue;
             const li = el("li");
             li.append(E.link(event.sorties_idees.titre, E.url("fiche.html", { ...scope, id: event.idee_id })));
             if (event.statut === "faite") li.append(el("small", "Réalisée"));
+            else if (event.debut_planifie) li.append(el("small", busyTimes(slots.eventSlot(event), midnight(day), midnight(dayPlus(day, 1)))));
             list.append(li);
           }
           for (const entry of occupied(day, calendar)) {
@@ -323,7 +364,8 @@
             list.append(li);
           }
           for (const [id, draft] of drafts) {
-            if (draft.day !== day) continue;
+            const range = slots.slot(draft.entry.idea.parametres_creneau, draft.day);
+            if (!slots.overlap(range, slots.bounds(day))) continue;
             const li = el("li", null, "agenda-provisional");
             const item = el("button", draft.entry.idea.titre);
             item.type = "button";
@@ -332,7 +374,7 @@
             item.setAttribute("aria-pressed", String(active === id));
             item.addEventListener("click", () => { active = id; renderDrafts(); renderDays(); });
             item.addEventListener("dragstart", (event) => event.dataTransfer.setData("application/x-eureka-draft", id));
-            li.append(item, el("small", "Provisoire"));
+            li.append(item, el("small", "Provisoire · " + busyTimes(range, midnight(day), midnight(dayPlus(day, 1)))));
             list.append(li);
           }
           block.addEventListener("dragover", (event) => {
@@ -379,8 +421,8 @@
 
     async function loadTasks() {
       const [annual, ideas, scores] = await Promise.all([
-        E.annualPlanningTasks(scope.espace).catch(() => []),
-        pages(() => sb.from("sorties_idees").select("id,titre,accroche,description,ville,image_path,meilleure_periode,statut,urgence,date_debut,date_fin,date_limite_reservation,sorties_occurrences(statut)")
+        E.annualPlanningTasks(scope.espace, true).catch(() => []),
+        pages(() => sb.from("sorties_idees").select("id,titre,accroche,description,ville,image_path,meilleure_periode,statut,urgence,date_debut,date_fin,date_limite_reservation,parametres_creneau,lat,lng,sorties_occurrences(statut)")
           .eq("espace_id", scope.espace).is("fusionnee_dans", null).in("statut", ["envie", "preselection"]).order("id")),
         pages(() => sb.from("sorties_scores_couple").select("idee_id,score").eq("espace_id", scope.espace).order("idee_id"))
       ]);

@@ -38,3 +38,11 @@ Dans la fiche à modifier, choisir **Récurrence → Chaque année**, puis les p
 L’accueil liste les saisons à planifier. Une occurrence prévue dans la période, ou une occurrence réalisée pendant celle-ci, satisfait la tâche annuelle. Les occurrences annulées restent dans l’historique et ne satisfont pas la tâche. L’année suivante, la fiche retrouve une nouvelle période à planifier. Cet affichage fonctionne dans l’application et n’ajoute aucun envoi de notification.
 
 Pour mettre en service, appliquer [`supabase/eureka-etape-6.sql`](../../supabase/eureka-etape-6.sql) avant la publication du site. La migration ajoute deux mois à la fiche et laisse les politiques RLS en place. Aucun redéploiement de fonction n’est nécessaire pour la récurrence annuelle.
+
+## Créneaux de planification et météo
+
+- Les fiches existantes et les brouillons d’import restent consultables. Il faut confirmer la durée d’activité, les deux durées de trajet depuis et vers Nyon, l’heure de début et les jours possibles avant de programmer une nouvelle occurrence. Pour un week-end, le samedi sert de date de référence, avec départ le vendredi soir facultatif et retour possible jusqu’au vendredi suivant.
+- Le créneau couvre toute l’absence. Les anciennes occurrences prévues sans horaires bloquent leur journée entière. L’agenda vérifie aussi les plages iCloud que le compte connecté a choisi de rendre disponibles. Les créneaux de rappel automatiques ne changent pas.
+- La météo utilise les coordonnées de la fiche et le modèle Open-Meteo. Les sept dates sont centrées sur le jour de l’activité. Au-delà de l’horizon du modèle, la date s’affiche avec son état d’indisponibilité.
+- Déploiement par le propriétaire. Appliquer `supabase/eureka-etape-7.sql`, redéployer l’Edge Function `sorties-enrich`, puis publier la branche. Les règles RLS existantes sont conservées.
+- Sources météo possibles. [Open-Meteo](https://open-meteo.com/en/docs) propose une API simple pour les sorties suisses et transfrontalières. [MétéoSuisse Open Data](https://www.meteosuisse.admin.ch/services-et-publications/service/open-data.html) publie les modèles de référence suisses et demande une intégration plus poussée. [meteoblue](https://docs.meteoblue.com/) propose des API avec clé, notamment pour les usages en montagne.

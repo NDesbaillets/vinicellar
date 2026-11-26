@@ -138,6 +138,7 @@
     for (const [key, label] of [["site_reservation", "de réservation"], ["source_url", "de la source"]]) {
       if (result[key] && !E.safeUrl(result[key])) throw new E.UserError("Utilisez une URL HTTPS " + label + ".");
     }
+    result.parametres_creneau = window.EurekaSlots.read(values);
     return result;
   }
 
@@ -151,7 +152,7 @@
     $("#cancel").href = back;
     $("#idea-fields").append(...fields.map((definition) => field(definition, idea[definition[0]])),
       period(idea.meilleure_periode || []));
-    form.elements.statut.closest("label").after(recurrenceFields(idea));
+    form.elements.statut.closest("label").after(recurrenceFields(idea), window.EurekaSlots.fields(idea));
     const description = form.elements.description;
     description.closest("label").after(descriptionPreview(description, idea.a_verifier));
     E.bind(form, $("#form-status"), async (values) => {
