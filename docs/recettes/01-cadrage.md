@@ -94,3 +94,10 @@ Chaque phase est utilisable avant de commencer la suivante, sur `/recettes/` non
 - **Rangement** : « Séparées et réunies dans un menu » (par défaut) ou « Séparées ». (Une fiche unique à sections n'est pas retenue.)
 - **Menu** : titre, note, recettes ordonnées par rubrique. Ajout aux courses de tout le menu, menu posé sur une case du planning, création d'une réception à partir du menu. Corbeille comme les recettes. Un menu peut aussi se composer à la main.
 - Quota : l'analyse compte pour un import, chaque recette importée aussi (50 par 24 h).
+
+## 12. « Ce soir », suggestions de plats, composer un menu (ajouté le 26.11.2026)
+
+- Bouton **« Qu'est-ce qu'on mange ce soir ? »** en tête du carnet et de la semaine : montre ce qui est prévu ce soir, sinon 3 idées de plats ; un toucher les inscrit au planning du soir.
+- **Suggestions** (Saisons, Remplir ma semaine, suggestions du jour, Ce soir) : des plats seulement, plus de desserts ni d'accompagnements.
+- **Une recette peut servir à plusieurs moments** : type principal + « peut aussi être servi en » (une salade : entrée et plat). Filtres, suggestions et compositeur en tiennent compte ; l'import le propose.
+- **Composer un menu** : rangs Entrée, Plat, Dessert (et facultativement apéritif, accompagnement, fromage) ; pour chaque rang, choisir dans le carnet ou demander 3 suggestions ; enregistrer comme menu, éventuellement directement sur une case du planning.
