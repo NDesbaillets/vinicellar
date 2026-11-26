@@ -19,33 +19,40 @@
   <main id="main" class="planning">
     <p id="state" role="status">Chargement…</p>
   <header class="masthead"><h1>Planification</h1></header>
-  <div id="planning-content" hidden>
-    <div class="planning-shortcuts actions">
-      <a class="button" href="#planning-tasks-section">À planifier</a>
-      <a class="button" href="#planning-suggestions-section">Suggestions</a>
-    </div>
-    <section class="planning-agenda">
-      <h2>Agenda</h2>
-      <div class="agenda-controls">
-        <button id="previous-day" type="button" aria-label="Reculer d’un jour">←</button>
-        <button id="today" type="button">Aujourd’hui</button>
-        <button id="next-day" type="button" aria-label="Avancer d’un jour">→</button>
-        <label class="agenda-date">Début de la période <input id="agenda-date" type="date"></label>
+  <div id="planning-content" class="planning-layout" hidden>
+    <aside class="planning-inbox">
+      <h2>Activités à planifier</h2>
+      <div class="planning-horizons" role="group" aria-label="Période des suggestions">
+        <button type="button" data-period="weekend" aria-pressed="true">Ce week-end</button>
+        <button type="button" data-period="next" aria-pressed="false">Week-end prochain</button>
+        <button type="button" data-period="month" aria-pressed="false">Mois à venir</button>
+        <button type="button" data-period="later" aria-pressed="false">Plus tard</button>
       </div>
+      <p id="planning-tasks-status" role="status">Chargement…</p>
+      <ul id="planning-tasks" class="list"></ul>
+      <a class="button planning-calendar-link" href="#planning-calendar">Voir le calendrier</a>
+    </aside>
+    <section id="planning-calendar" class="planning-agenda">
+      <h2>Calendrier</h2>
+      <div class="agenda-controls">
+        <label class="agenda-view">Affichage
+          <select id="agenda-view"><option value="week">Semaine</option><option value="month">Mois</option><option value="quarter">3 mois</option></select>
+        </label>
+        <label class="agenda-date">Aller à la date <input id="agenda-date" type="date"></label>
+        <button id="previous-day" type="button" aria-label="Période précédente">←</button>
+        <button id="today" type="button">Aujourd’hui</button>
+        <button id="next-day" type="button" aria-label="Période suivante">→</button>
+      </div>
+      <section id="draft-panel" hidden>
+        <h2>Provisoires</h2>
+        <p id="draft-hint">Choisis une date ou glisse une activité sur le calendrier.</p>
+        <ul id="draft-list" class="rows list"></ul>
+      </section>
+      <p id="draft-status" role="status"></p>
       <p id="agenda-range" role="status"></p>
       <p id="agenda-status" role="status"></p>
       <div id="agenda-days"></div>
       <a id="planned-catalogue" class="button" href="/eureka/?statut=planifiee">Voir les fiches planifiées</a>
-    </section>
-    <section id="planning-tasks-section">
-      <h2>À planifier</h2>
-      <p id="planning-tasks-status" role="status">Chargement…</p>
-      <ul id="planning-tasks" class="rows list"></ul>
-    </section>
-    <section id="planning-suggestions-section">
-      <h2>Suggestions</h2>
-      <p id="planning-suggestions-status" role="status">Chargement…</p>
-      <ul id="planning-suggestions" class="rows list"></ul>
     </section>
   </div>
 </main>

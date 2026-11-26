@@ -28,7 +28,7 @@
 
   async function annualPlanningTasks(space) {
     const ideas = await pages(() => sb.from("sorties_idees")
-      .select("id,titre,saison_debut_mois,saison_fin_mois,sorties_occurrences(date_cible,date_realisee,statut)")
+      .select("id,titre,accroche,description,ville,image_path,meilleure_periode,saison_debut_mois,saison_fin_mois,sorties_occurrences(date_cible,date_realisee,statut)")
       .eq("espace_id", space).not("saison_debut_mois", "is", null)
       .neq("statut", "archivee").is("fusionnee_dans", null).order("id"));
     const tasks = ideas.flatMap((idea) => {

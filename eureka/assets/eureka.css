@@ -197,16 +197,53 @@ section h2 { margin-bottom: 12px; }
 #annual-tasks { margin: 0 0 24px; }
 #annual-task-list a { min-height: 44px; }
 #annual-state { margin-top: 4px; }
-.planning { max-width: 760px; }
-.planning-agenda { margin-top: 0; }
+.planning { max-width: 1380px; }
+.planning-layout { display: grid; gap: 24px; }
+.planning-inbox, .planning-agenda { min-width: 0; margin-top: 0; scroll-margin-top: 16px; }
+.planning-inbox h2 { margin: 0 0 12px; font: 600 15px var(--texte); }
+.planning-horizons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+.planning-horizons button { padding-inline: 8px; }
+.planning-horizons [aria-pressed="true"], .planning-draft [aria-pressed="true"], .agenda-provisional [aria-pressed="true"] {
+  border-color: var(--terre); color: var(--terre); background: var(--ivoire);
+}
+#planning-tasks { margin: 8px 0 12px; max-height: 520px; overflow-y: auto; }
+.planning-card { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--filet); }
+.planning-card .visual { width: 58px; height: 66px; }
+.planning-card a { font: 600 20px/1.05 var(--titre); overflow-wrap: anywhere; }
+.planning-card p { font-size: 13px; margin-bottom: 6px; overflow-wrap: anywhere; }
 .agenda-controls { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 8px; }
-.agenda-controls .agenda-date { grid-column: 1 / -1; margin-top: 4px; }
+.agenda-controls .agenda-view, .agenda-controls .agenda-date { grid-column: 1 / -1; }
 #agenda-range { margin: 14px 0 8px; font-weight: 600; }
-#agenda-status:not(:empty) { margin-bottom: 10px; }
-.agenda-day { border-block-start: 1px solid var(--filet); padding: 10px 0; }
-.agenda-day h3 { font-size: 25px; }
-.agenda-day ul { margin: 6px 0 0; }
-.agenda-day li { display: flex; flex-wrap: wrap; gap: 0 10px; align-items: center; overflow-wrap: anywhere; min-height: 44px; }
-.agenda-day li > a, #planning-tasks a, #planning-suggestions a { min-height: 44px; }
-.agenda-empty { color: var(--doux); }
-.planning-shortcuts { margin-bottom: 20px; }
+#agenda-status:not(:empty), #draft-status:not(:empty) { margin: 10px 0; }
+#draft-panel { padding: 10px; margin-top: 14px; background: var(--papier); border: 1px solid var(--filet); }
+#draft-panel h2, #draft-hint { margin-bottom: 8px; }
+.planning-draft { display: grid; gap: 6px; }
+.planning-draft > button { text-align: start; justify-content: start; }
+.agenda-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--filet); border: 1px solid var(--filet); margin-bottom: 14px; }
+.agenda-month-name { font-size: 27px; margin: 10px 0 6px; }
+.agenda-day, .agenda-pad { min-width: 0; padding: 5px; background: var(--papier); }
+.agenda-pad { background: var(--ivoire); }
+.agenda-day-date { width: 100%; padding: 5px; font-size: 12px; overflow-wrap: anywhere; }
+.agenda-day-date:disabled { border: 1px solid transparent; opacity: 1; cursor: default; }
+.agenda-day-date[aria-current="date"] { color: var(--terre); font-weight: 700; }
+.agenda-items { margin: 4px 0 0; }
+.agenda-items li { padding: 4px; border-top: 1px solid var(--filet); overflow-wrap: anywhere; }
+.agenda-items small { display: block; font-size: 11px; color: var(--doux); }
+.agenda-provisional { background: var(--ivoire); }
+.agenda-provisional button { width: 100%; padding: 4px; overflow-wrap: anywhere; font-size: 13px; }
+.agenda-provisional button[draggable="true"] { cursor: grab; }
+@media (min-width: 960px) {
+  .planning-layout { grid-template-columns: minmax(238px, 310px) minmax(0, 1fr); }
+  .planning-inbox { position: sticky; top: 12px; align-self: start; }
+  .planning-calendar-link { display: none; }
+  .agenda-controls { grid-template-columns: 1fr 1.4fr auto auto auto; align-items: end; }
+  .agenda-controls .agenda-view, .agenda-controls .agenda-date { grid-column: auto; }
+  .planning-draft { grid-template-columns: 1fr 1fr auto; align-items: end; }
+}
+@media (max-width: 720px) {
+  .agenda-grid { grid-template-columns: 1fr; }
+  .agenda-pad { display: none; }
+  .agenda-day { padding: 4px 7px; }
+  .agenda-day-date { justify-content: start; text-align: start; font-size: 14px; }
+  .agenda-items:empty { display: none; }
+}
