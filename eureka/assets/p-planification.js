@@ -58,7 +58,7 @@
     const start = season?.start || idea.date_debut;
     const end = season?.end || idea.date_fin || idea.date_debut;
     if (day < today || (start && day < start) || (end && day > end)) return false;
-    return !idea.parametres_creneau || slots.slot(idea.parametres_creneau, day)?.debut > Date.now();
+    return !idea.parametres_creneau || slots.canPlan(idea.parametres_creneau, day);
   }
 
   function suggestedDays(entry, range, today, limit = Infinity) {
@@ -96,7 +96,7 @@
 
     function saveDrafts() {
       try {
-        sessionStorage.setItem(draftKey, JSON.stringify([...drafts].map(([id, draft]) => [id, draft.day])));
+        sessionStorage.setItem(draftKey, JSON.stringify([...drafts].map(([id, draft]) => [id, draft.day, draft.range.heure])));
       } catch { /* Les provisoires restent disponibles tant que la page est ouverte. */ }
     }
 
@@ -104,10 +104,11 @@
       if (!ctx.editor) return;
       try {
         const stored = JSON.parse(sessionStorage.getItem(draftKey) || "[]");
-        for (const [id, day] of stored) {
+        for (const [id, day, hour] of stored) {
           const entry = entries.find(({ idea }) => idea.id === id);
           if (entry?.idea.parametres_creneau && /^\d{4}-\d\d-\d\d$/.test(day) && eligible(entry, day, today)) {
-            drafts.set(id, { entry, day, busy: false });
+            const range = slots.candidates(entry.idea.parametres_creneau, day).find((candidate) => candidate.heure === (hour ?? null));
+            if (range) drafts.set(id, { entry, day, range, busy: false });
           }
         }
       } catch { /* Un stockage indisponible ne bloque pas le calendrier. */ }
@@ -145,7 +146,7 @@
       return availability.busy.some((item) => slots.overlap(item, range))
         || availability.events.some((event) => event.statut === "prevue" && event.idee_id !== id
           && slots.overlap(slots.eventSlot(event), range))
-        || [...drafts].some(([other, draft]) => other !== id && slots.overlap(slots.slot(draft.entry.idea.parametres_creneau, draft.day), range));
+        || [...drafts].some(([other, draft]) => other !== id && slots.overlap(draft.range, range));
     }
 
     function checkedAvailability(availability) {
@@ -153,11 +154,10 @@
       return availability;
     }
 
-    async function check(entry, day) {
-      const range = slots.slot(entry.idea.parametres_creneau, day);
-      const availability = checkedAvailability(await loadCalendar(E.swissDay(new Date(range.debut)),
-        dayPlus(E.swissDay(new Date(range.fin)), 1)));
-      if (conflict(range, availability, entry.idea.id)) throw new E.UserError("Ce créneau est déjà occupé, trajets compris.");
+    async function availabilityFor(ranges) {
+      const first = E.swissDay(new Date(ranges[0].debut));
+      const end = dayPlus(E.swissDay(new Date(ranges.at(-1).fin)), 1);
+      return checkedAvailability(await loadCalendar(first, end));
     }
 
     async function select(entry, button) {
@@ -168,17 +168,16 @@
       pending.add(entry.idea.id);
       button.disabled = true;
       try {
-        const ranges = days.map((day) => ({ day, ...slots.slot(entry.idea.parametres_creneau, day) }));
-        const first = E.swissDay(new Date(ranges[0].debut));
-        const end = dayPlus(E.swissDay(new Date(ranges.at(-1).fin)), 1);
-        const availability = checkedAvailability(await loadCalendar(first, end));
+        const ranges = days.flatMap((day) => slots.candidates(entry.idea.parametres_creneau, day));
+        if (!ranges.length) throw new E.UserError("Aucun créneau à venir.");
+        const availability = await availabilityFor(ranges);
         const best = entry.idea.meilleure_periode || [];
         const free = ranges.filter((range) => !conflict(range, availability, entry.idea.id));
         const choice = free.find(({ day }) => best.includes(Number(day.slice(5, 7)))) || free[0];
         if (!choice) throw new E.UserError("Aucun créneau libre sur cette période, trajets compris.");
         const { day } = choice;
         E.message(taskStatus, "Créneau trouvé le " + E.date(day) + ". Voir le calendrier.");
-        drafts.set(entry.idea.id, { entry, day, busy: false });
+        drafts.set(entry.idea.id, { entry, day, range: choice, busy: false });
         active = entry.idea.id;
         saveDrafts();
         E.message(draftStatus, "Date proposée pour « " + entry.idea.titre + " » le " + E.date(day) + ".");
@@ -262,7 +261,7 @@
           button.addEventListener("click", action);
           actions.append(button);
         }
-        row.append(name, el("small", slots.describe(slots.slot(draft.entry.idea.parametres_creneau, draft.day))), label, actions);
+        row.append(name, el("small", slots.describe(draft.range)), label, actions);
         return row;
       }));
     }
@@ -277,7 +276,12 @@
       draft.busy = true;
       renderDrafts();
       try {
-        await check(draft.entry, day);
+        const ranges = slots.candidates(draft.entry.idea.parametres_creneau, day);
+        if (!ranges.length) throw new E.UserError("Aucun créneau à venir à cette date.");
+        const availability = await availabilityFor(ranges);
+        const free = ranges.find((range) => !conflict(range, availability, id));
+        if (!free) throw new E.UserError("Aucun créneau libre à cette date, trajets compris.");
+        draft.range = free;
         draft.day = day;
         active = id;
         saveDrafts();
@@ -304,9 +308,10 @@
         const found = await data(sb.from("sorties_occurrences").select("id")
           .eq("idee_id", id).eq("date_cible", draft.day).eq("statut", "prevue").limit(1));
         if (!found.length) {
-          if (!eligible(draft.entry, draft.day, today)) throw new E.UserError("Ce créneau doit être à venir.");
-          await check(draft.entry, draft.day);
-          await data(sb.from("sorties_occurrences").insert({ idee_id: id, date_cible: draft.day }));
+          if (draft.range.debut <= Date.now() || !eligible(draft.entry, draft.day, today)) throw new E.UserError("Ce créneau doit être à venir.");
+          const availability = await availabilityFor([draft.range]);
+          if (conflict(draft.range, availability, id)) throw new E.UserError("Ce créneau est déjà occupé, trajets compris.");
+          await data(sb.from("sorties_occurrences").insert(slots.occurrence(id, draft.range)));
         }
         await E.mustUpdate(sb.from("sorties_idees").update({ statut: "planifiee" }).eq("id", id).eq("espace_id", scope.espace));
         drafts.delete(id);
@@ -364,7 +369,7 @@
             list.append(li);
           }
           for (const [id, draft] of drafts) {
-            const range = slots.slot(draft.entry.idea.parametres_creneau, draft.day);
+            const range = draft.range;
             if (!slots.overlap(range, slots.bounds(day))) continue;
             const li = el("li", null, "agenda-provisional");
             const item = el("button", draft.entry.idea.titre);

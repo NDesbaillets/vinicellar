@@ -6,8 +6,7 @@
   const weekdays = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
   const minutes = 60_000;
   const activityPresets = [
-    { id: "matin", label: "Demi-journée le matin (8 h–12 h)", start: "08:00", duration: 240 },
-    { id: "apres-midi", label: "Demi-journée l’après-midi (13 h–17 h)", start: "13:00", duration: 240 },
+    { id: "flexible", label: "Demi-journée flexible (4 h)", start: "08:00", duration: 240 },
     { id: "journee", label: "Journée complète (9 h–17 h)", start: "09:00", duration: 480 }
   ];
   const dayPlus = (day, delta) => new Date(Date.parse(day + "T00:00Z") + delta * 86400_000).toISOString().slice(0, 10);
@@ -24,15 +23,59 @@
     return NaN;
   }
 
-  function slot(settings, day) {
+  function slot(settings, day, hour = settings?.heure_activite) {
     if (!/^\d{4}-\d\d-\d\d$/.test(day) || !settings?.jours?.includes(weekday(day)) || (settings.weekend && weekday(day) !== 6)) return null;
-    const start = local(day, settings.heure_activite);
+    const start = local(day, hour);
     const from = settings.weekend && settings.vendredi_soir
       ? local(dayPlus(day, -1), settings.heure_vendredi) : start - settings.aller_minutes * minutes;
     const activityEnd = start + settings.duree_minutes * minutes;
     const departure = settings.weekend ? local(dayPlus(day, settings.retour_decalage), settings.heure_retour) : activityEnd;
     if (!(from + settings.aller_minutes * minutes <= start && departure >= activityEnd)) return null;
     return { debut: from, fin: departure + settings.retour_minutes * minutes };
+  }
+
+  const flexibleHours = Array.from({ length: 17 }, (_, index) =>
+    String(8 + Math.floor(index / 2)).padStart(2, "0") + (index % 2 ? ":30" : ":00"));
+
+  function canPlan(settings, day) {
+    const last = settings?.demi_journee_flexible ? flexibleHours.at(-1) : settings?.heure_activite;
+    return slot(settings, day, last)?.debut > Date.now();
+  }
+
+  function candidates(settings, day) {
+    const flexible = settings?.demi_journee_flexible;
+    return (flexible ? flexibleHours : [settings?.heure_activite]).flatMap((hour) => {
+      const range = slot(settings, day, hour);
+      return range && range.debut > Date.now() ? [{ ...range, day, heure: flexible ? hour : null }] : [];
+    });
+  }
+
+  function occurrence(id, range) {
+    return { idee_id: id, date_cible: range.day, ...(range.heure ? { heure_activite_planifiee: range.heure } : {}) };
+  }
+
+  async function findForDate(space, settings, day) {
+    const ranges = candidates(settings, day);
+    if (!ranges.length) throw new E.UserError("Choisis un jour et un créneau à venir autorisés sur la fiche.");
+    const range = { debut: ranges[0].debut, fin: ranges.at(-1).fin };
+    if (!settings.demi_journee_flexible) {
+      if ((await busy(space, range)).length) throw new E.UserError("Le créneau chevauche une plage occupée dans ton agenda.");
+      return ranges[0];
+    }
+    const first = E.swissDay(new Date(range.debut));
+    const last = E.swissDay(new Date(range.fin));
+    const from = new Date(range.debut).toISOString(), to = new Date(range.fin).toISOString();
+    const [agenda, events] = await Promise.all([
+      busy(space, range),
+      pages(() => sb.from("sorties_occurrences").select("id,date_cible,debut_planifie,fin_planifie,sorties_idees!inner(espace_id)")
+        .eq("sorties_idees.espace_id", space).eq("statut", "prevue")
+        .or(`and(debut_planifie.lt.${to},fin_planifie.gt.${from}),and(debut_planifie.is.null,date_cible.gte.${first},date_cible.lte.${last})`)
+        .order("id"))
+    ]);
+    const occupied = [...agenda, ...events.map(eventSlot)];
+    const free = ranges.find((candidate) => !occupied.some((item) => overlap(item, candidate)));
+    if (!free) throw new E.UserError("Aucune demi-journée libre à cette date, trajets compris.");
+    return free;
   }
 
   function overlap(a, b) {
@@ -88,6 +131,7 @@
     }
     const presetLabel = el("label", "Plage de l’activité");
     const presetSelect = el("select");
+    presetSelect.name = "plage_activite";
     const custom = el("option", "Horaires personnalisés");
     custom.value = "";
     presetSelect.append(custom);
@@ -103,23 +147,34 @@
       input("heure_activite", "Heure de début de l’activité", "time"),
       input("aller_minutes", "Aller depuis Nyon (minutes)", "number", 0, 1440),
       input("retour_minutes", "Retour vers Nyon (minutes)", "number", 0, 1440));
+    function showTimes() {
+      const flexible = presetSelect.value === "flexible" && !presetSelect.disabled;
+      for (const name of ["heure_activite", "duree_minutes"]) {
+        controls[name].closest("label").hidden = flexible;
+      }
+      presetHelp.textContent = flexible
+        ? "L’agenda cherchera 4 heures libres entre 8 h et 20 h. Les trajets s’ajoutent à cette durée."
+        : "Les trajets sont ajoutés avant et après la plage choisie.";
+    }
     function matchPreset() {
-      const matching = activityPresets.find(({ start, duration }) =>
-        controls.heure_activite.value === start && Number(controls.duree_minutes.value) === duration);
+      const matching = activityPresets.find(({ id, start, duration }) =>
+        id !== "flexible" && controls.heure_activite.value === start && Number(controls.duree_minutes.value) === duration);
       presetSelect.value = matching?.id ?? "";
+      showTimes();
     }
     presetSelect.addEventListener("change", () => {
       const selected = activityPresets.find(({ id }) => id === presetSelect.value);
       if (selected) {
         controls.heure_activite.value = selected.start;
         controls.duree_minutes.value = selected.duration;
-      } else {
-        controls.heure_activite.focus();
       }
+      showTimes();
+      if (!selected) controls.heure_activite.focus();
     });
     controls.heure_activite.addEventListener("input", matchPreset);
     controls.duree_minutes.addEventListener("input", matchPreset);
     matchPreset();
+    if (value.demi_journee_flexible) presetSelect.value = "flexible";
     const days = el("fieldset");
     days.append(el("legend", "Jours possibles"));
     const choices = weekdays.map((day, index) => {
@@ -163,6 +218,7 @@
       presetLabel.hidden = multi;
       presetHelp.hidden = multi;
       presetSelect.disabled = multi;
+      showTimes();
       days.hidden = multi;
       for (const node of extra.querySelectorAll("input,select")) node.disabled = !multi;
       returnDay.required = multi;
@@ -189,6 +245,7 @@
       retour_minutes: Number(values.get("retour_minutes")), heure_activite: values.get("heure_activite"),
       jours: weekend ? [6] : values.getAll("jours_creneau").map(Number), weekend
     };
+    if (!weekend && values.get("plage_activite") === "flexible") result.demi_journee_flexible = true;
     if (!result.jours.length) throw new E.UserError("Choisis au moins un jour possible.");
     if (weekend) {
       result.vendredi_soir = values.has("vendredi_soir");
@@ -200,5 +257,5 @@
     return result;
   }
 
-  window.EurekaSlots = { slot, bounds, eventSlot, overlap, describe, busy, fields, read };
+  window.EurekaSlots = { slot, canPlan, candidates, occurrence, findForDate, bounds, eventSlot, overlap, describe, fields, read };
 })();

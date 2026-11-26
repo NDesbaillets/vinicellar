@@ -78,7 +78,7 @@
       const days = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
       row("Temps à prévoir", planning.duree_minutes + " min d’activité · " + planning.aller_minutes
         + " min depuis Nyon · " + planning.retour_minutes + " min de retour");
-      row("Jours possibles", planning.jours.map((day) => days[day - 1]).join(", ") + " à " + planning.heure_activite);
+      row("Jours possibles", planning.jours.map((day) => days[day - 1]).join(", ") + (planning.demi_journee_flexible ? " · demi-journée flexible" : " à " + planning.heure_activite));
       if (planning.weekend) row("Week-end", (planning.vendredi_soir ? "Départ de Nyon vendredi à "
         + planning.heure_vendredi + " · " : "") + "Départ du lieu " + days[(5 + planning.retour_decalage) % 7]
         + " à " + planning.heure_retour);
@@ -476,7 +476,8 @@
     function showPlannedRange() {
       const date = dateInput.value;
       const range = slots.slot(idea.parametres_creneau, date);
-      plannedRange.textContent = range ? slots.describe(range) : "";
+      plannedRange.textContent = range ? (idea.parametres_creneau.demi_journee_flexible
+        ? "Une demi-journée libre sera recherchée à cette date." : slots.describe(range)) : "";
     }
     dateInput.addEventListener("input", showPlannedRange);
     showPlannedRange();
@@ -488,10 +489,8 @@
         throw new E.UserError("Choisis une date dans la saison sélectionnée.");
       }
       if (savedDate !== date && !history.some((item) => item.date_cible === date && item.statut === "prevue")) {
-        const range = slots.slot(idea.parametres_creneau, date);
-        if (!range || range.debut <= Date.now()) throw new E.UserError("Choisis un jour et un créneau à venir autorisés sur la fiche.");
-        if ((await slots.busy(ctx.space.id, range)).length) throw new E.UserError("Le créneau chevauche une plage occupée dans ton agenda.");
-        await data(sb.from("sorties_occurrences").insert({ idee_id: id, date_cible: date })).catch((error) => {
+        const range = await slots.findForDate(ctx.space.id, idea.parametres_creneau, date);
+        await data(sb.from("sorties_occurrences").insert(slots.occurrence(id, range))).catch((error) => {
           if (error.code === "23P01") throw new E.UserError("Ce créneau chevauche une sortie déjà planifiée.");
           throw error;
         });
