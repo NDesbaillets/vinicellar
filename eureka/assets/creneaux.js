@@ -5,6 +5,11 @@
   const clock = new Intl.DateTimeFormat("fr-CH", { timeZone: zone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
   const weekdays = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
   const minutes = 60_000;
+  const activityPresets = [
+    { id: "matin", label: "Demi-journée le matin (8 h–12 h)", start: "08:00", duration: 240 },
+    { id: "apres-midi", label: "Demi-journée l’après-midi (13 h–17 h)", start: "13:00", duration: 240 },
+    { id: "journee", label: "Journée complète (9 h–17 h)", start: "09:00", duration: 480 }
+  ];
   const dayPlus = (day, delta) => new Date(Date.parse(day + "T00:00Z") + delta * 86400_000).toISOString().slice(0, 10);
   const weekday = (day) => new Date(day + "T00:00Z").getUTCDay() || 7;
 
@@ -81,10 +86,40 @@
       controls[name] = node;
       return label;
     }
-    box.append(input("duree_minutes", "Durée de l’activité (minutes)", "number", 1, 10080),
+    const presetLabel = el("label", "Plage de l’activité");
+    const presetSelect = el("select");
+    const custom = el("option", "Horaires personnalisés");
+    custom.value = "";
+    presetSelect.append(custom);
+    for (const preset of activityPresets) {
+      const option = el("option", preset.label);
+      option.value = preset.id;
+      presetSelect.append(option);
+    }
+    presetLabel.append(presetSelect);
+    const presetHelp = el("p", "Les trajets sont ajoutés avant et après la plage choisie.");
+    box.append(presetLabel, presetHelp,
+      input("duree_minutes", "Durée de l’activité (minutes)", "number", 1, 10080),
+      input("heure_activite", "Heure de début de l’activité", "time"),
       input("aller_minutes", "Aller depuis Nyon (minutes)", "number", 0, 1440),
-      input("retour_minutes", "Retour vers Nyon (minutes)", "number", 0, 1440),
-      input("heure_activite", "Heure de début de l’activité", "time"));
+      input("retour_minutes", "Retour vers Nyon (minutes)", "number", 0, 1440));
+    function matchPreset() {
+      const matching = activityPresets.find(({ start, duration }) =>
+        controls.heure_activite.value === start && Number(controls.duree_minutes.value) === duration);
+      presetSelect.value = matching?.id ?? "";
+    }
+    presetSelect.addEventListener("change", () => {
+      const selected = activityPresets.find(({ id }) => id === presetSelect.value);
+      if (selected) {
+        controls.heure_activite.value = selected.start;
+        controls.duree_minutes.value = selected.duration;
+      } else {
+        controls.heure_activite.focus();
+      }
+    });
+    controls.heure_activite.addEventListener("input", matchPreset);
+    controls.duree_minutes.addEventListener("input", matchPreset);
+    matchPreset();
     const days = el("fieldset");
     days.append(el("legend", "Jours possibles"));
     const choices = weekdays.map((day, index) => {
@@ -125,6 +160,9 @@
     function toggle() {
       const multi = controls.weekend.checked;
       extra.hidden = !multi;
+      presetLabel.hidden = multi;
+      presetHelp.hidden = multi;
+      presetSelect.disabled = multi;
       days.hidden = multi;
       for (const node of extra.querySelectorAll("input,select")) node.disabled = !multi;
       returnDay.required = multi;
