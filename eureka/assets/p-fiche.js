@@ -25,30 +25,95 @@
     $("#details").append(line);
   }
 
-  function position(lat, lng) {
-    return lat != null && lng != null
-      ? external("Ouvrir dans OpenStreetMap", "https://www.openstreetmap.org/?mlat=" + lat + "&mlon=" + lng + "#map=14/" + lat + "/" + lng)
-      : null;
+  function coordinates(lat, lng) {
+    return lat != null && lng != null && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))
+      && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
   }
 
   function map(idea) {
-    const lat = Number(idea.lat);
-    const lng = Number(idea.lng);
-    if (idea.lat == null || idea.lng == null) return;
     const host = $("#map");
-    const button = el("button", "Afficher la carte");
-    button.type = "button";
-    host.append(button);
-    button.addEventListener("click", () => {
+    host.replaceChildren();
+    const place = [idea.adresse, idea.ville].map((part) => part?.trim()).filter(Boolean).join(", ");
+    const storedPoint = coordinates(idea.lat, idea.lng);
+    host.hidden = !storedPoint && !place;
+    if (host.hidden) return;
+
+    const panel = el("div", null, "place-map");
+    const header = el("div", null, "place-map-header");
+    header.append(el("h3", "Le lieu"));
+    if (place) header.append(el("p", place));
+    const view = el("div", null, "place-map-view");
+    const footer = el("div", null, "place-map-footer");
+    const search = new URL("https://www.openstreetmap.org/search");
+    search.searchParams.set("query", place);
+    const link = external("Ouvrir dans OpenStreetMap", search.href);
+    footer.append(link);
+    panel.append(header, view, footer);
+    host.append(panel);
+
+    function showMap(lat, lng, approximate = false) {
       const source = new URL("https://www.openstreetmap.org/export/embed.html");
-      const bbox = [Math.max(-180, lng - 0.02), Math.max(-90, lat - 0.01),
-        Math.min(180, lng + 0.02), Math.min(90, lat + 0.01)];
+      const lonSpan = approximate ? 0.04 : 0.012;
+      const latSpan = approximate ? 0.025 : 0.008;
+      const bbox = [Math.max(-180, lng - lonSpan), Math.max(-90, lat - latSpan),
+        Math.min(180, lng + lonSpan), Math.min(90, lat + latSpan)];
       source.search = new URLSearchParams({ bbox: bbox.join(","), marker: lat + "," + lng, layer: "mapnik" });
       const frame = el("iframe", null, "map-frame");
-      frame.title = "Carte du lieu de la sortie";
+      frame.title = "Carte interactive · " + (place || idea.titre);
+      frame.loading = "lazy";
       frame.referrerPolicy = "no-referrer";
       frame.src = source.href;
-      host.replaceChildren(frame);
+      link.href = "https://www.openstreetmap.org/?mlat=" + lat + "&mlon=" + lng
+        + "#map=" + (approximate ? 13 : 15) + "/" + lat + "/" + lng;
+      view.replaceChildren(frame);
+    }
+
+    if (storedPoint) {
+      showMap(Number(idea.lat), Number(idea.lng));
+      return;
+    }
+
+    const locate = el("button", "Afficher la carte");
+    locate.type = "button";
+    const feedback = el("p");
+    feedback.setAttribute("role", "status");
+    view.append(locate, feedback);
+    locate.addEventListener("click", async () => {
+      locate.disabled = true;
+      E.message(feedback, "Recherche du lieu…");
+      try {
+        const query = new URL("https://photon.komoot.io/api/");
+        query.search = new URLSearchParams({ q: place, limit: "4", lang: "fr" });
+        const response = await fetch(query, { signal: AbortSignal.timeout(7000), referrerPolicy: "no-referrer" });
+        if (!response.ok) throw new Error();
+        const result = await response.json();
+        const matches = (Array.isArray(result.features) ? result.features : []).flatMap((feature) => {
+          const [lng, lat] = feature.geometry?.coordinates ?? [];
+          const { name, street, housenumber, postcode, city, state, country } = feature.properties || {};
+          const text = [...new Set([name, [street, housenumber].filter(Boolean).join(" "),
+            [postcode, city].filter(Boolean).join(" "), state, country].filter(Boolean))].join(", ");
+          return feature.geometry?.type === "Point" && coordinates(lat, lng) && text ? [{ lat, lng, text }] : [];
+        });
+        if (!matches.length) {
+          E.message(feedback, "Lieu introuvable. Essaie le lien OpenStreetMap.");
+          return;
+        }
+        const options = el("div", null, "actions");
+        for (const match of matches) {
+          const pick = el("button", match.text);
+          pick.type = "button";
+          pick.addEventListener("click", () => {
+            header.append(el("p", "Emplacement indicatif · " + match.text, "place-map-match"));
+            showMap(match.lat, match.lng, true);
+          });
+          options.append(pick);
+        }
+        view.replaceChildren(el("p", "Choisis le lieu correspondant à la fiche."), options);
+      } catch {
+        E.message(feedback, "Carte indisponible pour le moment. Le lien OpenStreetMap reste accessible.");
+      } finally {
+        locate.disabled = false;
+      }
     });
   }
 
@@ -57,7 +122,6 @@
     const contact = idea.telephone?.replace(/[^\d+]/g, "");
     row("Statut", E.statuts[idea.statut]);
     row("Adresse", [idea.adresse, idea.ville].filter(Boolean).join(", "));
-    row("Carte", position(idea.lat, idea.lng));
     row("Réservation", external("Site de réservation", idea.site_reservation));
     row("Téléphone", contact && /^\+?\d+$/.test(contact) ? E.link(idea.telephone, "tel:" + contact) : idea.telephone);
     const minimum = idea.budget_min == null ? null : E.currency.format(idea.budget_min);
@@ -215,7 +279,6 @@
       $("#description-section").hidden = !idea.description;
       document.title = idea.titre + " · Eurêka";
       details(idea);
-      $("#map").replaceChildren();
       map(idea);
     }
     await showIdea();
