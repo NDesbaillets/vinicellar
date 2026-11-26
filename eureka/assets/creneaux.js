@@ -123,7 +123,7 @@
       const node = el("input");
       node.name = name;
       node.type = type;
-      if (type === "checkbox") node.checked = value[name] ?? (name === "weekend" && idea.format === "week_end");
+      if (type === "checkbox") node.checked = value[name] ?? false;
       else {
         node.value = value[name] ?? "";
         node.required = true;
@@ -146,6 +146,9 @@
       option.value = preset.id;
       presetSelect.append(option);
     }
+    const weekendOption = el("option", "Week-end ou week-end prolongé");
+    weekendOption.value = "weekend";
+    presetSelect.append(weekendOption);
     presetLabel.append(presetSelect);
     const presetHelp = el("p", "Les trajets sont ajoutés avant et après la plage choisie.");
     const times = el("div", null, "slot-pair");
@@ -158,13 +161,14 @@
     transport.append(el("legend", "Trajets depuis et vers Nyon"), trips);
     box.append(presetLabel, presetHelp, times, transport);
     function showTimes() {
-      const flexible = presetSelect.value === "flexible" && !presetSelect.disabled;
+      const flexible = presetSelect.value === "flexible";
       times.hidden = flexible;
       presetHelp.textContent = flexible
         ? "L’agenda cherchera 4 heures libres entre 8 h et 20 h. Les trajets s’ajoutent à cette durée."
         : "Les trajets sont ajoutés avant et après la plage choisie.";
     }
     function matchPreset() {
+      if (presetSelect.value === "weekend") return;
       const matching = activityPresets.find(({ id, start, duration }) =>
         id !== "flexible" && controls.heure_activite.value === start && Number(controls.duree_minutes.value) === duration);
       presetSelect.value = matching?.id ?? "";
@@ -176,13 +180,13 @@
         controls.heure_activite.value = selected.start;
         controls.duree_minutes.value = selected.duration;
       }
-      showTimes();
-      if (!selected) controls.heure_activite.focus();
+      toggle();
     });
     controls.heure_activite.addEventListener("input", matchPreset);
     controls.duree_minutes.addEventListener("input", matchPreset);
     matchPreset();
-    if (value.demi_journee_flexible) presetSelect.value = "flexible";
+    if (value.weekend ?? idea.format === "week_end") presetSelect.value = "weekend";
+    else if (value.demi_journee_flexible) presetSelect.value = "flexible";
     const days = el("fieldset", null, "slot-days");
     const dayChoices = el("div", null, "slot-day-choices");
     days.append(el("legend", "Jours possibles"));
@@ -218,15 +222,11 @@
     extra.append(el("p", "La date choisie dans le calendrier correspond au samedi."),
       input("vendredi_soir", "Départ le vendredi soir", "checkbox"), friday, returnLabel,
       input("heure_retour", "Heure de départ pour le retour", "time"));
-    const weekend = input("weekend", "Week-end ou week-end prolongé", "checkbox");
-    box.insertBefore(weekend, presetLabel);
     box.append(days, extra);
     function toggle() {
-      const multi = controls.weekend.checked;
+      const multi = presetSelect.value === "weekend";
       extra.hidden = !multi;
-      presetLabel.hidden = multi;
       presetHelp.hidden = multi;
-      presetSelect.disabled = multi;
       showTimes();
       days.hidden = multi;
       for (const node of extra.querySelectorAll("input,select")) node.disabled = !multi;
@@ -234,7 +234,7 @@
       friday.hidden = !controls.vendredi_soir.checked;
       controls.heure_vendredi.disabled = !multi || friday.hidden;
     }
-    controls.weekend.onchange = controls.vendredi_soir.onchange = toggle;
+    controls.vendredi_soir.onchange = toggle;
     toggle();
     if (proposed) {
       const confirm = el("input");
@@ -246,7 +246,7 @@
   }
 
   function read(values) {
-    const weekend = values.has("weekend");
+    const weekend = values.get("plage_activite") === "weekend";
     const result = {
       duree_minutes: Number(values.get("duree_minutes")), aller_minutes: Number(values.get("aller_minutes")),
       retour_minutes: Number(values.get("retour_minutes")), heure_activite: values.get("heure_activite"),
