@@ -151,12 +151,15 @@
     $("#cancel").href = back;
     $("#idea-fields").append(...fields.map((definition) => field(definition, idea[definition[0]])),
       period(idea.meilleure_periode || []));
-    form.elements.titre.closest("label").after(window.EurekaSlots.fields(idea));
+    const slots = window.EurekaSlots;
+    let slotIdea = idea;
+    let slotFields = slots.fields(idea);
+    form.elements.titre.closest("label").after(slotFields);
     form.elements.statut.closest("label").after(recurrenceFields(idea));
     const description = form.elements.description;
     description.closest("label").after(descriptionPreview(description, idea.a_verifier));
     E.bind(form, $("#form-status"), async (values) => {
-      const body = payload(values, idea);
+      const body = payload(values, slotIdea);
       const table = sb.from("sorties_idees");
       const request = id
         ? table.update(body).eq("id", id).eq("espace_id", ctx.space.id)
@@ -175,6 +178,75 @@
       return "Idée enregistrée.";
     });
     form.hidden = false;
+    if (id) {
+      const button = $("#completer-ia");
+      const status = $("#completer-ia-status");
+      button.hidden = false;
+      button.addEventListener("click", async () => {
+        if (button.disabled) return;
+        button.disabled = true;
+        E.message(status, "Claude prépare des propositions…");
+        try {
+          const { proposition } = await data(sb.functions.invoke("sorties-enrich", {
+            body: { action: "completer_fiche", id, espace: ctx.space.id }
+          }));
+          if (!proposition) throw new E.UserError("Claude n’a renvoyé aucune proposition.");
+          let changed = false;
+          for (const name of ["accroche", "description", "categorie", "format", "adresse", "ville", "site_reservation",
+            "telephone", "budget_min", "budget_max", "date_debut", "date_fin", "date_limite_reservation", "preavis_semaines"]) {
+            const control = form.elements[name];
+            if (control.value.trim() || proposition[name] == null) continue;
+            control.value = proposition[name];
+            if (control.value) {
+              changed = true;
+              control.dispatchEvent(new Event("input", { bubbles: true }));
+            }
+          }
+          if (!idea.parametres_creneau && proposition.proposition_creneau) {
+            const current = slots.formValues(new FormData(form));
+            const suggestion = proposition.proposition_creneau;
+            const draft = { ...current };
+            const mode = form.elements.plage_activite.value;
+            let filledSlot = false;
+            if (suggestion.weekend === true && !mode && !idea.brouillon_creneau
+                && !current.jours.length && current.heure_activite == null && current.duree_minutes == null) {
+              draft.weekend = true;
+              draft.jours = [6];
+              draft.vendredi_soir = suggestion.vendredi_soir === true;
+              filledSlot = true;
+            }
+            for (const [name, value] of Object.entries(suggestion)) {
+              if (value == null || !(draft[name] == null || (name === "jours" && !draft.jours.length))) continue;
+              if (!draft.weekend && ["vendredi_soir", "heure_vendredi", "heure_retour", "retour_decalage"].includes(name)) continue;
+              if (name === "heure_vendredi" && !draft.vendredi_soir) continue;
+              draft[name] = value;
+              filledSlot = true;
+            }
+            if (filledSlot) {
+              // La valeur stockée sur la fiche reste celle chargée avant la proposition.
+              slotIdea = { ...idea, brouillon_creneau: { ...draft, confirmation_requise: true } };
+              const updated = slots.fields(slotIdea);
+              slotFields.replaceWith(updated);
+              slotFields = updated;
+              changed = true;
+            }
+          }
+          E.message(status, changed ? "Propositions ajoutées aux champs vides. Vérifie-les, puis enregistre la fiche."
+            : "Claude n’a proposé aucune valeur pour les champs vides.");
+        } catch (error) {
+          const response = await error.context?.json?.().catch(() => null);
+          E.message(status, response?.message || (error instanceof E.UserError ? error.message
+            : "Impossible de compléter la fiche pour le moment."), true);
+        } finally {
+          button.disabled = false;
+        }
+      });
+      if (location.hash === "#completer-ia") {
+        history.replaceState(null, "", location.pathname + location.search);
+        button.scrollIntoView({ block: "center" });
+        button.click();
+      }
+    }
     if (id) E.watchIdea(ctx, idea);
   });
 })();

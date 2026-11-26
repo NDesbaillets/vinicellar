@@ -107,7 +107,7 @@
   }
 
   function needsConfirmation(idea) {
-    return !idea.parametres_creneau && !!idea.proposition_creneau;
+    return !idea.parametres_creneau && (idea.brouillon_creneau?.confirmation_requise ?? !!idea.proposition_creneau);
   }
 
   function fields(idea) {
@@ -250,7 +250,7 @@
     return box;
   }
 
-  function read(values, idea) {
+  function formValues(values) {
     const mode = values.get("plage_activite");
     const weekend = mode === "weekend";
     const number = (name) => {
@@ -269,6 +269,13 @@
       result.retour_decalage = number("retour_decalage");
       result.heure_retour = values.get("heure_retour") || null;
     }
+    return result;
+  }
+
+  function read(values, idea) {
+    const mode = values.get("plage_activite");
+    const result = formValues(values);
+    const weekend = result.weekend;
     const enough = result.duree_minutes != null && result.aller_minutes != null && result.retour_minutes != null
       && result.heure_activite && result.jours.length && (!weekend || (result.retour_decalage != null && result.heure_retour
         && (!result.vendredi_soir || result.heure_vendredi) && slot(result, "2024-01-13")));
@@ -278,8 +285,8 @@
     }
     const started = mode || result.jours.length || [result.duree_minutes, result.aller_minutes, result.retour_minutes,
       result.heure_activite].some((value) => value != null) || idea.brouillon_creneau || idea.parametres_creneau;
-    return started ? { parametres_creneau: null, brouillon_creneau: result } : {};
+    return started ? { parametres_creneau: null, brouillon_creneau: { ...result, confirmation_requise: !confirmed } } : {};
   }
 
-  window.EurekaSlots = { slot, canPlan, candidates, occurrence, findForDate, bounds, eventSlot, overlap, describe, fields, read };
+  window.EurekaSlots = { slot, canPlan, candidates, occurrence, findForDate, bounds, eventSlot, overlap, describe, fields, formValues, read };
 })();

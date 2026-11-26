@@ -9,12 +9,12 @@
   <link rel="manifest" href="/eureka/manifest.webmanifest">
   <link rel="icon" href="/eureka/assets/monogramme.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/eureka/assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="/eureka/assets/eureka.css?v=19">
+  <link rel="stylesheet" href="/eureka/assets/eureka.css?v=20">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
   <script defer src="/assets/js/config.js"></script>
   <script defer src="/eureka/assets/eureka.js"></script>
-  <script defer src="/eureka/assets/creneaux.js?v=19"></script>
-  <script defer src="/eureka/assets/p-editer.js?v=19"></script>
+  <script defer src="/eureka/assets/creneaux.js?v=20"></script>
+  <script defer src="/eureka/assets/p-editer.js?v=20"></script>
 </head>
 <body>
   <main id="main" class="editer">
@@ -24,6 +24,8 @@
     <h1 id="editor-title">Nouvelle idée</h1>
   </header>
   <form id="idea-form" hidden>
+    <button type="button" id="completer-ia" hidden>Compléter avec l’IA</button>
+    <p id="completer-ia-status" role="status"></p>
     <div id="idea-fields" class="fields"></div>
     <div class="actions form-end">
       <a id="cancel" class="button" href="/eureka/">Annuler</a>

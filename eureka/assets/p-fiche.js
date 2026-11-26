@@ -185,6 +185,7 @@
     const scope = { espace: ctx.space.id };
     $(".back").href = E.url("", scope);
     $("#edit").href = E.url("editer.html", { ...scope, id });
+    $("#complete-idea").href = $("#edit").href + "#completer-ia";
     let photoEditing = false;
     async function showIdea() {
       const query = (columns) => pages(() => sb.from("sorties_photos")

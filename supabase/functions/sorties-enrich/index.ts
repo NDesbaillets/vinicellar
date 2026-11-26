@@ -445,6 +445,41 @@ async function processJob(job: Job) {
   }
 }
 
+async function completeIdea(origin: string, id: string, espace: string, userId: string) {
+  const { data: membership, error: accessError } = await admin.from("sorties_espace_membres").select("role")
+    .eq("espace_id", espace).eq("user_id", userId).in("role", ["owner", "membre"]).maybeSingle();
+  if (accessError || !membership) return reply(origin, { message: "Espace inaccessible." }, 403);
+
+  const { data: idea, error } = await admin.from("sorties_idees")
+    .select("titre,accroche,description,categorie,format,adresse,ville,site_reservation,telephone,budget_min,budget_max,date_debut,date_fin,date_limite_reservation,preavis_semaines,source_url,parametres_creneau,brouillon_creneau,proposition_creneau")
+    .eq("id", id).eq("espace_id", espace).maybeSingle();
+  if (error || !idea) return reply(origin, { message: "Fiche inaccessible." }, 404);
+
+  const jobId = crypto.randomUUID(), attempt = crypto.randomUUID();
+  try {
+    const key = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!key) throw new ImportError("L’enrichissement n’est pas encore configuré.");
+    const budget = maximum("EUREKA_CLAUDE_MAX_CHF");
+    // Cette demande utilise la même réservation qu’un import, sans créer ni modifier de fiche.
+    const { data: job, error: jobError } = await admin.from("sorties_inbox").insert({
+      id: jobId, espace_id: espace, user_id: userId, tentative: attempt, type: "texte",
+      contenu: "Propositions pour une fiche existante", statut: "en_cours",
+      reprise_apres: new Date(Date.now() + 90_000).toISOString(),
+    }).select("id,tentative,type,contenu,image_path").single();
+    if (jobError || !job) throw jobError || new Error();
+    const reference = today();
+    const result = await paid(job, "claude", budget, () => claude(key, {
+      demande: "Complète les champs vides de cette fiche existante et propose les données manquantes pour le créneau. Respecte les contraintes déjà renseignées.",
+      fiche: idea,
+    }, null, reference, 45_000, "complet"));
+    return reply(origin, { proposition: normalize(result, reference, null) });
+  } catch (error) {
+    return reply(origin, { message: error instanceof ImportError ? error.message : "Claude n’a pas pu compléter cette fiche." }, 422);
+  } finally {
+    await admin.from("sorties_inbox").delete().eq("id", jobId).eq("tentative", attempt);
+  }
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin") || "";
   if (origin && !origins.has(origin)) return reply("null", { message: "Origine refusée." }, 403);
@@ -460,6 +495,7 @@ Deno.serve(async (req) => {
   if (typeof id !== "string" || typeof espace !== "string" || !UUID.test(id) || !UUID.test(espace)) {
     return reply(origin, { message: "Import invalide." }, 400);
   }
+  if (payload.action === "completer_fiche") return completeIdea(origin, id, espace, user.id);
   const inbox = () => admin.from("sorties_inbox");
   let fiche: string | null;
   if (payload.reprendre === true) {

@@ -14,7 +14,7 @@
   <script defer src="/assets/js/config.js"></script>
   <script defer src="/eureka/assets/eureka.js"></script>
   <script defer src="/eureka/assets/creneaux.js"></script>
-  <script defer src="/eureka/assets/p-fiche.js?v=19"></script>
+  <script defer src="/eureka/assets/p-fiche.js?v=20"></script>
 </head>
 <body>
   <main id="main" class="fiche">
@@ -79,7 +79,10 @@
         <label class="grow">Date prévue <input type="date" name="date" required></label>
         <button class="primary">Planifier</button>
       </form>
-      <a id="edit" class="button" href="editer.html">Modifier l’idée</a>
+      <div class="actions form-end">
+        <a id="edit" class="button" href="editer.html">Modifier l’idée</a>
+        <a id="complete-idea" class="button" href="editer.html#completer-ia">Compléter avec l’IA</a>
+      </div>
       <p id="action-status" role="status"></p>
     </section>
   <section id="delete-idea" hidden>
