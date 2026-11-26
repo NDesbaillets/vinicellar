@@ -194,6 +194,30 @@ section h2 { margin-bottom: 12px; }
 .description-preview dd { margin: 4px 0 0; }
 .description-source { color: var(--terre); text-underline-offset: 2px; }
 .recurrence-fields { display: grid; gap: 12px; min-width: 0; border: 1px solid var(--filet); padding: 12px; }
+.slot-fields, .slot-days, .slot-transport {
+  min-inline-size: 0;
+  margin: 0;
+  border: 1px solid var(--filet);
+  padding: 10px 12px 12px;
+}
+.slot-fields, .slot-weekend { display: grid; gap: 12px; }
+.slot-fields legend { padding-inline: 4px; font-weight: 600; }
+.slot-fields select, .slot-fields input:not([type="checkbox"]) { font-size: 16px; }
+.slot-fields input[type="time"] { min-inline-size: 0; max-inline-size: 100%; }
+.slot-pair, .slot-day-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.slot-pair { align-items: end; }
+.slot-day-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.slot-day-presets button { padding-inline: 8px; }
+.slot-choice {
+  display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: center; gap: 8px;
+  min-height: 44px; padding: 8px; border: 1px solid var(--filet); background: var(--papier);
+  cursor: pointer; overflow-wrap: anywhere;
+}
+.slot-choice:has(input:checked) { border-color: var(--terre); background: var(--ivoire); }
+.slot-choice input { width: 20px; height: 20px; min-height: 0; margin: 0; padding: 0; accent-color: var(--terre); }
+@media (min-width: 540px) {
+  .slot-day-choices { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
 #annual-tasks { margin: 0 0 24px; }
 #annual-task-list a { min-height: 44px; }
 #annual-state { margin-top: 4px; }
@@ -218,7 +242,8 @@ section h2 { margin-bottom: 12px; }
 #draft-panel { padding: 10px; margin-top: 14px; background: var(--papier); border: 1px solid var(--filet); }
 #draft-panel h2, #draft-hint { margin-bottom: 8px; }
 .planning-draft { display: grid; gap: 6px; }
-.planning-draft > button { text-align: start; justify-content: start; }
+.planning-draft > button { text-align: start; justify-content: start; overflow-wrap: anywhere; min-width: 0; }
+.planning-draft > small { font-size: 14px; line-height: 1.4; }
 .agenda-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--filet); border: 1px solid var(--filet); margin-bottom: 14px; }
 .agenda-month-name { font-size: 27px; margin: 10px 0 6px; }
 .agenda-day, .agenda-pad { min-width: 0; padding: 5px; background: var(--papier); }
@@ -238,7 +263,8 @@ section h2 { margin-bottom: 12px; }
   .planning-calendar-link { display: none; }
   .agenda-controls { grid-template-columns: 1fr 1.4fr auto auto auto; align-items: end; }
   .agenda-controls .agenda-view, .agenda-controls .agenda-date { grid-column: auto; }
-  .planning-draft { grid-template-columns: 1fr 1fr auto; align-items: end; }
+  .planning-draft { grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+  .planning-draft > button, .planning-draft > small { grid-column: 1 / -1; }
 }
 @media (max-width: 720px) {
   .agenda-grid { grid-template-columns: 1fr; }

@@ -108,11 +108,16 @@
 
   function fields(idea) {
     const value = idea.parametres_creneau || idea.proposition_creneau || {};
-    const box = el("fieldset");
+    const box = el("fieldset", null, "wide slot-fields");
     box.append(el("legend", "Créneau à réserver"));
     const proposed = !idea.parametres_creneau && !!idea.proposition_creneau;
     if (proposed) box.append(el("p", "Claude propose ces valeurs. Vérifie-les, notamment les horaires et les trajets depuis Nyon."));
     const controls = {};
+    function choice(caption, node) {
+      const label = el("label", null, "slot-choice");
+      label.append(node, el("span", caption));
+      return label;
+    }
     function input(name, caption, type, min, max) {
       const label = el("label", caption);
       const node = el("input");
@@ -125,8 +130,9 @@
         if (min != null) node.min = min;
         if (max != null) node.max = max;
       }
-      label.append(node);
       controls[name] = node;
+      if (type === "checkbox") return choice(caption, node);
+      label.append(node);
       return label;
     }
     const presetLabel = el("label", "Plage de l’activité");
@@ -142,16 +148,18 @@
     }
     presetLabel.append(presetSelect);
     const presetHelp = el("p", "Les trajets sont ajoutés avant et après la plage choisie.");
-    box.append(presetLabel, presetHelp,
-      input("duree_minutes", "Durée de l’activité (minutes)", "number", 1, 10080),
-      input("heure_activite", "Heure de début de l’activité", "time"),
-      input("aller_minutes", "Aller depuis Nyon (minutes)", "number", 0, 1440),
-      input("retour_minutes", "Retour vers Nyon (minutes)", "number", 0, 1440));
+    const times = el("div", null, "slot-pair");
+    times.append(input("duree_minutes", "Durée (min)", "number", 1, 10080),
+      input("heure_activite", "Heure de début", "time"));
+    const transport = el("fieldset", null, "slot-transport");
+    const trips = el("div", null, "slot-pair");
+    trips.append(input("aller_minutes", "Aller (min)", "number", 0, 1440),
+      input("retour_minutes", "Retour (min)", "number", 0, 1440));
+    transport.append(el("legend", "Trajets depuis et vers Nyon"), trips);
+    box.append(presetLabel, presetHelp, times, transport);
     function showTimes() {
       const flexible = presetSelect.value === "flexible" && !presetSelect.disabled;
-      for (const name of ["heure_activite", "duree_minutes"]) {
-        controls[name].closest("label").hidden = flexible;
-      }
+      times.hidden = flexible;
       presetHelp.textContent = flexible
         ? "L’agenda cherchera 4 heures libres entre 8 h et 20 h. Les trajets s’ajoutent à cette durée."
         : "Les trajets sont ajoutés avant et après la plage choisie.";
@@ -175,30 +183,29 @@
     controls.duree_minutes.addEventListener("input", matchPreset);
     matchPreset();
     if (value.demi_journee_flexible) presetSelect.value = "flexible";
-    const days = el("fieldset");
+    const days = el("fieldset", null, "slot-days");
+    const dayChoices = el("div", null, "slot-day-choices");
     days.append(el("legend", "Jours possibles"));
     const choices = weekdays.map((day, index) => {
-      const label = el("label", day);
       const node = el("input");
       node.type = "checkbox";
       node.name = "jours_creneau";
       node.value = index + 1;
       node.checked = value.jours?.includes(index + 1) ?? false;
-      label.prepend(node);
-      days.append(label);
+      dayChoices.append(choice(day, node));
       return node;
     });
-    const preset = el("div", null, "actions");
+    const preset = el("div", null, "slot-day-presets");
     for (const [label, selected] of [["Tous les jours", [1, 2, 3, 4, 5, 6, 7]], ["Samedi et dimanche", [6, 7]], ["Samedi seul", [6]]]) {
       const button = el("button", label);
       button.type = "button";
       button.onclick = () => choices.forEach((node, i) => { node.checked = selected.includes(i + 1); });
       preset.append(button);
     }
-    days.append(preset);
-    const extra = el("div");
+    days.append(preset, dayChoices);
+    const extra = el("div", null, "slot-weekend");
     const friday = input("heure_vendredi", "Heure de départ de Nyon le vendredi", "time");
-    const returnLabel = el("label", "Jour de départ du lieu pour le retour");
+    const returnLabel = el("label", "Jour du retour");
     const returnDay = el("select");
     returnDay.name = "retour_decalage";
     for (const [index, day] of ["Samedi", "Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"].entries()) {
@@ -210,8 +217,10 @@
     returnLabel.append(returnDay);
     extra.append(el("p", "La date choisie dans le calendrier correspond au samedi."),
       input("vendredi_soir", "Départ le vendredi soir", "checkbox"), friday, returnLabel,
-      input("heure_retour", "Heure de départ du lieu pour le retour", "time"));
-    box.append(days, input("weekend", "Week-end ou week-end prolongé", "checkbox"), extra);
+      input("heure_retour", "Heure de départ pour le retour", "time"));
+    const weekend = input("weekend", "Week-end ou week-end prolongé", "checkbox");
+    box.insertBefore(weekend, presetLabel);
+    box.append(days, extra);
     function toggle() {
       const multi = controls.weekend.checked;
       extra.hidden = !multi;
@@ -228,12 +237,10 @@
     controls.weekend.onchange = controls.vendredi_soir.onchange = toggle;
     toggle();
     if (proposed) {
-      const label = el("label", "Je confirme les durées, les jours et les horaires de planification.");
       const confirm = el("input");
       confirm.type = "checkbox";
       confirm.required = true;
-      label.prepend(confirm);
-      box.append(label);
+      box.append(choice("Je confirme les durées, les jours et les horaires.", confirm));
     }
     return box;
   }
