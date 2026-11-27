@@ -24,6 +24,8 @@
     .map((it) => { const o = (ex.get(it.id) || []).sort((a, b) => b.tasted_on.localeCompare(a.tasted_on)); return { it, o, last: o[0] ? o[0].tasted_on : it.updated_at.slice(0, 10) }; })
     .sort((a, b) => b.last.localeCompare(a.last));
   const getUrl = await signed(past.map((p) => mainImagePath(p.it)));
+  let prix = await VC.Prix.load(past.map((p) => p.it.id));
+  const byId = new Map(past.map((p) => [p.it.id, p.it]));
 
   function card({ it, o, last }) {
     const drunk = o.filter((t) => t.reason === "drunk").length, gifted = o.filter((t) => t.reason === "gifted").length;
@@ -33,6 +35,7 @@
       <div><h3>${esc(it.name)}${it.vintage ? ` <span class="faint">${it.vintage}</span>` : ""}</h3><p class="sub">${esc([it.producer, it.appellation || it.region].filter(Boolean).join(" · "))}</p>
       <p class="sub" style="margin:0 0 6px">${esc([`dernière sortie ${date(last)}`, drunk && `${drunk} bue${drunk > 1 ? "s" : ""}`, gifted && `${gifted} offerte${gifted > 1 ? "s" : ""}`].filter(Boolean).join(" · "))}</p>
       <span class="stars-slot" data-r="${it.my_rating ?? ""}"></span></div></a>
+      <div class="px-wrap">${VC.Prix.block(it, prix.get(it.id))}</div>
       ${!VC.canEdit(it.collection_id) ? "" : wished.has(it.id) ? `<span class="out-btn" title="Déjà dans une liste d'envies" style="color:var(--ok)">${I.check}<small>En liste</small></span>` : `<button class="out-btn" data-rebuy aria-label="Ajouter à la liste d'envies" title="Racheter">${I.plus}<small aria-hidden="true">Racheter</small></button>`}</div>`;
   }
 
@@ -49,6 +52,9 @@
     <div class="list" id="list"></div>`;
   draw();
   $("#q").addEventListener("input", (e) => draw(e.target.value));
+  const refresh = async () => { prix = await VC.Prix.load(past.map((p) => p.it.id)); draw($("#q").value); };
+  VC.Prix.bind(main, { items: byId, getEntries: () => prix, defaults: (it) => ({ origin: "past", target: null, currency: it.purchase_currency || it.market_currency || "CHF" }), onChange: refresh });
+  document.addEventListener("vc:prix", refresh);
 
   main.addEventListener("click", async (e) => {
     const b = e.target.closest("[data-rebuy]");

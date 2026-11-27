@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#9A4A2B">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co; img-src 'self' https:; style-src 'self'; font-src 'self'; frame-src https://www.openstreetmap.org; base-uri 'none'; form-action 'self'">
+  <title>Eurêka !</title>
+  <link rel="manifest" href="/eureka/manifest.webmanifest">
+  <link rel="icon" href="/eureka/assets/monogramme.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/eureka/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="/eureka/assets/eureka.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+  <script defer src="/assets/js/config.js"></script>
+  <script defer src="/eureka/assets/eureka.js?v=23"></script>
+  <script defer src="/eureka/assets/p-index.js?v=23"></script>
+</head>
+<body>
+  <main id="main" class="index">
+    <p id="state" role="status">Chargement…</p>
+  <header class="masthead">
+    <span class="monogram" aria-hidden="true">V&amp;N</span>
+    <h1>Eurêka&nbsp;!</h1>
+    <label id="space-picker" hidden>Espace <select id="space"></select></label>
+  </header>
+  <p id="listing-notice" role="status"></p>
+  <section id="annual-tasks" hidden>
+    <h2>À planifier chaque année</h2>
+    <ul id="annual-task-list" class="rows list"></ul>
+  </section>
+  <div id="catalogue" hidden>
+    <form id="filters" role="search">
+      <div class="actions">
+        <label class="grow">Chercher une idée <input name="q" type="search" maxlength="160"></label>
+        <button type="submit">Chercher</button>
+      </div>
+      <details>
+        <summary>Filtres et tri</summary>
+        <div class="fields">
+          <label>Format <select name="format"></select></label>
+          <label>Statut <select name="statut"></select></label>
+          <label>Période <select name="periode"></select></label>
+          <label>Urgence <select name="urgence"></select></label>
+          <label>Catégorie <select name="categorie"></select></label>
+          <label>Sortie <select name="modalite"></select></label>
+          <label>Distance max. depuis Nyon (km) <input name="distance" type="number" min="0"></label>
+          <label>Trier par <select name="tri"><option value="score">Score couple</option><option value="urgence">Urgence</option></select></label>
+        </div>
+      </details>
+    </form>
+    <p id="results-status" role="status"></p>
+    <div id="ideas" class="ideas"></div>
+    <button id="surprise" type="button" hidden>Surprends-moi</button>
+  </div>
+  </main>
+  <nav id="nav" class="nav" aria-label="Eurêka" hidden></nav>
+  <noscript>Activez JavaScript pour utiliser Eurêka.</noscript>
+</body>
+</html>

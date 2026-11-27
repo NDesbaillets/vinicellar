@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#9A4A2B">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co; img-src 'self' https:; style-src 'self'; font-src 'self'; frame-src https://www.openstreetmap.org; base-uri 'none'; form-action 'self'">
+  <title>Éditer une idée · Eurêka</title>
+  <link rel="manifest" href="/eureka/manifest.webmanifest">
+  <link rel="icon" href="/eureka/assets/monogramme.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/eureka/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="/eureka/assets/eureka.css?v=25">
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+  <script defer src="/assets/js/config.js"></script>
+  <script defer src="/eureka/assets/eureka.js?v=25"></script>
+  <script defer src="/eureka/assets/creneaux.js?v=25"></script>
+  <script defer src="/eureka/assets/p-editer.js?v=25"></script>
+</head>
+<body>
+  <main id="main" class="editer">
+    <p id="state" role="status">Chargement…</p>
+  <header class="masthead">
+    <a id="cancel-top" class="button" href="/eureka/">← Retour</a>
+    <h1 id="editor-title">Nouvelle idée</h1>
+  </header>
+  <form id="idea-form" hidden>
+    <button type="button" id="completer-ia" hidden>Compléter avec l’IA</button>
+    <p id="completer-ia-status" role="status"></p>
+    <div id="idea-fields" class="fields"></div>
+    <div class="actions form-end">
+      <a id="cancel" class="button" href="/eureka/">Annuler</a>
+      <button class="primary">Enregistrer</button>
+    </div>
+    <p id="form-status" role="status"></p>
+  </form>
+  <section id="delete-idea" hidden>
+    <button class="delete-link" type="button">Supprimer la fiche</button>
+    <dialog aria-labelledby="delete-title" aria-describedby="delete-description">
+      <h2 id="delete-title">Supprimer la fiche</h2>
+      <p id="delete-description"></p>
+      <form method="dialog" class="actions">
+        <button value="cancel" autofocus>Annuler</button>
+        <button value="delete" class="delete-link">Supprimer définitivement</button>
+      </form>
+      <p class="delete-status" role="status"></p>
+    </dialog>
+  </section>
+  </main>
+  <nav id="nav" class="nav" aria-label="Eurêka" hidden></nav>
+  <noscript>Activez JavaScript pour utiliser Eurêka.</noscript>
+</body>
+</html>

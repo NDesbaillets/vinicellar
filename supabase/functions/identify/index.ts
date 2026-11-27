@@ -36,6 +36,8 @@ Règles :
 - Note : moyenne communautaire (Vivino /5) ou de critiques (/100), avec échelle et source (ex. "Vivino, 4,1/5 sur 2 300 avis", "Moyenne WA 94, JS 95").
 - Spiritueux, saké : grapes et drink_* null ; details = âge, fûts, distillerie, alambic, brut de fût, filtration, riz, polissage, type, SMV…
 - Français, ton sobre de caviste, sans superlatifs. Pays en français. °C et années en entiers.
+- Textes (description, vinification, terroir, vintage_notes, pairings) : affirmatifs, comme une fiche de caviste. Jamais d'attribution (« selon le domaine », « d'après le producteur », « le site indique », « Vivino note ») ni de lien ou de nom de site : les sources sont conservées à part. Seuls window_source, avg_score_source et price_source nomment une source.
+- Information non trouvée : ne rien écrire à son sujet. Pas de « non communiqué », « aucune information », « non précisé », « introuvable » : omettre la phrase, ou null si le champ entier manque.
 - France, Suisse, Italie : region = une de ces grandes régions, le détail (AOC, DOC, commune) dans appellation.
   France : Alsace, Beaujolais, Bordeaux, Bourgogne, Champagne, Corse, Jura, Languedoc-Roussillon, Loire, Provence, Rhône, Savoie, Sud-Ouest.
   Suisse : Lavaux, Chablais, La Côte, Côtes de l'Orbe, Bonvillars, Vully (jamais « Vaud » seul), Valais, Genève, Neuchâtel, Lac de Bienne, Tessin, Suisse alémanique.
@@ -74,6 +76,19 @@ const int = (v: unknown, min?: number, max?: number) => { const n = num(v, min, 
 const str = (v: unknown, max = 2000) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
 const strs = (v: unknown, n = 12) => (Array.isArray(v) ? v.map((x) => str(x, 200)).filter(Boolean).slice(0, n) as string[] : []);
 const oneOf = <T extends string>(v: unknown, list: readonly T[]) => (list.includes(v as T) ? (v as T) : null);
+// Filet de sécurité sur les textes : retire les attributions (« selon le domaine, ») et les phrases qui disent qu'une
+// information manque. Les sources restent dans les champs *_source et dans la liste des sources de la fiche.
+const ATTRIB = /\b(?:selon|d['’]après)\s+(?:le|la|les|l['’]|son|sa|ses)\s*(?:domaine|producteurs?|propriété|maison|château|cave|caviste|fiche(?:\s+technique)?|site|sources?|vigneron(?:ne)?s?|négociant|distillerie|brasserie|critiques?|guide|importateur|revendeur)\b[^,.;:]*[,:]?\s*/gi;
+const MISSING = /(aucune?\s+(?:information|donnée|détail|précision|mention)|non\s+(?:communiqué|précisé|disponible|trouvé|indiqué|renseigné|documenté)e?s?|pas\s+(?:d['’]information|trouvé|communiqué|précisé|indiqué|documenté)|introuvables?|(?:n['’]est|ne\s+sont|n['’]a)\s+pas\s+(?:été\s+)?(?:connu|précisé|communiqué|indiqué|trouvé|disponible|documenté|publié)e?s?)/i;
+function prose(v: unknown, max = 2000) {
+  const s = str(v, max);
+  if (!s) return null;
+  const kept = s.split(/(?<=[.!?])\s+/).filter((x) => !MISSING.test(x))
+    .map((x) => x.replace(ATTRIB, "").replace(/\s*[,;:]\s*([.!?]?)\s*$/, "$1").replace(/^\s*([a-zà-ÿ])/, (m, c) => m.replace(c, c.toUpperCase())).trim())
+    .filter((x) => x && !/^[.!?]$/.test(x));
+  return kept.length ? kept.join(" ") : null;
+}
+const proses = (v: unknown, n = 8) => strs(v, n).map((x) => prose(x, 200)).filter(Boolean) as string[];
 const url = (v: unknown) => { const s = str(v, 1000); try { return s && /^https?:/.test(new URL(s).protocol) ? s : null; } catch { return null; } };
 
 function clean(raw: Record<string, unknown>) {
@@ -101,11 +116,11 @@ function clean(raw: Record<string, unknown>) {
     abv: num(raw.abv, 0, 100),
     volume_cl: int(raw.volume_cl, 1, 3000),
     image_url: url(raw.image_url),
-    description: str(raw.description),
-    vinification: str(raw.vinification),
-    terroir: str(raw.terroir),
-    vintage_notes: str(raw.vintage_notes),
-    pairings: strs(raw.pairings, 8),
+    description: prose(raw.description),
+    vinification: prose(raw.vinification),
+    terroir: prose(raw.terroir),
+    vintage_notes: prose(raw.vintage_notes),
+    pairings: proses(raw.pairings, 8),
     serving_temp_min: int(raw.serving_temp_min, -5, 30),
     serving_temp_max: int(raw.serving_temp_max, -5, 30),
     drink_from: int(raw.drink_from, 1800, 2200),

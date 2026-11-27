@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#9A4A2B">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co; img-src 'self' https:; style-src 'self'; font-src 'self'; frame-src https://www.openstreetmap.org; base-uri 'none'; form-action 'self'">
+  <title>Ajouter une idée · Eurêka</title>
+  <link rel="manifest" href="/eureka/manifest.webmanifest">
+  <link rel="icon" href="/eureka/assets/monogramme.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/eureka/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="/eureka/assets/eureka.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+  <script defer src="/assets/js/config.js"></script>
+  <script defer src="/eureka/assets/eureka.js"></script>
+  <script defer src="/eureka/assets/p-ajouter.js"></script>
+</head>
+<body>
+  <main id="main" class="editer">
+    <p id="state" role="status">Chargement…</p>
+  <header class="masthead">
+    <a id="cancel-top" class="button" href="/eureka/">← Retour</a>
+    <h1>Ajouter une idée</h1>
+  </header>
+  <form id="quick-form" hidden>
+    <label>Texte ou lien HTTPS <textarea name="source" maxlength="8000"></textarea></label>
+    <p class="upload">Photos (JPEG, PNG ou WebP)</p>
+    <input name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+    <div class="actions">
+      <button id="choose-photos" type="button">Choisir des photos</button>
+      <button id="camera" type="button">Prendre une photo</button>
+      <button id="paste" type="button">Coller une photo</button>
+    </div>
+    <input id="camera-input" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" hidden>
+    <ul id="selected-photos" class="rows list"></ul>
+    <p id="quick-info" role="status"></p>
+    <div class="actions form-end">
+      <a id="manual" class="button" href="editer.html">Créer à la main</a>
+      <button class="primary" type="submit">Ajouter</button>
+    </div>
+    <p id="quick-status" role="status"></p>
+  </form>
+  </main>
+  <nav id="nav" class="nav" aria-label="Eurêka" hidden></nav>
+  <noscript>Activez JavaScript pour utiliser Eurêka.</noscript>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#9A4A2B">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co https://api.open-meteo.com; img-src 'self' https:; style-src 'self'; font-src 'self'; frame-src https://www.openstreetmap.org; base-uri 'none'; form-action 'self'">
+  <title>Planification · Eurêka</title>
+  <link rel="manifest" href="/eureka/manifest.webmanifest">
+  <link rel="icon" href="/eureka/assets/monogramme.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/eureka/assets/apple-touch-icon.png">
+  <link rel="stylesheet" href="/eureka/assets/eureka.css?v=25">
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
+  <script defer src="/assets/js/config.js"></script>
+  <script defer src="/eureka/assets/eureka.js?v=25"></script>
+  <script defer src="/eureka/assets/creneaux.js"></script>
+  <script defer src="/eureka/assets/meteo.js"></script>
+  <script defer src="/eureka/assets/p-planification.js?v=25"></script>
+</head>
+<body>
+  <main id="main" class="planning">
+    <p id="state" role="status">Chargement…</p>
+  <header class="masthead"><h1>Planification</h1></header>
+  <div id="planning-content" class="planning-layout" hidden>
+    <aside class="planning-inbox">
+      <h2>Activités à planifier</h2>
+      <div class="planning-departure">
+        <label>Lieu de départ <select id="planning-departure"></select></label>
+        <details>
+          <summary>Gérer mes lieux de départ</summary>
+          <button type="button" id="set-principal">Définir comme lieu principal</button>
+          <form id="new-departure" hidden>
+            <label>Nom du lieu <input name="nom" required maxlength="80" placeholder="Ex. La Saint Cantène"></label>
+            <label>Ville ou commune <input name="ville" required maxlength="100"></label>
+            <label>Pays <input name="pays" required maxlength="80"></label>
+            <button>Ajouter ce lieu</button>
+          </form>
+        </details>
+        <p id="departure-status" role="status"></p>
+      </div>
+      <div class="planning-horizons" role="group" aria-label="Période des suggestions">
+        <button type="button" data-period="weekend" aria-pressed="true">Ce week-end</button>
+        <button type="button" data-period="next" aria-pressed="false">Week-end prochain</button>
+        <button type="button" data-period="month" aria-pressed="false">Autres jours du mois</button>
+        <button type="button" data-period="later" aria-pressed="false">Plus tard</button>
+      </div>
+      <p id="planning-tasks-status" role="status">Chargement…</p>
+      <ul id="planning-tasks" class="list"></ul>
+      <details id="planning-incomplete" hidden>
+        <summary>Fiches à compléter</summary>
+        <ul id="planning-incomplete-list" class="list"></ul>
+      </details>
+      <section id="discover-nearby" hidden>
+        <h2 id="discover-title">À découvrir</h2>
+        <p id="discover-range"></p>
+        <button id="discover-button" type="button">Chercher des sorties</button>
+        <p id="discover-status" role="status"></p>
+        <ul id="discover-results" class="list"></ul>
+      </section>
+      <a class="button planning-calendar-link" href="#planning-calendar">Voir le calendrier</a>
+    </aside>
+    <section id="planning-calendar" class="planning-agenda">
+      <h2>Calendrier</h2>
+      <div class="agenda-controls">
+        <label class="agenda-view">Affichage
+          <select id="agenda-view"><option value="week">Semaine</option><option value="month">Mois</option><option value="quarter">3 mois</option></select>
+        </label>
+        <label class="agenda-date">Aller à la date <input id="agenda-date" type="date"></label>
+        <button id="previous-day" type="button" aria-label="Période précédente">←</button>
+        <button id="today" type="button">Aujourd’hui</button>
+        <button id="next-day" type="button" aria-label="Période suivante">→</button>
+      </div>
+      <section id="draft-panel" hidden>
+        <h2>Provisoires</h2>
+        <p id="draft-hint">Choisis une date ou glisse une activité sur le calendrier.</p>
+        <ul id="draft-list" class="rows list"></ul>
+      </section>
+      <p id="draft-status" role="status"></p>
+      <p id="agenda-range" role="status"></p>
+      <p id="agenda-status" role="status"></p>
+      <div id="agenda-days"></div>
+      <section id="weather" hidden aria-labelledby="weather-title">
+        <h3 id="weather-title">Météo</h3>
+        <p id="weather-status" role="status"></p>
+        <ul class="list weather-days" id="weather-days"></ul>
+        <a id="weather-swiss-source" href="https://www.meteosuisse.admin.ch/services-et-publications/service/open-data.html" target="_blank" rel="noopener noreferrer" hidden>Données ICON · MétéoSuisse Open Data</a>
+        <a id="weather-generic-source" href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" hidden>API météo · Open-Meteo</a>
+      </section>
+      <a id="planned-catalogue" class="button" href="/eureka/?statut=planifiee">Voir les fiches planifiées</a>
+    </section>
+  </div>
+</main>
+  <nav id="nav" class="nav" aria-label="Eurêka" hidden></nav>
+  <noscript>Activez JavaScript pour utiliser Eurêka.</noscript>
+</body>
+</html>
