@@ -132,6 +132,7 @@
     row("Réserver avant", E.date(idea.date_limite_reservation));
     row("Délai minimal pour réserver", idea.delai_reservation_jours == null ? null : idea.delai_reservation_jours + " j");
     row("Préavis de rappel", idea.preavis_semaines == null ? null : idea.preavis_semaines + " sem.");
+    row("Conditions nécessaires", E.withoutVerificationLabels(idea.conditions_activite));
     row("Meilleure période", idea.meilleure_periode.map((month) => E.mois[month]).join(", "));
     const firstMonth = E.mois[idea.saison_debut_mois];
     const lastMonth = E.mois[idea.saison_fin_mois];
@@ -148,12 +149,11 @@
         + planning.heure_vendredi + " · " : "") + "Départ du lieu " + days[(5 + planning.retour_decalage) % 7]
         + " à " + planning.heure_retour);
     } else row("Créneau à réserver", idea.brouillon_creneau ? "Brouillon enregistré · à compléter"
-      : idea.proposition_creneau ? "Proposition de Claude à confirmer" : "À compléter");
+      : idea.proposition_creneau ? "Proposition de Claude" : "À compléter");
     row("Sortie", E.modalites[idea.modalite]);
     row("Mots-clés", idea.tags.join(", "));
     row("Notes", idea.notes);
     row("Source", external("Consulter la source", idea.source_url));
-    for (const [label, reason] of E.verificationEntries(idea.a_verifier)) row(label, reason);
   }
 
   function scoreCell(label, value, accent) {
@@ -273,6 +273,9 @@
       $("#souvenirs-section").hidden = !memories.length && !photoEditing;
       $("#urgent").hidden = idea.urgence < 4;
       $("#meta").textContent = E.meta(idea);
+      const season = $("#season-badge");
+      season.textContent = E.saisons[idea.saison_activite] || "";
+      season.hidden = !season.textContent;
       $("#title").textContent = idea.titre;
       $("#pitch").textContent = idea.accroche || "";
       $("#pitch").hidden = !idea.accroche;
@@ -533,7 +536,7 @@
     });
     const slots = window.EurekaSlots;
     if (!idea.parametres_creneau) {
-      planForm.before(el("p", "Complète et confirme le créneau dans la modification de la fiche avant de planifier."));
+      planForm.before(el("p", "Complète le créneau dans la modification de la fiche avant de planifier."));
       planForm.hidden = true;
     }
     const plannedRange = el("p");

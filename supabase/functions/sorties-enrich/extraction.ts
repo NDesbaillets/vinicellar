@@ -114,6 +114,13 @@ export function normalize(raw: unknown, reference: string, thumbnail: string | n
   const urgence = remains == null || remains < 0 ? null : remains <= 3 ? 5 : remains <= 7 ? 4 : remains <= 21 ? 3 : 2;
   const proposedFormat = text(doc.format, 20);
   const preavis = doc.preavis_semaines;
+  const delay = doc.delai_reservation_jours;
+  const season = typeof doc.saison_activite === "string"
+      && ["hiver", "printemps", "ete", "automne", "toute_annee"].includes(doc.saison_activite)
+    ? doc.saison_activite : null;
+  const months = Array.isArray(doc.meilleure_periode)
+    ? [...new Set(doc.meilleure_periode.filter((month) => Number.isInteger(month) && month >= 1 && month <= 12))].sort((a, b) => a - b)
+    : [];
   return {
     titre: text(doc.titre, 160),
     accroche: text(doc.accroche, 200)?.replace(/\s*\n\s*/g, " ") ?? null,
@@ -124,6 +131,10 @@ export function normalize(raw: unknown, reference: string, thumbnail: string | n
     site_reservation: https(doc.site_reservation), telephone: text(doc.telephone, 50),
     budget_min, budget_max, ...dates, urgence,
     preavis_semaines: typeof preavis === "number" && Number.isInteger(preavis) && preavis >= 0 && preavis <= 52 ? preavis : null,
+    delai_reservation_jours: typeof delay === "number" && Number.isInteger(delay) && delay >= 0 && delay <= 365 ? delay : null,
+    saison_activite: season,
+    meilleure_periode: months,
+    conditions_activite: text(doc.conditions_activite, 240),
     image_url: thumbnail ?? https(doc.image_url),
     proposition_creneau: planningProposal(doc.proposition_creneau),
     a_verifier: checks,

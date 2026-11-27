@@ -106,7 +106,7 @@
       .order("debut").order("fin").order("calendrier_id"));
   }
 
-  function needsConfirmation(idea) {
+  function hasProposal(idea) {
     return !idea.parametres_creneau && (idea.brouillon_creneau?.confirmation_requise ?? !!idea.proposition_creneau);
   }
 
@@ -115,8 +115,8 @@
     const box = el("fieldset", null, "wide slot-fields");
     box.append(el("legend", "Créneau à réserver"));
     box.append(el("p", "Tu peux enregistrer la fiche et compléter le créneau plus tard."));
-    const proposed = needsConfirmation(idea);
-    if (proposed) box.append(el("p", "Claude propose ces valeurs. Vérifie-les, notamment les horaires et les trajets depuis Nyon."));
+    const proposed = hasProposal(idea);
+    if (proposed) box.append(el("p", "Claude a proposé des valeurs. Tu peux les modifier avant d’enregistrer."));
     const controls = {};
     function choice(caption, node) {
       const label = el("label", null, "slot-choice");
@@ -241,12 +241,6 @@
     }
     controls.vendredi_soir.onchange = toggle;
     toggle();
-    if (proposed) {
-      const confirm = el("input");
-      confirm.type = "checkbox";
-      confirm.name = "confirmer_creneau";
-      box.append(choice("Je confirme les durées, les jours et les horaires.", confirm));
-    }
     return box;
   }
 
@@ -279,13 +273,12 @@
     const enough = result.duree_minutes != null && result.aller_minutes != null && result.retour_minutes != null
       && result.heure_activite && result.jours.length && (!weekend || (result.retour_decalage != null && result.heure_retour
         && (!result.vendredi_soir || result.heure_vendredi) && slot(result, "2024-01-13")));
-    const confirmed = !needsConfirmation(idea) || values.has("confirmer_creneau");
-    if (enough && confirmed) {
+    if (enough) {
       return { parametres_creneau: result, ...(idea.brouillon_creneau ? { brouillon_creneau: null } : {}) };
     }
     const started = mode || result.jours.length || [result.duree_minutes, result.aller_minutes, result.retour_minutes,
       result.heure_activite].some((value) => value != null) || idea.brouillon_creneau || idea.parametres_creneau;
-    return started ? { parametres_creneau: null, brouillon_creneau: { ...result, confirmation_requise: !confirmed } } : {};
+    return started ? { parametres_creneau: null, brouillon_creneau: { ...result, confirmation_requise: hasProposal(idea) } } : {};
   }
 
   window.EurekaSlots = { slot, canPlan, candidates, occurrence, findForDate, bounds, eventSlot, overlap, describe, fields, formValues, read };

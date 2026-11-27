@@ -28,7 +28,7 @@
 
   async function annualPlanningTasks(space, planning = false) {
     const ideas = await pages(() => sb.from("sorties_idees")
-      .select("id,titre,accroche,description,ville,image_path,meilleure_periode,saison_debut_mois,saison_fin_mois,sorties_occurrences(date_cible,date_realisee,statut)" + (planning ? ",parametres_creneau,lat,lng,format,statut,urgence,preavis_semaines,date_limite_reservation,delai_reservation_jours" : ""))
+      .select("id,titre,accroche,description,ville,image_path,meilleure_periode,saison_debut_mois,saison_fin_mois,sorties_occurrences(date_cible,date_realisee,statut)" + (planning ? ",parametres_creneau,lat,lng,format,statut,urgence,preavis_semaines,date_limite_reservation,delai_reservation_jours,saison_activite,conditions_activite" : ""))
       .eq("espace_id", space).not("saison_debut_mois", "is", null)
       .neq("statut", "archivee").is("fusionnee_dans", null).order("id"));
     const tasks = ideas.flatMap((idea) => {
@@ -64,22 +64,25 @@
     return "Du " + date(season.start) + " au " + date(season.end);
   }
 
+  const saisons = Object.freeze({ hiver: "Hiver", printemps: "Printemps", ete: "Été", automne: "Automne", toute_annee: "Toute l’année" });
+
+  function withoutVerificationLabels(text = "") {
+    return (text || "").replace(/[^\S\r\n]*\([^\S\r\n]*à[^\S\r\n]+(?:vérifier|confirmer)[^\S\r\n]*\)/gi, "")
+      .replace(/^[ \t]*à[ \t]+(?:vérifier|confirmer)[.!]?[ \t]*$/gim, "");
+  }
+
   function renderDescription(target, text = "") {
     const heading = /^([^\S\n]*(?:Idée|Programme suggéré|Repas et pauses|À prévoir|Points d'attention|Points d’attention|Vérifié sur le web)[^\S\n]*:)/i;
     const output = document.createDocumentFragment();
     let verified = false;
-    for (const [index, line] of (text || "").replace(/\r\n?/g, "\n").split("\n").entries()) {
+    for (const [index, line] of withoutVerificationLabels(text).replace(/\r\n?/g, "\n").split("\n").entries()) {
       if (index) output.append("\n");
       const label = line.match(heading)?.[0];
       if (label) {
         output.append(el("strong", label, "description-heading"));
         verified = /^\s*Vérifié sur le web\s*:/i.test(label);
       }
-      const parts = line.slice(label?.length ?? 0).split(/(\([^\S\n]*à[^\S\n]+vérifier[^\S\n]*\))/gi);
-      parts.forEach((part, index) => {
-        if (index % 2) output.append(el("mark", part, "description-check"));
-        else appendSources(output, part, verified);
-      });
+      appendSources(output, line.slice(label?.length ?? 0), verified);
     }
     target.replaceChildren(output);
   }
@@ -117,12 +120,6 @@
       if (mime) photos.push(new File([await item.getType(mime)], "Photo collée." + extensions[mime], { type: mime }));
     }
     return photos;
-  }
-
-  function verificationEntries(checks) {
-    return Object.entries(checks || {})
-      .filter(([, reason]) => typeof reason === "string")
-      .map(([field, reason]) => [field === "import" ? "Import" : "À vérifier · " + field.replaceAll("_", " "), reason]);
   }
 
   function link(text, href, className) {
@@ -412,6 +409,6 @@
   window.Eureka = {
     sb, $, params, formats, statuts, modalites, mois, number, currency, el, link, url, safeUrl,
     visual, signedPhotos, options, date, meta, data, pages, message, bind, UserError, mustUpdate, boot, ideaById,
-    ideaGone, watchIdea, cleanDeletedPhotos, renderDescription, verificationEntries, clipboardPhotos, annualSeasons, seasonOccurrences, seasonLabel, annualPlanningTasks, swissDay
+    ideaGone, watchIdea, cleanDeletedPhotos, renderDescription, withoutVerificationLabels, saisons, clipboardPhotos, annualSeasons, seasonOccurrences, seasonLabel, annualPlanningTasks, swissDay
   };
 })();

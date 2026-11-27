@@ -74,7 +74,7 @@
     if (ctx.editor) E.cleanDeletedPhotos(ctx).then((clean) => {
       if (clean && status === "photos") E.message(notice, messages.supprimee);
     }).catch(() => {});
-    const entries = (fields = "id,titre,accroche,categorie,format,type_lieu,ville,distance_nyon_km,image_path,urgence,statut,meilleure_periode,modalite") =>
+    const entries = (fields = "id,titre,accroche,categorie,format,type_lieu,ville,distance_nyon_km,image_path,urgence,statut,meilleure_periode,saison_activite,modalite") =>
       sb.from("sorties_idees").select(fields).eq("espace_id", space.id).is("fusionnee_dans", null).order("id");
     const [ideas, scores] = await Promise.all([
       pages(entries),
@@ -84,7 +84,7 @@
     const categories = [...new Set(ideas.map((idea) => idea.categorie).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
     E.options(form.elements.format, E.formats, "Tous");
     E.options(form.elements.statut, E.statuts, "Tous");
-    E.options(form.elements.periode, E.mois, "Toutes");
+    E.options(form.elements.periode, { ...E.mois, ...E.saisons }, "Toutes");
     E.options(form.elements.urgence, { 1: "1", 2: "2", 3: "3", 4: "4", 5: "5" }, "Toutes");
     E.options(form.elements.categorie, Object.fromEntries(categories.map((value) => [value, value])), "Toutes");
     E.options(form.elements.modalite, E.modalites, "Toutes");
@@ -112,7 +112,8 @@
         let matches = ideas.filter((idea) =>
           (!filters.format || idea.format === filters.format)
           && (!filters.statut || idea.statut === filters.statut)
-          && (!filters.periode || idea.meilleure_periode.includes(Number(filters.periode)))
+          && (!filters.periode || (Object.hasOwn(E.saisons, filters.periode) ? idea.saison_activite === filters.periode
+            : idea.meilleure_periode.includes(Number(filters.periode))))
           && (!filters.urgence || idea.urgence === Number(filters.urgence))
           && (!filters.categorie || idea.categorie === filters.categorie)
           && (!filters.modalite || idea.modalite === filters.modalite)

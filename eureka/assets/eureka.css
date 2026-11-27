@@ -213,11 +213,8 @@ section h2 { margin-bottom: 12px; }
 .photo-form .photo-status:empty { display: none; }
 
 .description-heading { font-weight: 650; color: var(--terre); }
-.description-check { color: var(--encre); background: var(--rose); font-weight: 600; }
 .description-preview { background: var(--papier); border: 1px solid var(--filet); padding: 14px; }
 .description-preview h2 { font-size: 15px; margin-bottom: 8px; }
-.description-preview dl { margin: 12px 0 0; }
-.description-preview dd { margin: 4px 0 0; }
 .description-source { color: var(--terre); text-underline-offset: 2px; }
 .recurrence-fields { display: grid; gap: 12px; min-width: 0; border: 1px solid var(--filet); padding: 12px; }
 .slot-fields, .slot-days, .slot-transport {
@@ -311,3 +308,9 @@ section h2 { margin-bottom: 12px; }
 .weather-days li { padding: .5rem; border: 1px solid var(--border, #c9b9ac); }
 .weather-days small { display: block; }
 #weather > a:not([hidden]) { display: inline-flex; align-items: center; min-height: 44px; }
+
+.season-badge {
+  display: inline-block; margin-block: 4px 6px; padding: 2px 8px;
+  border: 1px solid var(--sauge); background: var(--papier);
+  color: var(--encre); font-size: 13px; font-weight: 600;
+}

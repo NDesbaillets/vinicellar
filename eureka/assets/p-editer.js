@@ -8,6 +8,8 @@
     ["titre", "Titre", { required: true, wide: true }],
     ["accroche", "Accroche", { wide: true }],
     ["description", "Description", { type: "textarea", wide: true }],
+    ["saison_activite", "Saison", { options: E.saisons }],
+    ["conditions_activite", "Conditions nécessaires", { wide: true }],
     ["categorie", "Catégorie"], ["format", "Format", { options: E.formats }],
     ["type_lieu", "Type de lieu", { options: { generique: "Sans lieu fixe", lieu: "Lieu précis" }, default: "generique" }],
     ["modalite", "Sortie", { options: E.modalites }],
@@ -41,6 +43,7 @@
       if (config[key] != null) control[key] = config[key];
     }
     control.required = Boolean(config.required);
+    if (name === "conditions_activite") control.maxLength = 240;
     control.value = Array.isArray(value) ? value.join(", ") : value ?? config.default ?? "";
     label.append(control);
     return label;
@@ -90,25 +93,15 @@
     return group;
   }
 
-  function descriptionPreview(input, checks) {
+  function descriptionPreview(input) {
     const panel = el("div", null, "wide description-preview");
     const preview = el("div", null, "prose");
     const caption = el("h2", "Aperçu de la description");
     panel.append(caption, preview);
-    const entries = E.verificationEntries(checks);
-    if (entries.length) {
-      const list = el("dl", null, "rows");
-      for (const [label, reason] of entries) {
-        const item = el("div");
-        item.append(el("dt", label, "description-heading"), el("dd", reason, "prose"));
-        list.append(item);
-      }
-      panel.append(list);
-    }
     function update() {
       const empty = !input.value.trim();
       caption.hidden = preview.hidden = empty;
-      panel.hidden = empty && !entries.length;
+      panel.hidden = empty;
       E.renderDescription(preview, input.value);
     }
     input.addEventListener("input", update);
@@ -122,7 +115,9 @@
       const value = values.get(name).trim();
       result[name] = value && (config.type === "number" || config.numeric) ? Number(value) : value || null;
     }
-    if (result.delai_reservation_jours == null && idea.delai_reservation_jours == null) delete result.delai_reservation_jours;
+    for (const name of ["delai_reservation_jours", "saison_activite", "conditions_activite"]) {
+      if (result[name] == null && idea[name] == null) delete result[name];
+    }
     const mode = values.get("repetition");
     result.recurrence_mois = mode === "mois" ? Number(values.get("recurrence_mois")) : null;
     if (mode === "annee" || idea.saison_debut_mois != null) {
@@ -159,7 +154,8 @@
     form.elements.titre.closest("label").after(slotFields);
     form.elements.statut.closest("label").after(recurrenceFields(idea));
     const description = form.elements.description;
-    description.closest("label").after(descriptionPreview(description, idea.a_verifier));
+    description.value = E.withoutVerificationLabels(description.value);
+    description.closest("label").after(descriptionPreview(description));
     E.bind(form, $("#form-status"), async (values) => {
       const body = payload(values, slotIdea);
       const table = sb.from("sorties_idees");
@@ -195,13 +191,22 @@
           if (!proposition) throw new E.UserError("Claude n’a renvoyé aucune proposition.");
           let changed = false;
           for (const name of ["accroche", "description", "categorie", "format", "adresse", "ville", "site_reservation",
-            "telephone", "budget_min", "budget_max", "date_debut", "date_fin", "date_limite_reservation", "preavis_semaines"]) {
+            "telephone", "budget_min", "budget_max", "date_debut", "date_fin", "date_limite_reservation", "preavis_semaines", "delai_reservation_jours", "saison_activite", "conditions_activite"]) {
             const control = form.elements[name];
             if (control.value.trim() || proposition[name] == null) continue;
-            control.value = proposition[name];
+            control.value = typeof proposition[name] === "string" ? E.withoutVerificationLabels(proposition[name]) : proposition[name];
             if (control.value) {
               changed = true;
               control.dispatchEvent(new Event("input", { bubbles: true }));
+            }
+          }
+          const monthChoices = [...form.querySelectorAll('input[name="mois"]')];
+          if (Array.isArray(proposition.meilleure_periode) && !monthChoices.some((control) => control.checked)) {
+            for (const control of monthChoices) {
+              if (proposition.meilleure_periode.includes(Number(control.value))) {
+                control.checked = true;
+                changed = true;
+              }
             }
           }
           if (!idea.parametres_creneau && proposition.proposition_creneau) {
@@ -233,7 +238,7 @@
               changed = true;
             }
           }
-          E.message(status, changed ? "Propositions ajoutées aux champs vides. Vérifie-les, puis enregistre la fiche."
+          E.message(status, changed ? "Propositions ajoutées aux champs vides. Tu peux les modifier avant d’enregistrer."
             : "Claude n’a proposé aucune valeur pour les champs vides.");
         } catch (error) {
           const response = await error.context?.json?.().catch(() => null);

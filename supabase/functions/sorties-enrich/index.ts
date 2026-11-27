@@ -140,6 +140,10 @@ const ficheTool = {
       budget_min: { type: ["number", "null"] },
       budget_max: { type: ["number", "null"] },
       preavis_semaines: { type: ["integer", "null"] },
+      delai_reservation_jours: { type: ["integer", "null"], minimum: 0, maximum: 365 },
+      saison_activite: { type: ["string", "null"], enum: ["hiver", "printemps", "ete", "automne", "toute_annee", null] },
+      meilleure_periode: { type: ["array", "null"], items: { type: "integer", minimum: 1, maximum: 12 }, maxItems: 12 },
+      conditions_activite: { type: ["string", "null"] },
       proposition_creneau: {
         type: ["object", "null"],
         properties: {
@@ -188,7 +192,7 @@ const verifTool = {
   },
 };
 
-type Mode = "tri" | "fiche" | "structure" | "complet" | "verifier";
+type Mode = "tri" | "fiche" | "structure" | "complet" | "verifier" | "completer";
 
 function instructions(mode: Mode, reference: string) {
   const base = `Tu travailles pour Eurêka, l’organisateur de sorties d’un couple en Suisse romande. Aujourd’hui : ${reference}.
@@ -203,6 +207,23 @@ Jours : 1=lundi à 7=dimanche, selon les horaires attestés. Heure de début au 
 Pour un week-end centré sur le samedi, indique weekend=true, si un départ de Nyon vendredi soir est utile (vendredi_soir, heure_vendredi),
 le jour de départ du lieu pour rentrer (retour_decalage : 0=samedi, 1=dimanche, 2=lundi, etc.) et heure_retour. Toute la proposition
 sera à confirmer par l’utilisateur. Ne transforme pas une estimation de trajet en fait vérifié.`;
+  if (mode === "completer") {
+    return `${base}
+Complète les champs vides d’une fiche existante. Appelle enregistrer_fiche et conserve le titre et les contraintes déjà renseignées.
+Déduis la saison dans le contexte local (Suisse romande par défaut) et propose les mois pertinents, de 1 à 12.
+Un marché de Noël est hivernal même s’il a lieu en novembre et décembre. Une randonnée alpine et des raquettes au même endroit peuvent avoir des saisons différentes.
+Distingue les mois propices des dates exactes, qui exigent une source officielle pour la bonne édition. Laisse saison et mois vides si tu ne peux pas les déduire solidement.
+Dans conditions_activite, donne uniquement des conditions concrètes qui changent la décision (enneigement, remontées ouvertes, temps sec, vent faible, etc.).
+Ne déduis pas l’état actuel de la neige ou des installations à partir de la saison.
+En priorité, cherche le site officiel pour les jours d’ouverture et la réservation. Les jours possibles sont les jours d’ouverture locaux pendant la période pertinente.
+Un délai minimal obligatoire se met dans delai_reservation_jours, en jours. Ne le confonds pas avec un préavis conseillé.
+Utilise 0 uniquement si la réservation le jour même ou l’accès sans réservation est attesté. Laisse le délai vide sans source fiable.
+Propose des durées réalistes, activité seule puis aller et retour depuis Nyon séparément. Estime les trajets si le lieu est assez précis, sans les présenter comme du trafic en direct.
+Donne un horaire compatible avec les heures d’ouverture. Laisse les valeurs inconnues vides et cite les sources officielles utiles en liens HTTPS.
+Si la description est vide, donne un programme court en texte brut dans les sections Idée, Programme suggéré, Repas et pauses et À prévoir selon le besoin.
+N’ajoute aucune mention « à vérifier » ou « à confirmer » dans les champs proposés. L’utilisateur relit les propositions avant de les enregistrer.
+${champs}`;
+  }
   if (mode === "complet") {
     return `${base}
 Tu reçois une idée de sortie, parfois très brève. Produis une fiche complète et utile avec l’outil enregistrer_fiche.
@@ -451,7 +472,7 @@ async function completeIdea(origin: string, id: string, espace: string, userId: 
   if (accessError || !membership) return reply(origin, { message: "Espace inaccessible." }, 403);
 
   const { data: idea, error } = await admin.from("sorties_idees")
-    .select("titre,accroche,description,categorie,format,adresse,ville,site_reservation,telephone,budget_min,budget_max,date_debut,date_fin,date_limite_reservation,preavis_semaines,source_url,parametres_creneau,brouillon_creneau,proposition_creneau")
+    .select("titre,accroche,description,categorie,format,adresse,ville,site_reservation,telephone,budget_min,budget_max,date_debut,date_fin,date_limite_reservation,preavis_semaines,delai_reservation_jours,saison_activite,meilleure_periode,conditions_activite,source_url,parametres_creneau,brouillon_creneau,proposition_creneau")
     .eq("id", id).eq("espace_id", espace).maybeSingle();
   if (error || !idea) return reply(origin, { message: "Fiche inaccessible." }, 404);
 
@@ -471,7 +492,7 @@ async function completeIdea(origin: string, id: string, espace: string, userId: 
     const result = await paid(job, "claude", budget, () => claude(key, {
       demande: "Complète les champs vides de cette fiche existante et propose les données manquantes pour le créneau. Respecte les contraintes déjà renseignées.",
       fiche: idea,
-    }, null, reference, 45_000, "complet"));
+    }, null, reference, 55_000, "completer"));
     return reply(origin, { proposition: normalize(result, reference, null) });
   } catch (error) {
     return reply(origin, { message: error instanceof ImportError ? error.message : "Claude n’a pas pu compléter cette fiche." }, 422);

@@ -279,15 +279,18 @@
           info.append(E.link(idea.titre, fiche(entry)));
           const description = idea.accroche || idea.description?.split("\n").find((line) => line.trim()) || idea.ville;
           if (description) info.append(el("p", description.replace(/^Idée\s*:\s*/i, "").slice(0, 130)));
+          const seasonName = E.saisons[idea.saison_activite];
+          if (seasonName) info.append(el("span", seasonName, "season-badge"));
+          if (idea.conditions_activite) info.append(el("p", E.withoutVerificationLabels(idea.conditions_activite), "planning-reason"));
           if (season) info.append(el("p", E.seasonLabel(season)));
           const checked = coverage && E.swissDay(new Date(choice.fin)) < coverage;
-          info.append(el("p", (checked ? "Créneau libre dans les agendas synchronisés" : "Disponibilité des agendas à vérifier")
+          info.append(el("p", (checked ? "Créneau libre dans les agendas synchronisés" : "Disponibilité des agendas inconnue")
             + " · " + slots.describe(choice), "planning-reason"));
           const deadline = choice.reservation.deadline;
           if (deadline && (idea.date_limite_reservation || idea.delai_reservation_jours > 0)) {
             info.append(el("p", "Réserver au plus tard le " + E.date(deadline), "planning-reason"));
           } else if (choice.reservation.unknown) {
-            info.append(el("p", "Réservation à vérifier", "planning-reason"));
+            info.append(el("p", "Réservation non renseignée", "planning-reason"));
           }
           if (ctx.editor) {
             const selected = drafts.has(idea.id);
@@ -517,7 +520,7 @@
     async function loadTasks() {
       const [annual, ideas, scores] = await Promise.all([
         E.annualPlanningTasks(scope.espace, true).catch(() => []),
-        pages(() => sb.from("sorties_idees").select("id,titre,accroche,description,ville,image_path,meilleure_periode,statut,urgence,date_debut,date_fin,date_limite_reservation,preavis_semaines,delai_reservation_jours,format,parametres_creneau,lat,lng,sorties_occurrences(statut)")
+        pages(() => sb.from("sorties_idees").select("id,titre,accroche,description,ville,image_path,meilleure_periode,statut,urgence,date_debut,date_fin,date_limite_reservation,preavis_semaines,delai_reservation_jours,format,saison_activite,conditions_activite,parametres_creneau,lat,lng,sorties_occurrences(statut)")
           .eq("espace_id", scope.espace).is("fusionnee_dans", null).in("statut", ["envie", "preselection"]).order("id")),
         pages(() => sb.from("sorties_scores_couple").select("idee_id,score").eq("espace_id", scope.espace).order("idee_id"))
       ]);

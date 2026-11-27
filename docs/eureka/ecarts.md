@@ -51,6 +51,12 @@ La demi-journée flexible occupe quatre heures d’activité. Le calendrier cher
 
 ## Suggestions par période
 
-La planification vérifie les créneaux, les trajets et les plages occupées synchronisées avant d’afficher ses suggestions. Pour une demi-journée, les suggestions se limitent à 60 minutes de trajet aller depuis Nyon. Le délai minimal pour réserver est distinct du préavis de rappel. Une fiche sans renseignement de réservation reste éligible avec la mention « Réservation à vérifier ». En dehors de la période synchronisée par iCloud, Eurêka indique que la disponibilité reste à vérifier.
+La planification vérifie les créneaux, les trajets et les plages occupées synchronisées avant d’afficher ses suggestions. Pour une demi-journée, les suggestions se limitent à 60 minutes de trajet aller depuis Nyon. Le délai minimal pour réserver est distinct du préavis de rappel. Une fiche sans renseignement de réservation reste éligible avec la mention « Réservation non renseignée ». En dehors de la période synchronisée par iCloud, Eurêka indique que la disponibilité est inconnue.
 
 Appliquer `supabase/eureka-etape-10.sql` avant de publier l’interface. Aucun changement des règles RLS ni redéploiement de fonction.
+
+## Suggestions de Claude pour la saison et les conditions
+
+La complétion d’une fiche existante peut proposer une saison, les mois propices, les jours d’ouverture, un délai de réservation, les trajets et des conditions comme l’enneigement. L’enregistrement valide les valeurs encore présentes dans le formulaire. Les mois propices influencent la planification. Les conditions restent visibles dans les suggestions, et la météo en direct est consultable dans le calendrier.
+
+Appliquer `supabase/eureka-etape-10.sql` puis `supabase/eureka-etape-11.sql` si ces scripts ne sont pas encore installés, redéployer `sorties-enrich` depuis la branche et publier le site.
