@@ -573,14 +573,17 @@
       return "Statut enregistré.";
     });
     const slots = window.EurekaSlots;
-    if (!idea.parametres_creneau) {
-      planForm.before(el("p", "Complète le créneau dans la modification de la fiche avant de planifier."));
+    const destinationOptions = options.filter((item) => item.lieu);
+    const planningAvailable = idea.parametres_creneau && typeof slots?.slot === "function"
+      && (!destinationOptions.length || typeof slots.destinationPicker === "function");
+    if (!planningAvailable) {
+      planForm.before(el("p", idea.parametres_creneau ? "Rouvre Eurêka pour actualiser la planification."
+        : "Complète le créneau dans la modification de la fiche avant de planifier."));
       planForm.hidden = true;
     }
-    const destinationOptions = options.filter((item) => item.lieu);
     let routedIdea = destinationOptions.length ? null : idea;
     let destinationSelect;
-    if (destinationOptions.length && idea.parametres_creneau && ctx.editor) {
+    if (destinationOptions.length && planningAvailable && ctx.editor) {
       const chooser = slots.destinationPicker(ctx.space.id, idea, destinationOptions, null, (option) => {
         routedIdea = option ? slots.forDestination(idea, option) : null;
         showPlannedRange();
@@ -594,8 +597,8 @@
     function showPlannedRange() {
       const date = dateInput.value;
       const settings = routedIdea?.parametres_creneau;
-      const range = settings && slots.slot(settings, date);
-      if (destinationOptions.length) window.EurekaWeather(range ? routedIdea : null, range ? date : null);
+      const range = planningAvailable && settings && slots.slot(settings, date);
+      if (destinationOptions.length) window.EurekaWeather?.(range ? routedIdea : null, range ? date : null);
       plannedRange.textContent = range ? (settings.demi_journee_flexible
         ? "Une demi-journée libre sera recherchée à cette date." : slots.describe(range)) : "";
     }
@@ -608,6 +611,7 @@
       if (seasons.length && (!season || date < season.start || date > season.end)) {
         throw new E.UserError("Choisis une date dans la saison sélectionnée.");
       }
+      if (!planningAvailable) throw new E.UserError("Le créneau est indisponible.");
       if (destinationSelect?.disabled) throw new E.UserError("Attends le calcul du trajet.");
       if (!routedIdea) throw new E.UserError("Choisis une destination.");
       if (savedDate !== date && !history.some((item) => item.date_cible === date && item.statut === "prevue")) {
