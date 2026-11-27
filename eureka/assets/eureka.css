@@ -89,6 +89,17 @@ summary { padding: 10px 0; cursor: pointer; }
 .nav [aria-current="page"] { color: var(--terre); text-decoration: underline; text-underline-offset: 4px; }
 .nav .add span { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--doux); font-size: 23px; }
 .nav .add-primary span { background: var(--terre); color: var(--papier); border-color: var(--terre); }
+@media (min-width: 960px) {
+  body:has(.nav:not([hidden])) { padding-top: 64px; }
+  body:has(.nav:not([hidden])) main { padding-bottom: 42px; }
+  .nav {
+    inset: 0 0 auto;
+    padding: 0 24px;
+    border-top: 0;
+    border-bottom: 1px solid var(--filet);
+  }
+  .planning-agenda { scroll-margin-top: 80px; }
+}
 .fiche { max-width: 760px; }
 .hero { height: clamp(260px, 95vw, 430px); margin: 0 -24px; position: relative; }
 .hero .visual { position: absolute; inset: 0; }
@@ -327,3 +338,9 @@ section h2 { margin-bottom: 12px; }
 .planning-departure { margin-bottom: 14px; }
 .planning-departure details { margin-top: 8px; }
 .planning-departure form { display: grid; gap: 8px; margin-top: 10px; }
+
+#planning-task-range { color: var(--doux); margin-bottom: 6px; }
+#planning-reasons { margin: 8px 0; padding-inline-start: 20px; color: var(--doux); }
+#discover-sources { margin: 8px 0 12px; }
+#discover-sources form { display: grid; gap: 6px; }
+#discover-sources li { overflow-wrap: anywhere; }

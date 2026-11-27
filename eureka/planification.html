@@ -9,13 +9,13 @@
   <link rel="manifest" href="/eureka/manifest.webmanifest">
   <link rel="icon" href="/eureka/assets/monogramme.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/eureka/assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="/eureka/assets/eureka.css?v=25">
+  <link rel="stylesheet" href="/eureka/assets/eureka.css?v=26">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
   <script defer src="/assets/js/config.js"></script>
   <script defer src="/eureka/assets/eureka.js?v=25"></script>
   <script defer src="/eureka/assets/creneaux.js"></script>
   <script defer src="/eureka/assets/meteo.js"></script>
-  <script defer src="/eureka/assets/p-planification.js?v=25"></script>
+  <script defer src="/eureka/assets/p-planification.js?v=26"></script>
 </head>
 <body>
   <main id="main" class="planning">
@@ -44,7 +44,9 @@
         <button type="button" data-period="month" aria-pressed="false">Autres jours du mois</button>
         <button type="button" data-period="later" aria-pressed="false">Plus tard</button>
       </div>
+      <p id="planning-task-range"></p>
       <p id="planning-tasks-status" role="status">Chargement…</p>
+      <ul id="planning-reasons" hidden></ul>
       <ul id="planning-tasks" class="list"></ul>
       <details id="planning-incomplete" hidden>
         <summary>Fiches à compléter</summary>
@@ -53,6 +55,15 @@
       <section id="discover-nearby" hidden>
         <h2 id="discover-title">À découvrir</h2>
         <p id="discover-range"></p>
+        <details id="discover-sources">
+          <summary>Sources de recherche</summary>
+          <ul id="discover-source-list"></ul>
+          <form id="discover-source-form">
+            <label>Ajouter un agenda public <input name="source" type="url" required placeholder="https://…"></label>
+            <button>Ajouter la source</button>
+          </form>
+          <p id="discover-source-status" role="status"></p>
+        </details>
         <button id="discover-button" type="button">Chercher des sorties</button>
         <p id="discover-status" role="status"></p>
         <ul id="discover-results" class="list"></ul>
