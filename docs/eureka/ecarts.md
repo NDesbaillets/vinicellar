@@ -88,3 +88,5 @@ Appliquer `supabase/eureka-etape-13.sql`, configurer le secret Supabase `GOOGLE_
 Quand le secret `TAVILY_API_KEY` est configuré, Tavily cherche des sources pour les découvertes, les fiches à compléter et les imports qui passent par la vérification web. Claude utilise ces résultats comme pistes et garde la recherche existante en secours. Tavily est comptabilisé dans le plafond de l’espace sous `sorties-tavily`, avec une réservation de 0,02 CHF par recherche (ajustable via `EUREKA_TAVILY_MAX_CHF`).
 
 Appliquer `supabase/eureka-etape-13.sql` puis `supabase/eureka-etape-14.sql`, et redéployer `sorties-enrich` depuis la branche.
+
+Pour afficher la carte Google Maps standard dans les fiches, activer Google Maps Embed API, créer une clé navigateur restreinte à cette API et aux référents `https://vinicellar.ch/*` et `https://www.vinicellar.ch/*`, puis configurer `GOOGLE_MAPS_EMBED_API_KEY` dans Supabase. La clé est publique dans l’iframe et doit être distincte de `GOOGLE_MAPS_ROUTES_API_KEY`, qui reste côté serveur. Redéployer `sorties-enrich`. En l’absence de clé d’affichage, les fiches utilisent OpenStreetMap. Aucun SQL supplémentaire pour cette carte.

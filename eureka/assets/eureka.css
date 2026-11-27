@@ -148,6 +148,7 @@ section h2 { margin-bottom: 12px; }
   background: var(--ivoire);
   filter: sepia(.28) saturate(.8);
 }
+.map-frame-google { filter: none; }
 .place-map-footer { padding: 0 16px; }
 .place-map-footer a { display: inline-flex; align-items: center; min-height: 44px; color: var(--terre); }
 #edit-actions form { margin-top: 12px; }

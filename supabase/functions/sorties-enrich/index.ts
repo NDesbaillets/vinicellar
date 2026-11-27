@@ -679,6 +679,13 @@ Deno.serve(async (req) => {
   const { data: { user }, error: authError } = await caller.auth.getUser(auth.slice(7));
   if (authError || !user) return reply(origin, { message: "Connectez-vous." }, 401);
   const payload = await boundedJson(req);
+  if (payload?.action === "carte_configuration") {
+    // Cette clé est publique par conception et limitée à Maps Embed et au référent du site.
+    const embedKey = Deno.env.get("GOOGLE_MAPS_EMBED_API_KEY")?.trim() || "";
+    const routesKey = Deno.env.get("GOOGLE_MAPS_ROUTES_API_KEY")?.trim();
+    return reply(origin, { google_maps_embed_key: /^AIza[A-Za-z0-9_-]{35}$/.test(embedKey)
+      && embedKey !== routesKey ? embedKey : null });
+  }
   const { id, espace, type } = payload || {};
   if (payload?.action === "decouvrir" && typeof espace === "string" && UUID.test(espace)) {
     return discoverIdeas(origin, espace, user.id, payload);

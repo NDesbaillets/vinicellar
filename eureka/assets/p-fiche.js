@@ -30,7 +30,15 @@
       && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
   }
 
-  function map(idea) {
+  let mapConfiguration;
+  function mapKey() {
+    mapConfiguration ??= data(sb.functions.invoke("sorties-enrich", {
+      body: { action: "carte_configuration" }
+    })).then((config) => config?.google_maps_embed_key || null).catch(() => null);
+    return mapConfiguration;
+  }
+
+  async function map(idea) {
     const host = $("#map");
     host.replaceChildren();
     const place = [idea.adresse, idea.ville].map((part) => part?.trim()).filter(Boolean).join(", ");
@@ -50,6 +58,26 @@
     footer.append(link);
     panel.append(header, view, footer);
     host.append(panel);
+
+    const key = await mapKey();
+    if (!panel.isConnected) return;
+    if (key) {
+      const position = storedPoint ? Number(idea.lat) + "," + Number(idea.lng) : place;
+      const source = new URL("https://www.google.com/maps/embed/v1/place");
+      source.search = new URLSearchParams({ key, q: position, language: "fr" });
+      const frame = el("iframe", null, "map-frame map-frame-google");
+      frame.title = "Google Maps · " + (place || idea.titre);
+      frame.loading = "lazy";
+      frame.allowFullscreen = true;
+      frame.referrerPolicy = "strict-origin-when-cross-origin";
+      frame.src = source.href;
+      const open = new URL("https://www.google.com/maps/search/");
+      open.search = new URLSearchParams({ api: "1", query: position });
+      link.textContent = "Ouvrir dans Google Maps";
+      link.href = open.href;
+      view.replaceChildren(frame);
+      return;
+    }
 
     function showMap(lat, lng, approximate = false) {
       const source = new URL("https://www.openstreetmap.org/export/embed.html");
