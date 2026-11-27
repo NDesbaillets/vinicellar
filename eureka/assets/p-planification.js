@@ -215,7 +215,10 @@
 
     function recommendedSources(place) {
       const city = eventKey({ titre: place.ville }).split("|")[0];
-      if (city === "nyon") return ["https://www.nyon.ch/", "https://www.myvaud.ch/", "https://www.myswitzerland.com/"];
+      if (city === "nyon") return [
+        "https://www.nyon.ch/", "https://www.myvaud.ch/", "https://www.myswitzerland.com/",
+        "https://torpille.ch/activites-region-lausanne/"
+      ];
       if (city === "zermatt") return ["https://zermatt.swiss/", "https://www.valais.ch/", "https://www.myswitzerland.com/"];
       if (city === "saint andre d olerargues") return ["https://www.gard-tourisme.com/", "https://www.provenceoccitane.com/", "https://www.tourisme-occitanie.com/"];
       return [];

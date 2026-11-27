@@ -230,6 +230,7 @@ Propose jusqu’à six événements autour de la ville de départ indiquée. Pri
 La demande indique le premier et le dernier jour autorisés et les dates à exclure.
 Cherche dans les agendas municipaux et touristiques ou sur le site de l’organisateur, avec au plus trois recherches.
 La demande peut contenir des sources à privilégier. Utilise leur domaine ou leur URL comme indices de recherche, et élargis à d’autres sites officiels si nécessaire.
+Pour un départ à Nyon, La Torpille peut inspirer des idées de loisirs et de visites dans la région lausannoise. Utilise le site de l’organisateur pour attester la date de visite et donner le lien final, notamment pour les activités permanentes soumises à des jours d’ouverture.
 Les URL deja_vus ont déjà été proposées : cherche d’autres événements. Si cette liste est renseignée, varie les requêtes (communes proches et catégories différentes).
 Pour chaque événement, donne une seule date de visite attestée au format AAAA-MM-JJ, la ville, une phrase indiquant pourquoi cette sortie vaut le détour et l’URL HTTPS exacte de la page officielle trouvée dans les résultats.
 Si un événement dure plusieurs jours, choisis une date de la demande où il est bien ouvert. Vérifie l’année de l’édition.
@@ -600,7 +601,7 @@ async function discoverIdeas(origin: string, espace: string, userId: string, pay
     }
     const lieu_depart = await departureFor(espace, typeof lieu_depart_id === "string" ? lieu_depart_id : null);
     if (!lieu_depart) return reply(origin, { message: "Lieu de départ inaccessible." }, 404);
-    const sources = sourceList(payload.sources, 6), deja_vus = sourceList(payload.deja_vus, 24);
+    const sources = sourceList(payload.sources, 7), deja_vus = sourceList(payload.deja_vus, 24);
     const result = await askAboutIdeas(espace, userId, { debut, fin, exclure, lieu_depart, sources, deja_vus }, reference, "decouvrir");
     const shown = new Set(deja_vus);
     return reply(origin, { sorties: localEvents(result, debut, fin, exclure).filter((event) => !shown.has(event.source)) });
