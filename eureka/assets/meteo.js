@@ -94,13 +94,13 @@
   }
 
   function conditions(code) {
-    if (code === 0) return "Ensoleillé";
-    if (code <= 2) return "Éclaircies";
-    if (code === 3) return "Couvert";
-    if (code <= 48) return "Brouillard";
-    if (code >= 95) return "Orages";
-    if ((code >= 71 && code <= 77) || code >= 85) return "Neige";
-    return "Pluie";
+    if (code === 0) return { label: "Ensoleillé", icon: "☀️" };
+    if (code <= 2) return { label: "Éclaircies", icon: "🌤️" };
+    if (code === 3) return { label: "Couvert", icon: "☁️" };
+    if (code <= 48) return { label: "Brouillard", icon: "🌫️" };
+    if (code >= 95) return { label: "Orages", icon: "⛈️" };
+    if ((code >= 71 && code <= 77) || code >= 85) return { label: "Neige", icon: "❄️" };
+    return { label: "Pluie", icon: "🌧️" };
   }
 
   window.EurekaWeather = async (idea, day) => {
@@ -135,12 +135,19 @@
         const label = el(date === day ? "strong" : "span", E.date(date));
         if (date === day) label.textContent += " · activité";
         const item = forecasts[i];
-        const details = item
-          ? (date < today ? "Estimation passée · " : "") + conditions(item.code)
+        const weather = item && conditions(item.code);
+        const details = weather
+          ? (date < today ? "Estimation passée · " : "") + weather.label
             + ` · ${Math.round(item.low)} à ${Math.round(item.high)} °C`
             + (item.rain == null ? "" : ` · Précipitations ${item.rain} %`)
           : date < today ? "Jour passé" : "Prévision indisponible";
-        entry.append(label, el("small", details));
+        const summary = el("small", details);
+        if (weather) {
+          const icon = el("span", weather.icon);
+          icon.setAttribute("aria-hidden", "true");
+          summary.prepend(icon, " ");
+        }
+        entry.append(label, summary);
         if (item && hasSwiss && hasGeneric) entry.append(el("small", item.source));
         return entry;
       }));
