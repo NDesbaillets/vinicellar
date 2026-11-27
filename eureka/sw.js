@@ -1,4 +1,4 @@
-const CACHE = "eureka-static-v28";
+const CACHE = "eureka-static-v29";
 const SCOPE = "/eureka/";
 const FILES = [
   "/eureka/", "/eureka/fiche.html", "/eureka/editer.html", "/eureka/ajouter.html", "/eureka/rappels.html", "/eureka/agendas.html", "/eureka/planification.html", "/eureka/hors-ligne.html",

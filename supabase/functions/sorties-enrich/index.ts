@@ -3,8 +3,9 @@ import jsQR from "npm:jsqr@1.4.0";
 import jpeg from "npm:jpeg-js@0.4.4";
 import { PNG } from "npm:pngjs@7.0.0";
 import { Buffer } from "node:buffer";
-import { exactDate, localEvents, https, MAX_PHOTO, normalize, reel, text, today, UUID } from "./extraction.ts";
+import { exactDate, localEvents, importedSlot, https, MAX_PHOTO, normalize, reel, text, today, UUID } from "./extraction.ts";
 
+import { googleCarTrip } from "./route.ts";
 import { transcribeVideo } from "./video.ts";
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void };
@@ -249,7 +250,12 @@ en précisant les estimations à confirmer dans la description si utile. Laisse 
 Jours : 1=lundi à 7=dimanche, selon les horaires attestés. Heure de début au format HH:MM (Europe/Zurich), indicative si estimée.
 Pour un week-end centré sur le samedi, indique weekend=true, si un départ vendredi soir depuis ce lieu est utile (vendredi_soir, heure_vendredi),
 le jour de départ du lieu pour rentrer (retour_decalage : 0=samedi, 1=dimanche, 2=lundi, etc.) et heure_retour. Toute la proposition
-sera à confirmer par l’utilisateur. Ne transforme pas une estimation de trajet en fait vérifié.`;
+sera modifiable par l’utilisateur. Ne transforme pas une estimation de trajet en fait vérifié.
+Pour rendre le créneau exploitable, indique les jours possibles, la durée sur place, une heure de début réaliste et les deux trajets.
+Tiens compte des séances fixes, des heures d’ouverture, de la saison (saison_activite et meilleure_periode)
+et des conditions utiles (conditions_activite). Renseigne le délai minimal en jours uniquement s’il est établi.
+Si la durée manque, laisse-la vide : Eurêka réservera 3 heures par défaut pour un nouvel import.
+Laisse vides les horaires inconnus. Eurêka calcule les trajets en voiture avec Google Maps, d’après le lieu d’arrivée et le lieu_depart.`;
   if (mode === "completer") {
     return `${base}
 Complète les champs vides d’une fiche existante. Appelle enregistrer_fiche et conserve le titre et les contraintes déjà renseignées.
@@ -526,7 +532,13 @@ async function processJob(job: Job) {
     }
     if (!result.titre) throw new ImportError("Source illisible. La fiche reste à compléter.");
     if (instagram && !token) result.a_verifier.source_url = "Légende Instagram inaccessible. Résultat à vérifier.";
-    const { error } = await finish(result, null);
+    const keyGoogle = Deno.env.get("GOOGLE_MAPS_ROUTES_API_KEY") || "";
+    const destination = [result.adresse, result.ville].filter(Boolean).join(", ");
+    const departure = lieu_depart ? [lieu_depart.ville, lieu_depart.pays].join(", ") : "Nyon, Suisse";
+    const trip = await googleCarTrip(departure, destination, keyGoogle);
+    const schedule = importedSlot(result, trip);
+    const { error } = await finish({ ...result, parametres_creneau: trip ? schedule : null,
+      brouillon_creneau: schedule, proposition_creneau: schedule || result.proposition_creneau }, null);
     if (error) throw error;
   } catch (error) {
     const reason = error instanceof ImportError ? error.message : "Enrichissement interrompu. La fiche reste à compléter.";

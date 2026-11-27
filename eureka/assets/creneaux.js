@@ -274,6 +274,13 @@
       && result.heure_activite && result.jours.length && (!weekend || (result.retour_decalage != null && result.heure_retour
         && (!result.vendredi_soir || result.heure_vendredi) && slot(result, "2024-01-13")));
     if (enough) {
+      const previous = idea.parametres_creneau;
+      if (Array.isArray(previous?.hypotheses)
+          && Object.entries(result).every(([key, value]) => JSON.stringify(value) === JSON.stringify(previous[key]))) {
+        result.hypotheses = previous.hypotheses;
+      }
+      if (previous?.source_trajets === "google_maps" && previous.aller_minutes === result.aller_minutes
+          && previous.retour_minutes === result.retour_minutes) result.source_trajets = previous.source_trajets;
       return { parametres_creneau: result, ...(idea.brouillon_creneau ? { brouillon_creneau: null } : {}) };
     }
     const started = mode || result.jours.length || [result.duree_minutes, result.aller_minutes, result.retour_minutes,

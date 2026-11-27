@@ -1,3 +1,5 @@
+import type { CarTrip } from "./route.ts";
+
 const DAY = 86_400_000;
 const formats = new Set(["demi_journee", "journee", "week_end", "sejour"]);
 export const MAX_PHOTO = 5_000_000;
@@ -110,14 +112,15 @@ export function normalize(raw: unknown, reference: string, thumbnail: string | n
     const note = text(inputChecks[key], 240);
     if (note) checks[key] = note;
   }
-  const dates = Object.fromEntries(
-    (["date_debut", "date_fin", "date_limite_reservation"] as const).map((key) => {
-      const date = extractionDate(doc[key], reference);
-      if (date?.inferred) checks[key] = "Année absente de la source, prochaine occurrence à vérifier.";
-      if (doc[key] && !date) checks[key] = "Date illisible ou invalide.";
-      return [key, date?.value ?? null];
-    }),
-  );
+  const dates: Record<"date_debut" | "date_fin" | "date_limite_reservation", string | null> = {
+    date_debut: null, date_fin: null, date_limite_reservation: null,
+  };
+  for (const key of ["date_debut", "date_fin", "date_limite_reservation"] as const) {
+    const date = extractionDate(doc[key], reference);
+    if (date?.inferred) checks[key] = "Année absente de la source, prochaine occurrence à vérifier.";
+    if (doc[key] && !date) checks[key] = "Date illisible ou invalide.";
+    dates[key] = date?.value ?? null;
+  }
   if (dates.date_fin && dates.date_debut && dates.date_fin < dates.date_debut) {
     dates.date_fin = null;
     checks.date_fin = "Incohérente avec la date de début.";
@@ -160,4 +163,62 @@ export function normalize(raw: unknown, reference: string, thumbnail: string | n
     proposition_creneau: planningProposal(doc.proposition_creneau),
     a_verifier: checks,
   };
+}
+
+/** Les hypothèses réservent du temps dans les suggestions, sans créer d’occurrence. */
+export function importedSlot(idea: ReturnType<typeof normalize>, trip: CarTrip | null) {
+  const suggestion = record(idea.proposition_creneau);
+  const assumptions: string[] = [];
+  function fallback(key: string, value: unknown, label: string) {
+    const fromSource = suggestion[key];
+    if (fromSource != null) return fromSource;
+    assumptions.push(label);
+    return value;
+  }
+
+  const asWeekday = (date: string) => new Date(date + "T00:00:00Z").getUTCDay() || 7;
+  const fixedDate = idea.date_debut && (!idea.date_fin || idea.date_debut === idea.date_fin) ? idea.date_debut : null;
+  const weekend = suggestion.weekend === true || (suggestion.weekend == null && !fixedDate && idea.format === "week_end");
+  const proposedDays = Array.isArray(suggestion.jours) ? suggestion.jours : null;
+
+  // Un événement daté et un horaire de week-end incompatible ne peuvent pas être planifiés automatiquement.
+  if ((fixedDate && proposedDays && !proposedDays.includes(asWeekday(fixedDate)))
+      || (weekend && proposedDays && !proposedDays.includes(6))
+      || (weekend && fixedDate && asWeekday(fixedDate) !== 6)) return null;
+
+  let days = proposedDays;
+  if (weekend) days = [6];
+  else if (fixedDate) days = [asWeekday(fixedDate)];
+  else if (!days && idea.date_debut && idea.date_fin) {
+    days = [];
+    const first = Date.parse(idea.date_debut), last = Date.parse(idea.date_fin);
+    for (let day = first; day <= last && day < first + 7 * DAY; day += DAY) {
+      days.push(new Date(day).getUTCDay() || 7);
+    }
+    assumptions.push("jours déduits de la période annoncée");
+  } else if (!days) {
+    days = [6, 7];
+    assumptions.push("samedi et dimanche");
+  }
+
+  const settings = {
+    ...suggestion,
+    jours: days,
+    weekend,
+    duree_minutes: fallback("duree_minutes", 180, "3 h d’activité"),
+    heure_activite: fallback("heure_activite", "10:00", "début à 10 h"),
+    aller_minutes: trip?.aller_minutes ?? null,
+    retour_minutes: trip?.retour_minutes ?? null,
+  };
+  if (weekend) {
+    Object.assign(settings, {
+      vendredi_soir: suggestion.vendredi_soir === true,
+      retour_decalage: fallback("retour_decalage", 1, "retour le dimanche"),
+      heure_retour: fallback("heure_retour", "17:00", "départ pour le retour à 17 h"),
+    });
+    if (suggestion.vendredi_soir === true) {
+      Object.assign(settings, { heure_vendredi: fallback("heure_vendredi", "18:00", "départ le vendredi à 18 h") });
+    }
+  }
+  return { ...settings, hypotheses: assumptions, ...(trip ? { source_trajets: "google_maps" } : {}) };
 }

@@ -76,3 +76,9 @@ Appliquer `supabase/eureka-etape-12.sql` après les étapes précédentes, puis 
 Les découvertes privilégient les agendas locaux proposés dans le panneau « Sources de recherche ». Les éditeurs peuvent y ajouter jusqu’à trois agendas publics par lieu sur leur appareil. « Chercher d’autres sorties » écarte les événements déjà vus. Chaque recherche reste dans le plafond IA de l’espace et seules les pages renvoyées par la recherche web peuvent figurer dans les résultats. Redéployer `sorties-enrich` pour activer ces options.
 
 Dans « Ajouter une idée », la section « Suggestions » lance une recherche à la demande pour le lieu choisi. Elle présente jusqu’à dix idées, y compris des activités permanentes sans date imposée, et exclut les doublons du recueil. Les sites de référence et les sources ajoutées dans Planification sont réutilisés. Pour activer cette recherche, redéployer `sorties-enrich`.
+
+## Imports prêts à planifier
+
+À la fin d’un nouvel import, Eurêka propose par défaut 3 h d’activité et un début à 10 h lorsque les valeurs manquent. Les jours viennent de la source ou de la période annoncée, avec le week-end par défaut. Une fiche indique les valeurs par défaut utilisées. Les trajets aller et retour sont calculés séparément en voiture, hors trafic en direct, par Google Maps Routes API. Sans itinéraire disponible, l’import garde le créneau en brouillon. Un créneau complet devient éligible aux suggestions selon les agendas et les règles habituelles.
+
+Appliquer `supabase/eureka-etape-13.sql`, configurer le secret Supabase `GOOGLE_MAPS_ROUTES_API_KEY` avec une clé Google Cloud autorisée pour Routes API, puis redéployer `sorties-enrich`. Les imports passés gardent leurs valeurs tant qu’ils ne sont pas repris.

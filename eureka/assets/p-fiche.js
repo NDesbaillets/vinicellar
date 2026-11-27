@@ -142,6 +142,10 @@
     row("Lieu de départ", departure);
     const planning = idea.parametres_creneau;
     if (planning) {
+      if (planning.source_trajets === "google_maps") row("Source du trajet", "Google Maps · voiture, hors trafic en direct");
+      if (Array.isArray(planning.hypotheses) && planning.hypotheses.length) {
+        row("Valeurs par défaut à l’import", planning.hypotheses.join(" · "));
+      }
       const days = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
       row("Temps à prévoir", planning.duree_minutes + " min d’activité · " + planning.aller_minutes
         + " min à l’aller · " + planning.retour_minutes + " min de retour");
