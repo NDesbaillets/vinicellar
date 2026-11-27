@@ -314,3 +314,12 @@ section h2 { margin-bottom: 12px; }
   border: 1px solid var(--sauge); background: var(--papier);
   color: var(--encre); font-size: 13px; font-weight: 600;
 }
+
+#discover-nearby { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--filet); }
+#discover-nearby h2 { margin-bottom: 4px; }
+#discover-range { margin-bottom: 8px; color: var(--doux); }
+#discover-status:not(:empty) { margin-top: 8px; }
+.discovery-card { padding-block: 12px; border-bottom: 1px solid var(--filet); }
+.discovery-card h3 { font-size: 24px; }
+.discovery-card p { margin-block: 4px; }
+.discovery-card a { overflow-wrap: anywhere; max-width: 100%; }

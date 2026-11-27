@@ -33,6 +33,22 @@
     ["notes", "Notes", { type: "textarea", wide: true }]
   ];
 
+  function discoveryDraft() {
+    if (!location.hash.startsWith("#decouverte=")) return {};
+    try {
+      const event = JSON.parse(decodeURIComponent(location.hash.slice("#decouverte=".length)));
+      const rawDate = event.date;
+      const date = typeof rawDate === "string" && /^\d{4}-\d\d-\d\d$/.test(rawDate) ? rawDate : null;
+      const short = (value, limit) => typeof value === "string" ? value.trim().slice(0, limit) : null;
+      const source = E.safeUrl(event.source);
+      if (!date || !source) return {};
+      return { titre: short(event.titre, 160), ville: short(event.ville, 100),
+        description: short(event.description, 300), date_debut: date, date_fin: date, source_url: source, type_lieu: "lieu" };
+    } catch {
+      return {};
+    }
+  }
+
   function field([name, caption, config = {}], value) {
     const label = el("label", caption, config.wide ? "wide" : "");
     const control = el(config.options ? "select" : config.type === "textarea" ? "textarea" : "input");
@@ -140,7 +156,7 @@
 
   E.boot("ajout", async (ctx) => {
     if (!ctx.editor) throw new E.UserError("Cet espace est en lecture seule pour votre compte.");
-    const idea = id ? await E.ideaById(ctx, id) : {};
+    const idea = id ? await E.ideaById(ctx, id) : discoveryDraft();
     if (!idea) return E.ideaGone(ctx);
     if (id) $("#editor-title").textContent = "Modifier l’idée";
     const back = E.url(id ? "fiche.html" : "", { id, espace: ctx.space.id });

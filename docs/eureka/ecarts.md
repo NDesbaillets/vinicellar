@@ -60,3 +60,9 @@ Appliquer `supabase/eureka-etape-10.sql` avant de publier l’interface. Aucun c
 La complétion d’une fiche existante peut proposer une saison, les mois propices, les jours d’ouverture, un délai de réservation, les trajets et des conditions comme l’enneigement. L’enregistrement valide les valeurs encore présentes dans le formulaire. Les mois propices influencent la planification. Les conditions restent visibles dans les suggestions, et la météo en direct est consultable dans le calendrier.
 
 Appliquer `supabase/eureka-etape-10.sql` puis `supabase/eureka-etape-11.sql` si ces scripts ne sont pas encore installés, redéployer `sorties-enrich` depuis la branche et publier le site.
+
+## Découvertes autour de Nyon
+
+Dans Planification, « Chercher des sorties » lance sur demande une recherche pour l’horizon affiché. Eurêka conserve uniquement les événements datés dans la période dont l’URL a été renvoyée par la recherche web. Les résultats qui correspondent à une fiche existante par source ou par titre et ville sont écartés. « Ajouter au recueil » ouvre une fiche préremplie que l’utilisateur peut enregistrer. La recherche ne transmet aucun titre d’agenda ni détail du recueil, et utilise le plafond IA de l’espace.
+
+Cette fonctionnalité ne nécessite aucun SQL supplémentaire. Pour publier l’ensemble de la branche, vérifier que les étapes 10 et 11 sont appliquées, puis redéployer `sorties-enrich`.

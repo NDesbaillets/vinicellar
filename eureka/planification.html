@@ -9,13 +9,13 @@
   <link rel="manifest" href="/eureka/manifest.webmanifest">
   <link rel="icon" href="/eureka/assets/monogramme.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/eureka/assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="/eureka/assets/eureka.css?v=23">
+  <link rel="stylesheet" href="/eureka/assets/eureka.css?v=24">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
   <script defer src="/assets/js/config.js"></script>
-  <script defer src="/eureka/assets/eureka.js?v=23"></script>
+  <script defer src="/eureka/assets/eureka.js?v=24"></script>
   <script defer src="/eureka/assets/creneaux.js"></script>
   <script defer src="/eureka/assets/meteo.js"></script>
-  <script defer src="/eureka/assets/p-planification.js?v=23"></script>
+  <script defer src="/eureka/assets/p-planification.js?v=24"></script>
 </head>
 <body>
   <main id="main" class="planning">
@@ -36,6 +36,13 @@
         <summary>Fiches à compléter</summary>
         <ul id="planning-incomplete-list" class="list"></ul>
       </details>
+      <section id="discover-nearby" hidden>
+        <h2>À découvrir près de Nyon</h2>
+        <p id="discover-range"></p>
+        <button id="discover-button" type="button">Chercher des sorties</button>
+        <p id="discover-status" role="status"></p>
+        <ul id="discover-results" class="list"></ul>
+      </section>
       <a class="button planning-calendar-link" href="#planning-calendar">Voir le calendrier</a>
     </aside>
     <section id="planning-calendar" class="planning-agenda">

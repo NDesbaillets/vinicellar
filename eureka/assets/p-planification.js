@@ -124,6 +124,88 @@
     let calendar = { events: [], busy: [] };
     const pending = new Set();
 
+    const discoveryPanel = $("#discover-nearby");
+    const discoveryButton = $("#discover-button");
+    const discoveryStatus = $("#discover-status");
+    const discoveryList = $("#discover-results");
+    const discoveryCache = new Map();
+
+    function eventKey(item) {
+      return [item.titre, item.ville].map((value) => (value || "").toLowerCase()
+        .normalize("NFD").replace(/\p{M}/gu, "").replace(/[^a-z0-9]+/g, " ").trim()).join("|");
+    }
+
+    function sourceKey(value) {
+      const href = E.safeUrl(value);
+      if (!href) return null;
+      const url = new URL(href);
+      url.hash = "";
+      for (const key of [...url.searchParams.keys()]) {
+        if (key.startsWith("utm_")) url.searchParams.delete(key);
+      }
+      url.searchParams.sort();
+      return url.href.replace(/\/$/, "");
+    }
+
+    function renderDiscoveries() {
+      if (!ctx.editor) return;
+      discoveryPanel.hidden = false;
+      const { first, last } = suggestionWindow(today, period);
+      $("#discover-range").textContent = "Du " + E.date(first) + " au " + E.date(last);
+      const result = discoveryCache.get(period);
+      discoveryButton.disabled = !!result?.loading;
+      discoveryButton.hidden = !!result?.items;
+      discoveryList.replaceChildren();
+      if (result?.loading) E.message(discoveryStatus, "Recherche dans les agendas locaux…");
+      else if (result?.error) E.message(discoveryStatus, result.error, true);
+      else if (!result?.items) E.message(discoveryStatus);
+      else {
+        E.message(discoveryStatus, result.items.length ? "" : "Aucun nouvel événement trouvé pour cette période.");
+        discoveryList.append(...result.items.map((item) => {
+          const row = el("li", null, "discovery-card");
+          const source = E.link("Source officielle · " + new URL(item.source).hostname.replace(/^www\./, ""), item.source, "button");
+          source.target = "_blank";
+          source.rel = "noopener noreferrer";
+          const editor = E.url("editer.html", scope) + "#decouverte=" + encodeURIComponent(JSON.stringify(item));
+          const actions = el("div", null, "actions");
+          actions.append(source, E.link("Ajouter au recueil", editor, "button"));
+          row.append(el("h3", item.titre), el("p", E.date(item.date) + " · " + item.ville), el("p", item.description), actions);
+          return row;
+        }));
+      }
+    }
+
+    discoveryButton.addEventListener("click", async () => {
+      const horizon = period;
+      if (discoveryCache.get(horizon)?.loading) return;
+      discoveryCache.set(horizon, { loading: true });
+      renderDiscoveries();
+      try {
+        const { first, last, exclude = [] } = suggestionWindow(today, horizon);
+        const existing = await pages(() => sb.from("sorties_idees").select("id,titre,ville,source_url")
+          .eq("espace_id", scope.espace).is("fusionnee_dans", null).order("id"));
+        const titles = new Set(existing.map(eventKey));
+        const sources = new Set(existing.map((item) => sourceKey(item.source_url)).filter(Boolean));
+        const result = await data(sb.functions.invoke("sorties-enrich", {
+          body: { action: "decouvrir", espace: scope.espace, debut: first, fin: last, exclure: exclude }
+        }));
+        if (!Array.isArray(result?.sorties)) throw new Error();
+        const items = result.sorties.filter((item) => {
+          const source = sourceKey(item.source);
+          const key = eventKey(item);
+          if (!source || titles.has(key) || sources.has(source)) return false;
+          titles.add(key);
+          sources.add(source);
+          return true;
+        });
+        discoveryCache.set(horizon, { items });
+      } catch (error) {
+        const response = await error.context?.json?.().catch(() => null);
+        discoveryCache.set(horizon, { error: response?.message || "Impossible de rechercher de nouvelles sorties pour le moment." });
+      }
+      if (horizon === period) renderDiscoveries();
+    });
+
     function saveDrafts() {
       try {
         sessionStorage.setItem(draftKey, JSON.stringify([...drafts].map(([id, draft]) => [id, draft.day, draft.range.heure])));
@@ -551,6 +633,7 @@
         choice.setAttribute("aria-pressed", String(choice === button));
       }
       renderTasks();
+      renderDiscoveries();
     });
     function step(direction) {
       const { first } = windowFor(anchor, view.value);
@@ -567,6 +650,7 @@
     });
     $("#planned-catalogue").href = E.url("", { ...scope, statut: "planifiee" });
     $("#planning-content").hidden = false;
+    renderDiscoveries();
     await Promise.all([openDay(today), loadTasks().catch(() => E.message(taskStatus, "Les suggestions sont indisponibles.", true))]);
   });
 })();
