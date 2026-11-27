@@ -130,7 +130,8 @@
     row("Début", E.date(idea.date_debut));
     row("Fin", E.date(idea.date_fin));
     row("Réserver avant", E.date(idea.date_limite_reservation));
-    row("Préavis", idea.preavis_semaines == null ? null : idea.preavis_semaines + " sem.");
+    row("Délai minimal pour réserver", idea.delai_reservation_jours == null ? null : idea.delai_reservation_jours + " j");
+    row("Préavis de rappel", idea.preavis_semaines == null ? null : idea.preavis_semaines + " sem.");
     row("Meilleure période", idea.meilleure_periode.map((month) => E.mois[month]).join(", "));
     const firstMonth = E.mois[idea.saison_debut_mois];
     const lastMonth = E.mois[idea.saison_fin_mois];

@@ -20,6 +20,7 @@
     ["budget_max", "Budget max. (CHF)", { type: "number", min: 0, step: "0.01" }],
     ["date_debut", "Date de début", { type: "date" }], ["date_fin", "Date de fin", { type: "date" }],
     ["date_limite_reservation", "Réserver avant", { type: "date" }],
+    ["delai_reservation_jours", "Délai minimal pour réserver (jours)", { type: "number", min: 0, max: 365 }],
     ["preavis_semaines", "Préavis (semaines)", { type: "number", min: 0 }],
     ["urgence", "Urgence", { options: { 1: "1", 2: "2", 3: "3", 4: "4", 5: "5" }, default: 1, numeric: true }],
     ["statut", "Statut", { options: E.statuts, default: "envie" }],
@@ -121,6 +122,7 @@
       const value = values.get(name).trim();
       result[name] = value && (config.type === "number" || config.numeric) ? Number(value) : value || null;
     }
+    if (result.delai_reservation_jours == null && idea.delai_reservation_jours == null) delete result.delai_reservation_jours;
     const mode = values.get("repetition");
     result.recurrence_mois = mode === "mois" ? Number(values.get("recurrence_mois")) : null;
     if (mode === "annee" || idea.saison_debut_mois != null) {

@@ -9,13 +9,13 @@
   <link rel="manifest" href="/eureka/manifest.webmanifest">
   <link rel="icon" href="/eureka/assets/monogramme.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/eureka/assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="/eureka/assets/eureka.css">
+  <link rel="stylesheet" href="/eureka/assets/eureka.css?v=22">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
   <script defer src="/assets/js/config.js"></script>
   <script defer src="/eureka/assets/eureka.js"></script>
   <script defer src="/eureka/assets/creneaux.js"></script>
   <script defer src="/eureka/assets/meteo.js"></script>
-  <script defer src="/eureka/assets/p-planification.js"></script>
+  <script defer src="/eureka/assets/p-planification.js?v=22"></script>
 </head>
 <body>
   <main id="main" class="planning">
@@ -27,11 +27,15 @@
       <div class="planning-horizons" role="group" aria-label="Période des suggestions">
         <button type="button" data-period="weekend" aria-pressed="true">Ce week-end</button>
         <button type="button" data-period="next" aria-pressed="false">Week-end prochain</button>
-        <button type="button" data-period="month" aria-pressed="false">Mois à venir</button>
+        <button type="button" data-period="month" aria-pressed="false">Autres jours du mois</button>
         <button type="button" data-period="later" aria-pressed="false">Plus tard</button>
       </div>
       <p id="planning-tasks-status" role="status">Chargement…</p>
       <ul id="planning-tasks" class="list"></ul>
+      <details id="planning-incomplete" hidden>
+        <summary>Fiches à compléter</summary>
+        <ul id="planning-incomplete-list" class="list"></ul>
+      </details>
       <a class="button planning-calendar-link" href="#planning-calendar">Voir le calendrier</a>
     </aside>
     <section id="planning-calendar" class="planning-agenda">

@@ -48,3 +48,9 @@ Pour mettre en service, appliquer [`supabase/eureka-etape-6.sql`](../../supabase
 - Déploiement par le propriétaire. Appliquer `supabase/eureka-etape-7.sql`, redéployer l’Edge Function `sorties-enrich`, puis publier la branche. Les règles RLS existantes sont conservées.
 
 La demi-journée flexible occupe quatre heures d’activité. Le calendrier cherche un début par pas de 30 minutes, entre 8 h et 16 h, en comptant les deux trajets dans la recherche de disponibilité. L’heure retenue est enregistrée sur l’occurrence. Appliquer `supabase/eureka-etape-8.sql` après l’étape 7 et avant la publication du site.
+
+## Suggestions par période
+
+La planification vérifie les créneaux, les trajets et les plages occupées synchronisées avant d’afficher ses suggestions. Pour une demi-journée, les suggestions se limitent à 60 minutes de trajet aller depuis Nyon. Le délai minimal pour réserver est distinct du préavis de rappel. Une fiche sans renseignement de réservation reste éligible avec la mention « Réservation à vérifier ». En dehors de la période synchronisée par iCloud, Eurêka indique que la disponibilité reste à vérifier.
+
+Appliquer `supabase/eureka-etape-10.sql` avant de publier l’interface. Aucun changement des règles RLS ni redéploiement de fonction.

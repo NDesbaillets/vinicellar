@@ -261,6 +261,9 @@ section h2 { margin-bottom: 12px; }
 .planning-card .visual { width: 58px; height: 66px; }
 .planning-card a { font: 600 20px/1.05 var(--titre); overflow-wrap: anywhere; }
 .planning-card p { font-size: 13px; margin-bottom: 6px; overflow-wrap: anywhere; }
+.planning-card .planning-reason { color: var(--doux); font-weight: 600; }
+#planning-incomplete { margin-bottom: 12px; }
+#planning-incomplete a { display: inline-flex; min-height: 44px; align-items: center; }
 .agenda-controls { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 8px; }
 .agenda-controls .agenda-view, .agenda-controls .agenda-date { grid-column: 1 / -1; }
 #agenda-range { margin: 14px 0 8px; font-weight: 600; }
