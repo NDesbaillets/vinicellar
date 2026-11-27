@@ -9,13 +9,13 @@
   <link rel="manifest" href="/eureka/manifest.webmanifest">
   <link rel="icon" href="/eureka/assets/monogramme.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/eureka/assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="/eureka/assets/eureka.css?v=24">
+  <link rel="stylesheet" href="/eureka/assets/eureka.css?v=25">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
   <script defer src="/assets/js/config.js"></script>
-  <script defer src="/eureka/assets/eureka.js?v=24"></script>
+  <script defer src="/eureka/assets/eureka.js?v=25"></script>
   <script defer src="/eureka/assets/creneaux.js"></script>
   <script defer src="/eureka/assets/meteo.js"></script>
-  <script defer src="/eureka/assets/p-planification.js?v=24"></script>
+  <script defer src="/eureka/assets/p-planification.js?v=25"></script>
 </head>
 <body>
   <main id="main" class="planning">
@@ -24,6 +24,20 @@
   <div id="planning-content" class="planning-layout" hidden>
     <aside class="planning-inbox">
       <h2>Activités à planifier</h2>
+      <div class="planning-departure">
+        <label>Lieu de départ <select id="planning-departure"></select></label>
+        <details>
+          <summary>Gérer mes lieux de départ</summary>
+          <button type="button" id="set-principal">Définir comme lieu principal</button>
+          <form id="new-departure" hidden>
+            <label>Nom du lieu <input name="nom" required maxlength="80" placeholder="Ex. La Saint Cantène"></label>
+            <label>Ville ou commune <input name="ville" required maxlength="100"></label>
+            <label>Pays <input name="pays" required maxlength="80"></label>
+            <button>Ajouter ce lieu</button>
+          </form>
+        </details>
+        <p id="departure-status" role="status"></p>
+      </div>
       <div class="planning-horizons" role="group" aria-label="Période des suggestions">
         <button type="button" data-period="weekend" aria-pressed="true">Ce week-end</button>
         <button type="button" data-period="next" aria-pressed="false">Week-end prochain</button>
@@ -37,7 +51,7 @@
         <ul id="planning-incomplete-list" class="list"></ul>
       </details>
       <section id="discover-nearby" hidden>
-        <h2>À découvrir près de Nyon</h2>
+        <h2 id="discover-title">À découvrir</h2>
         <p id="discover-range"></p>
         <button id="discover-button" type="button">Chercher des sorties</button>
         <p id="discover-status" role="status"></p>

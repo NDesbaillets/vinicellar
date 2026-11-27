@@ -66,3 +66,9 @@ Appliquer `supabase/eureka-etape-10.sql` puis `supabase/eureka-etape-11.sql` si 
 Dans Planification, « Chercher des sorties » lance sur demande une recherche pour l’horizon affiché. Eurêka conserve uniquement les événements datés dans la période dont l’URL a été renvoyée par la recherche web. Les résultats qui correspondent à une fiche existante par source ou par titre et ville sont écartés. « Ajouter au recueil » ouvre une fiche préremplie que l’utilisateur peut enregistrer. La recherche ne transmet aucun titre d’agenda ni détail du recueil, et utilise le plafond IA de l’espace.
 
 Cette fonctionnalité ne nécessite aucun SQL supplémentaire. Pour publier l’ensemble de la branche, vérifier que les étapes 10 et 11 sont appliquées, puis redéployer `sorties-enrich`.
+
+## Lieux de départ
+
+Les fiches ont un lieu de départ dans leur espace. L’étape 12 rattache les fiches existantes à Nyon et ajoute La Saint Cantène et Zermatt à l’espace de Viviane et Nicolas. Chaque compte peut définir son lieu principal. La Planification mémorise le dernier lieu affiché sur l’appareil, comme le sélecteur de caves. Elle filtre le recueil et les découvertes selon ce lieu. Le calendrier garde toutes les sorties de l’espace. Changer l’origine d’une fiche remet à compléter ses durées de trajet.
+
+Appliquer `supabase/eureka-etape-12.sql` après les étapes précédentes, puis redéployer `sorties-enrich` depuis la branche. Claude reçoit la ville et le pays du lieu choisi pour les trajets et les découvertes.

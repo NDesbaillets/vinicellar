@@ -323,3 +323,7 @@ section h2 { margin-bottom: 12px; }
 .discovery-card h3 { font-size: 24px; }
 .discovery-card p { margin-block: 4px; }
 .discovery-card a { overflow-wrap: anywhere; max-width: 100%; }
+
+.planning-departure { margin-bottom: 14px; }
+.planning-departure details { margin-top: 8px; }
+.planning-departure form { display: grid; gap: 8px; margin-top: 10px; }

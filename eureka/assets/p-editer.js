@@ -43,7 +43,7 @@
       const source = E.safeUrl(event.source);
       if (!date || !source) return {};
       return { titre: short(event.titre, 160), ville: short(event.ville, 100),
-        description: short(event.description, 300), date_debut: date, date_fin: date, source_url: source, type_lieu: "lieu" };
+        description: short(event.description, 300), date_debut: date, date_fin: date, source_url: source, type_lieu: "lieu", lieu_depart_id: E.params.get("depart") };
     } catch {
       return {};
     }
@@ -156,7 +156,10 @@
 
   E.boot("ajout", async (ctx) => {
     if (!ctx.editor) throw new E.UserError("Cet espace est en lecture seule pour votre compte.");
-    const idea = id ? await E.ideaById(ctx, id) : discoveryDraft();
+    const [idea, settings] = await Promise.all([
+      id ? E.ideaById(ctx, id) : discoveryDraft(),
+      E.departureSettings(ctx)
+    ]);
     if (!idea) return E.ideaGone(ctx);
     if (id) $("#editor-title").textContent = "Modifier l’idée";
     const back = E.url(id ? "fiche.html" : "", { id, espace: ctx.space.id });
@@ -166,14 +169,46 @@
       period(idea.meilleure_periode || []));
     const slots = window.EurekaSlots;
     let slotIdea = idea;
-    let slotFields = slots.fields(idea);
-    form.elements.titre.closest("label").after(slotFields);
+    let origin = settings.places.find((place) => place.id === idea.lieu_depart_id)
+      || (id ? settings.defaultPlace : settings.principal);
+    const departure = el("label", "Lieu de départ", "wide");
+    const placeSelect = el("select");
+    placeSelect.name = "lieu_depart_id";
+    E.options(placeSelect, Object.fromEntries(settings.places.map((place) => [
+      place.id, place.nom + (place.id === settings.principal?.id ? " · principal" : "")
+    ])));
+    if (origin) placeSelect.value = origin.id;
+    departure.append(placeSelect);
+    let slotFields = slots.fields(idea, origin?.nom);
+    form.elements.titre.closest("label").after(departure, slotFields);
+    const distance = form.elements.distance_nyon_km;
+    function showDistance() {
+      distance.closest("label").hidden = origin?.ville !== "Nyon" || origin?.pays !== "Suisse";
+    }
+    showDistance();
+    placeSelect.addEventListener("change", () => {
+      const next = settings.places.find((place) => place.id === placeSelect.value);
+      if (!next || next.id === origin?.id) return;
+      const draft = slots.formValues(new FormData(form));
+      draft.aller_minutes = draft.retour_minutes = null;
+      if (draft.vendredi_soir) draft.heure_vendredi = null;
+      origin = next;
+      slotIdea = { ...idea, parametres_creneau: null, proposition_creneau: null,
+        brouillon_creneau: { ...draft, confirmation_requise: false } };
+      const replacement = slots.fields(slotIdea, origin.nom);
+      slotFields.replaceWith(replacement);
+      slotFields = replacement;
+      distance.value = "";
+      showDistance();
+      E.message($("#form-status"), "Lieu de départ modifié. Renseigne les nouveaux trajets quand tu les connais.");
+    });
     form.elements.statut.closest("label").after(recurrenceFields(idea));
     const description = form.elements.description;
     description.value = E.withoutVerificationLabels(description.value);
     description.closest("label").after(descriptionPreview(description));
     E.bind(form, $("#form-status"), async (values) => {
       const body = payload(values, slotIdea);
+      if (origin) body.lieu_depart_id = origin.id;
       const table = sb.from("sorties_idees");
       const request = id
         ? table.update(body).eq("id", id).eq("espace_id", ctx.space.id)
@@ -199,10 +234,11 @@
       button.addEventListener("click", async () => {
         if (button.disabled) return;
         button.disabled = true;
+        const requestedOrigin = origin?.id;
         E.message(status, "Claude prépare des propositions…");
         try {
           const { proposition } = await data(sb.functions.invoke("sorties-enrich", {
-            body: { action: "completer_fiche", id, espace: ctx.space.id }
+            body: { action: "completer_fiche", id, espace: ctx.space.id, lieu_depart_id: requestedOrigin }
           }));
           if (!proposition) throw new E.UserError("Claude n’a renvoyé aucune proposition.");
           let changed = false;
@@ -225,7 +261,7 @@
               }
             }
           }
-          if (!idea.parametres_creneau && proposition.proposition_creneau) {
+          if (!slotIdea.parametres_creneau && origin?.id === requestedOrigin && proposition.proposition_creneau) {
             const current = slots.formValues(new FormData(form));
             const suggestion = proposition.proposition_creneau;
             const draft = { ...current };
@@ -247,8 +283,8 @@
             }
             if (filledSlot) {
               // La valeur stockée sur la fiche reste celle chargée avant la proposition.
-              slotIdea = { ...idea, brouillon_creneau: { ...draft, confirmation_requise: true } };
-              const updated = slots.fields(slotIdea);
+              slotIdea = { ...slotIdea, brouillon_creneau: { ...draft, confirmation_requise: true } };
+              const updated = slots.fields(slotIdea, origin?.nom);
               slotFields.replaceWith(updated);
               slotFields = updated;
               changed = true;

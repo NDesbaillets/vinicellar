@@ -101,6 +101,15 @@
   E.boot("planification", async (ctx) => {
     const today = E.swissDay();
     const scope = { espace: ctx.space.id };
+    const settings = await E.departureSettings(ctx);
+    const departurePicker = $("#planning-departure");
+    const departureStatus = $("#departure-status");
+    const departureKey = "eureka.depart." + ctx.user.id + "." + scope.espace;
+    let remembered;
+    try { remembered = localStorage.getItem(departureKey); } catch { /* Le choix reste en mémoire. */ }
+    let departure = settings.places.find((place) => place.id === (E.params.get("depart") || remembered))
+      || settings.principal;
+    const originFor = (idea) => idea.lieu_depart_id || settings.defaultPlace?.id;
     const canReadICloud = data(sb.rpc("sorties_agenda_actif", { p_espace: ctx.space.id }));
     const sharedCoverage = canReadICloud.then(async (enabled) => {
       if (!enabled) return null;
@@ -129,6 +138,59 @@
     const discoveryStatus = $("#discover-status");
     const discoveryList = $("#discover-results");
     const discoveryCache = new Map();
+    const discoveryKey = (horizon, place) => horizon + "/" + place.id;
+
+    function refreshDeparturePicker() {
+      E.options(departurePicker, Object.fromEntries(settings.places.map((place) => [
+        place.id, place.nom + (place.id === settings.principal?.id ? " · principal" : "")
+      ])));
+      if (departure) departurePicker.value = departure.id;
+      $("#set-principal").disabled = !departure || departure.id === settings.principal?.id;
+    }
+
+    function chooseDeparture(value) {
+      if (!value) return;
+      departure = value;
+      try { localStorage.setItem(departureKey, value.id); } catch { /* Le choix reste en mémoire. */ }
+      refreshDeparturePicker();
+      renderIncomplete();
+      renderTasks();
+      renderDiscoveries();
+    }
+
+    refreshDeparturePicker();
+    departurePicker.addEventListener("change", () => {
+      chooseDeparture(settings.places.find((place) => place.id === departurePicker.value));
+    });
+    $("#set-principal").addEventListener("click", async (event) => {
+      const place = departure;
+      if (!place) return;
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        await data(sb.from("sorties_preferences_depart").upsert({
+          espace_id: scope.espace, user_id: ctx.user.id, lieu_id: place.id
+        }, { onConflict: "espace_id,user_id" }));
+        settings.principal = place;
+        E.message(departureStatus, place.nom + " est ton lieu principal.");
+      } catch {
+        E.message(departureStatus, "Impossible de modifier le lieu principal.", true);
+      } finally {
+        refreshDeparturePicker();
+      }
+    });
+    const departureForm = $("#new-departure");
+    departureForm.hidden = !ctx.editor;
+    if (ctx.editor) E.bind(departureForm, departureStatus, async (values) => {
+      const place = Object.fromEntries(["nom", "ville", "pays"].map((key) => [key, values.get(key).trim()]));
+      if (Object.values(place).some((value) => !value)) throw new E.UserError("Renseigne le nom, la ville et le pays.");
+      const result = await data(sb.from("sorties_lieux_depart").insert({ ...place, espace_id: scope.espace })
+        .select("id,nom,ville,pays,par_defaut").single());
+      settings.places.push(result);
+      departureForm.reset();
+      chooseDeparture(result);
+      return "Lieu ajouté.";
+    }, "Impossible d’ajouter ce lieu. Vérifie que son nom est unique.");
 
     function eventKey(item) {
       return [item.titre, item.ville].map((value) => (value || "").toLowerCase()
@@ -148,11 +210,12 @@
     }
 
     function renderDiscoveries() {
-      if (!ctx.editor) return;
+      if (!ctx.editor || !departure) return;
+      $("#discover-title").textContent = "À découvrir près de " + departure.ville;
       discoveryPanel.hidden = false;
       const { first, last } = suggestionWindow(today, period);
       $("#discover-range").textContent = "Du " + E.date(first) + " au " + E.date(last);
-      const result = discoveryCache.get(period);
+      const result = discoveryCache.get(discoveryKey(period, departure));
       discoveryButton.disabled = !!result?.loading;
       discoveryButton.hidden = !!result?.items;
       discoveryList.replaceChildren();
@@ -166,7 +229,7 @@
           const source = E.link("Source officielle · " + new URL(item.source).hostname.replace(/^www\./, ""), item.source, "button");
           source.target = "_blank";
           source.rel = "noopener noreferrer";
-          const editor = E.url("editer.html", scope) + "#decouverte=" + encodeURIComponent(JSON.stringify(item));
+          const editor = E.url("editer.html", { ...scope, depart: departure.id }) + "#decouverte=" + encodeURIComponent(JSON.stringify(item));
           const actions = el("div", null, "actions");
           actions.append(source, E.link("Ajouter au recueil", editor, "button"));
           row.append(el("h3", item.titre), el("p", E.date(item.date) + " · " + item.ville), el("p", item.description), actions);
@@ -177,8 +240,11 @@
 
     discoveryButton.addEventListener("click", async () => {
       const horizon = period;
-      if (discoveryCache.get(horizon)?.loading) return;
-      discoveryCache.set(horizon, { loading: true });
+      const place = departure;
+      if (!place) return;
+      const cacheKey = discoveryKey(horizon, place);
+      if (discoveryCache.get(cacheKey)?.loading) return;
+      discoveryCache.set(cacheKey, { loading: true });
       renderDiscoveries();
       try {
         const { first, last, exclude = [] } = suggestionWindow(today, horizon);
@@ -187,7 +253,7 @@
         const titles = new Set(existing.map(eventKey));
         const sources = new Set(existing.map((item) => sourceKey(item.source_url)).filter(Boolean));
         const result = await data(sb.functions.invoke("sorties-enrich", {
-          body: { action: "decouvrir", espace: scope.espace, debut: first, fin: last, exclure: exclude }
+          body: { action: "decouvrir", espace: scope.espace, lieu_depart_id: place.id, debut: first, fin: last, exclure: exclude }
         }));
         if (!Array.isArray(result?.sorties)) throw new Error();
         const items = result.sorties.filter((item) => {
@@ -198,12 +264,12 @@
           sources.add(source);
           return true;
         });
-        discoveryCache.set(horizon, { items });
+        discoveryCache.set(cacheKey, { items });
       } catch (error) {
         const response = await error.context?.json?.().catch(() => null);
-        discoveryCache.set(horizon, { error: response?.message || "Impossible de rechercher de nouvelles sorties pour le moment." });
+        discoveryCache.set(cacheKey, { error: response?.message || "Impossible de rechercher de nouvelles sorties pour le moment." });
       }
-      if (horizon === period) renderDiscoveries();
+      if (horizon === period && departure?.id === place.id) renderDiscoveries();
     });
 
     function saveDrafts() {
@@ -332,7 +398,8 @@
       const request = ++suggestionRequest;
       const horizon = period;
       const range = suggestionWindow(today, horizon);
-      const possible = entries.filter(({ idea }) => idea.parametres_creneau && withinTravelLimit(idea));
+      const possible = entries.filter(({ idea }) => originFor(idea) === departure?.id
+        && idea.parametres_creneau && withinTravelLimit(idea));
       tasks.replaceChildren();
       if (!possible.length) {
         E.message(taskStatus, "Aucun créneau à proposer dans cette période.");
@@ -599,10 +666,21 @@
       renderDays();
     }
 
+    function renderIncomplete() {
+      const incomplete = $("#planning-incomplete");
+      const toComplete = ctx.editor ? entries.filter(({ idea }) => originFor(idea) === departure?.id && !idea.parametres_creneau) : [];
+      incomplete.hidden = !toComplete.length;
+      $("#planning-incomplete-list").replaceChildren(...toComplete.map(({ idea }) => {
+        const item = el("li");
+        item.append(E.link(idea.titre, E.url("editer.html", { ...scope, id: idea.id })));
+        return item;
+      }));
+    }
+
     async function loadTasks() {
       const [annual, ideas, scores] = await Promise.all([
         E.annualPlanningTasks(scope.espace, true).catch(() => []),
-        pages(() => sb.from("sorties_idees").select("id,titre,accroche,description,ville,image_path,meilleure_periode,statut,urgence,date_debut,date_fin,date_limite_reservation,preavis_semaines,delai_reservation_jours,format,saison_activite,conditions_activite,parametres_creneau,lat,lng,sorties_occurrences(statut)")
+        pages(() => sb.from("sorties_idees").select("id,titre,accroche,description,ville,image_path,meilleure_periode,statut,urgence,date_debut,date_fin,date_limite_reservation,preavis_semaines,delai_reservation_jours,lieu_depart_id,format,saison_activite,conditions_activite,parametres_creneau,lat,lng,sorties_occurrences(statut)")
           .eq("espace_id", scope.espace).is("fusionnee_dans", null).in("statut", ["envie", "preselection"]).order("id")),
         pages(() => sb.from("sorties_scores_couple").select("idee_id,score").eq("espace_id", scope.espace).order("idee_id"))
       ]);
@@ -612,14 +690,7 @@
         && !(idea.sorties_occurrences || []).some((item) => item.statut !== "annulee")
         && (!idea.date_limite_reservation || idea.date_limite_reservation >= today));
       entries = [...annual, ...candidates.map((idea) => ({ idea }))];
-      const incomplete = $("#planning-incomplete");
-      const toComplete = ctx.editor ? entries.filter(({ idea }) => !idea.parametres_creneau) : [];
-      incomplete.hidden = !toComplete.length;
-      $("#planning-incomplete-list").replaceChildren(...toComplete.map(({ idea }) => {
-        const item = el("li");
-        item.append(E.link(idea.titre, E.url("editer.html", { ...scope, id: idea.id })));
-        return item;
-      }));
+      renderIncomplete();
       thumbnails = await E.signedPhotos(entries.map(({ idea }) => idea.image_path)).catch(() => new Map());
       restoreDrafts();
       await renderTasks();

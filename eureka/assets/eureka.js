@@ -26,9 +26,24 @@
     return swissDayFormat.format(instant);
   }
 
+  async function departurePlaces(space) {
+    return pages(() => sb.from("sorties_lieux_depart").select("id,nom,ville,pays,par_defaut")
+      .eq("espace_id", space).order("par_defaut", { ascending: false }).order("nom").order("id"));
+  }
+
+  async function departureSettings(ctx) {
+    const [places, preference] = await Promise.all([
+      departurePlaces(ctx.space.id),
+      data(sb.from("sorties_preferences_depart").select("lieu_id").eq("espace_id", ctx.space.id)
+        .eq("user_id", ctx.user.id).maybeSingle())
+    ]);
+    const defaultPlace = places.find((place) => place.par_defaut);
+    return { places, defaultPlace, principal: places.find((place) => place.id === preference?.lieu_id) || defaultPlace };
+  }
+
   async function annualPlanningTasks(space, planning = false) {
     const ideas = await pages(() => sb.from("sorties_idees")
-      .select("id,titre,accroche,description,ville,image_path,meilleure_periode,saison_debut_mois,saison_fin_mois,sorties_occurrences(date_cible,date_realisee,statut)" + (planning ? ",parametres_creneau,lat,lng,format,statut,urgence,preavis_semaines,date_limite_reservation,delai_reservation_jours,saison_activite,conditions_activite" : ""))
+      .select("id,titre,accroche,description,ville,image_path,meilleure_periode,saison_debut_mois,saison_fin_mois,sorties_occurrences(date_cible,date_realisee,statut)" + (planning ? ",lieu_depart_id,parametres_creneau,lat,lng,format,statut,urgence,preavis_semaines,date_limite_reservation,delai_reservation_jours,saison_activite,conditions_activite" : ""))
       .eq("espace_id", space).not("saison_debut_mois", "is", null)
       .neq("statut", "archivee").is("fusionnee_dans", null).order("id"));
     const tasks = ideas.flatMap((idea) => {
@@ -409,6 +424,6 @@
   window.Eureka = {
     sb, $, params, formats, statuts, modalites, mois, number, currency, el, link, url, safeUrl,
     visual, signedPhotos, options, date, meta, data, pages, message, bind, UserError, mustUpdate, boot, ideaById,
-    ideaGone, watchIdea, cleanDeletedPhotos, renderDescription, withoutVerificationLabels, saisons, clipboardPhotos, annualSeasons, seasonOccurrences, seasonLabel, annualPlanningTasks, swissDay
+    ideaGone, watchIdea, cleanDeletedPhotos, renderDescription, withoutVerificationLabels, saisons, clipboardPhotos, annualSeasons, seasonOccurrences, seasonLabel, annualPlanningTasks, departurePlaces, departureSettings, swissDay
   };
 })();

@@ -110,7 +110,7 @@
     return !idea.parametres_creneau && (idea.brouillon_creneau?.confirmation_requise ?? !!idea.proposition_creneau);
   }
 
-  function fields(idea) {
+  function fields(idea, departure = "Nyon") {
     const value = idea.brouillon_creneau || idea.parametres_creneau || idea.proposition_creneau || {};
     const box = el("fieldset", null, "wide slot-fields");
     box.append(el("legend", "Créneau à réserver"));
@@ -161,7 +161,7 @@
     const trips = el("div", null, "slot-pair");
     trips.append(input("aller_minutes", "Aller (min)", "number", 0, 1440),
       input("retour_minutes", "Retour (min)", "number", 0, 1440));
-    transport.append(el("legend", "Trajets depuis et vers Nyon"), trips);
+    transport.append(el("legend", "Trajets depuis et vers " + departure), trips);
     box.append(modes, presetHelp, times, transport);
     function showTimes() {
       const flexible = selectedMode() === "flexible";
@@ -211,7 +211,7 @@
     }
     days.append(preset, dayChoices);
     const extra = el("div", null, "slot-weekend");
-    const friday = input("heure_vendredi", "Heure de départ de Nyon le vendredi", "time");
+    const friday = input("heure_vendredi", "Heure de départ le vendredi", "time");
     const returnLabel = el("label", "Jour du retour");
     const returnDay = el("select");
     returnDay.name = "retour_decalage";

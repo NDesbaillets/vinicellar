@@ -117,7 +117,7 @@
     });
   }
 
-  function details(idea) {
+  function details(idea, departure) {
     $("#details").replaceChildren();
     const contact = idea.telephone?.replace(/[^\d+]/g, "");
     row("Statut", E.statuts[idea.statut]);
@@ -139,13 +139,14 @@
     row("Récurrence", firstMonth && lastMonth
       ? "Chaque année · " + (firstMonth === lastMonth ? firstMonth : firstMonth + " à " + lastMonth)
       : idea.recurrence_mois ? "Tous les " + idea.recurrence_mois + " mois" : null);
+    row("Lieu de départ", departure);
     const planning = idea.parametres_creneau;
     if (planning) {
       const days = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
       row("Temps à prévoir", planning.duree_minutes + " min d’activité · " + planning.aller_minutes
-        + " min depuis Nyon · " + planning.retour_minutes + " min de retour");
+        + " min à l’aller · " + planning.retour_minutes + " min de retour");
       row("Jours possibles", planning.jours.map((day) => days[day - 1]).join(", ") + (planning.demi_journee_flexible ? " · demi-journée flexible" : " à " + planning.heure_activite));
-      if (planning.weekend) row("Week-end", (planning.vendredi_soir ? "Départ de Nyon vendredi à "
+      if (planning.weekend) row("Week-end", (planning.vendredi_soir ?  "Départ vendredi à "
         + planning.heure_vendredi + " · " : "") + "Départ du lieu " + days[(5 + planning.retour_decalage) % 7]
         + " à " + planning.heure_retour);
     } else row("Créneau à réserver", idea.brouillon_creneau ? "Brouillon enregistré · à compléter"
@@ -248,6 +249,7 @@
     let idea = await E.ideaById(ctx, id);
     if (!idea) return E.ideaGone(ctx);
     const scope = { espace: ctx.space.id };
+    const places = await E.departurePlaces(ctx.space.id).catch(() => []);
     $(".back").href = E.url("", scope);
     $("#edit").href = E.url("editer.html", { ...scope, id });
     $("#complete-idea").href = $("#edit").href + "#completer-ia";
@@ -282,7 +284,8 @@
       E.renderDescription($("#description"), idea.description);
       $("#description-section").hidden = !idea.description;
       document.title = idea.titre + " · Eurêka";
-      details(idea);
+      const departure = places.find((place) => place.id === idea.lieu_depart_id) || places.find((place) => place.par_defaut);
+      details(idea, departure?.nom || "Nyon");
       map(idea);
     }
     await showIdea();
@@ -384,7 +387,8 @@
     async function changeIdea(body) {
       idea = await E.mustUpdate(sb.from("sorties_idees").update(body).eq("id", id).eq("espace_id", ctx.space.id));
       statusForm.elements.statut.value = idea.statut;
-      details(idea);
+      const departure = places.find((place) => place.id === idea.lieu_depart_id) || places.find((place) => place.par_defaut);
+      details(idea, departure?.nom || "Nyon");
     }
 
     async function scores() {
