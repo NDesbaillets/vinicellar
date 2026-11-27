@@ -2,6 +2,7 @@
   const E = window.Eureka;
   const { sb, $, el, data, pages } = E;
   const slots = window.EurekaSlots;
+  const discoveries = window.EurekaDiscoveries;
   const timeZone = "Europe/Zurich";
   const weekday = new Intl.DateTimeFormat("fr-CH", { weekday: "short", timeZone: "UTC" });
   const months = new Intl.DateTimeFormat("fr-CH", { month: "long", year: "numeric", timeZone: "UTC" });
@@ -196,55 +197,16 @@
       return "Lieu ajouté.";
     }, "Impossible d’ajouter ce lieu. Vérifie que son nom est unique.");
 
-    function eventKey(item) {
-      return [item.titre, item.ville].map((value) => (value || "").toLowerCase()
-        .normalize("NFD").replace(/\p{M}/gu, "").replace(/[^a-z0-9]+/g, " ").trim()).join("|");
-    }
-
-    function sourceKey(value) {
-      const href = E.safeUrl(value);
-      if (!href) return null;
-      const url = new URL(href);
-      url.hash = "";
-      for (const key of [...url.searchParams.keys()]) {
-        if (key.startsWith("utm_")) url.searchParams.delete(key);
-      }
-      url.searchParams.sort();
-      return url.href.replace(/\/$/, "");
-    }
-
-    function recommendedSources(place) {
-      const city = eventKey({ titre: place.ville }).split("|")[0];
-      if (city === "nyon") return [
-        "https://www.nyon.ch/", "https://www.myvaud.ch/", "https://www.myswitzerland.com/",
-        "https://torpille.ch/activites-region-lausanne/"
-      ];
-      if (city === "zermatt") return ["https://zermatt.swiss/", "https://www.valais.ch/", "https://www.myswitzerland.com/"];
-      if (city === "saint andre d olerargues") return ["https://www.gard-tourisme.com/", "https://www.provenceoccitane.com/", "https://www.tourisme-occitanie.com/"];
-      return [];
-    }
-
-    function customSources(place) {
-      try {
-        const value = JSON.parse(localStorage.getItem(departureKey + ".sources." + place.id) || "[]");
-        return Array.isArray(value) ? value.map(sourceKey).filter(Boolean).slice(0, 3) : [];
-      } catch { return []; }
-    }
-
-    function searchSources(place) {
-      return [...new Set([...recommendedSources(place).map(sourceKey), ...customSources(place)])];
-    }
-
     const sourceForm = $("#discover-source-form");
     E.bind(sourceForm, $("#discover-source-status"), async (values) => {
       if (!departure) return;
-      const source = sourceKey(values.get("source").trim());
+      const source = discoveries.sourceKey(values.get("source").trim());
       const parsed = source && new URL(source);
       if (!parsed || parsed.username || parsed.password || !parsed.hostname.includes(".")) {
         throw new E.UserError("Utilise le lien HTTPS d’un agenda public.");
       }
-      const existing = customSources(departure);
-      if (searchSources(departure).includes(source)) throw new E.UserError("Cette source est déjà dans la liste.");
+      const existing = discoveries.customSources(departureKey, departure);
+      if (discoveries.searchSources(departureKey, departure).includes(source)) throw new E.UserError("Cette source est déjà dans la liste.");
       if (existing.length >= 3) throw new E.UserError("Tu peux ajouter jusqu’à trois sources par lieu sur cet appareil.");
       localStorage.setItem(departureKey + ".sources." + departure.id, JSON.stringify([...existing, source]));
       sourceForm.reset();
@@ -262,7 +224,7 @@
       discoveryButton.disabled = !!result?.loading;
       discoveryButton.hidden = false;
       discoveryButton.textContent = result?.items?.length ? "Chercher d’autres sorties" : "Chercher des sorties";
-      $("#discover-source-list").replaceChildren(...searchSources(departure).map((url) => {
+      $("#discover-source-list").replaceChildren(...discoveries.searchSources(departureKey, departure).map((url) => {
         const item = el("li");
         const link = E.link(url, url);
         link.target = "_blank";
@@ -276,17 +238,7 @@
       else E.message(discoveryStatus, result?.empty ? "Aucun autre événement trouvé pour cette période."
         : result?.items && !result.items.length ? "Aucun nouvel événement trouvé pour cette période." : "");
       if (result?.items?.length) {
-        discoveryList.append(...result.items.map((item) => {
-          const row = el("li", null, "discovery-card");
-          const source = E.link("Source officielle · " + new URL(item.source).hostname.replace(/^www\./, ""), item.source, "button");
-          source.target = "_blank";
-          source.rel = "noopener noreferrer";
-          const editor = E.url("editer.html", { ...scope, depart: departure.id }) + "#decouverte=" + encodeURIComponent(JSON.stringify(item));
-          const actions = el("div", null, "actions");
-          actions.append(source, E.link("Ajouter au recueil", editor, "button"));
-          row.append(el("h3", item.titre), el("p", E.date(item.date) + " · " + item.ville), el("p", item.description), actions);
-          return row;
-        }));
+        discoveryList.append(...result.items.map((item) => discoveries.card(item, scope, departure, true)));
       }
     }
 
@@ -302,23 +254,8 @@
       renderDiscoveries();
       try {
         const { first, last, exclude = [] } = suggestionWindow(today, horizon);
-        const existing = await pages(() => sb.from("sorties_idees").select("id,titre,ville,source_url")
-          .eq("espace_id", scope.espace).is("fusionnee_dans", null).order("id"));
-        const titles = new Set([...existing, ...earlier].map(eventKey));
-        const sources = new Set([...existing.map((item) => sourceKey(item.source_url)), ...earlier.map((item) => sourceKey(item.source))].filter(Boolean));
-        const result = await data(sb.functions.invoke("sorties-enrich", {
-          body: { action: "decouvrir", espace: scope.espace, lieu_depart_id: place.id, debut: first, fin: last, exclure: exclude,
-            sources: searchSources(place), deja_vus: earlier.slice(-24).map((item) => item.source) }
-        }));
-        if (!Array.isArray(result?.sorties)) throw new Error();
-        const items = result.sorties.filter((item) => {
-          const source = sourceKey(item.source);
-          const key = eventKey(item);
-          if (!source || titles.has(key) || sources.has(source)) return false;
-          titles.add(key);
-          sources.add(source);
-          return true;
-        });
+        const items = await discoveries.find(scope, { lieu_depart_id: place.id, debut: first, fin: last,
+          exclure: exclude, sources: discoveries.searchSources(departureKey, place) }, earlier);
         discoveryCache.set(cacheKey, { items: [...earlier, ...items].sort((a, b) => a.date.localeCompare(b.date)), empty: !!earlier.length && !items.length });
       } catch (error) {
         const response = await error.context?.json?.().catch(() => null);

@@ -344,3 +344,6 @@ section h2 { margin-bottom: 12px; }
 #discover-sources { margin: 8px 0 12px; }
 #discover-sources form { display: grid; gap: 6px; }
 #discover-sources li { overflow-wrap: anywhere; }
+
+#add-suggestions > label { max-width: 360px; margin-bottom: 10px; }
+#add-suggestions-status:not(:empty) { margin-top: 8px; }

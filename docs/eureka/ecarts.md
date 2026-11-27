@@ -74,3 +74,5 @@ Les fiches ont un lieu de départ dans leur espace. L’étape 12 rattache les f
 Appliquer `supabase/eureka-etape-12.sql` après les étapes précédentes, puis redéployer `sorties-enrich` depuis la branche. Claude reçoit la ville et le pays du lieu choisi pour les trajets et les découvertes.
 
 Les découvertes privilégient les agendas locaux proposés dans le panneau « Sources de recherche ». Les éditeurs peuvent y ajouter jusqu’à trois agendas publics par lieu sur leur appareil. « Chercher d’autres sorties » écarte les événements déjà vus. Chaque recherche reste dans le plafond IA de l’espace et seules les pages renvoyées par la recherche web peuvent figurer dans les résultats. Redéployer `sorties-enrich` pour activer ces options.
+
+Dans « Ajouter une idée », la section « Suggestions » lance une recherche à la demande pour le lieu choisi. Elle présente jusqu’à dix idées, y compris des activités permanentes sans date imposée, et exclut les doublons du recueil. Les sites de référence et les sources ajoutées dans Planification sont réutilisés. Pour activer cette recherche, redéployer `sorties-enrich`.

@@ -41,7 +41,7 @@ export function exactDate(date: string) {
   return /^\d{4}-\d\d-\d\d$/.test(date) && validDate(date);
 }
 
-export function localEvents(raw: Record<string, unknown>, first: string, last: string, excluded: string[]) {
+export function localEvents(raw: Record<string, unknown>, first: string, last: string, excluded: string[], inspiration = false) {
   const found = new Set(Array.isArray(raw.sources_trouvees) ? raw.sources_trouvees : []);
   const seen = new Set<string>();
   const events = Array.isArray(raw.sorties) ? raw.sorties : [];
@@ -50,11 +50,12 @@ export function localEvents(raw: Record<string, unknown>, first: string, last: s
     const source = https(candidate.source);
     const titre = text(candidate.titre, 160), ville = text(candidate.ville, 100);
     const description = text(candidate.description, 300), date = text(candidate.date, 12);
-    if (!titre || !ville || !description || !date || !exactDate(date) || date < first || date > last
-        || excluded.includes(date) || !source || !found.has(source) || seen.has(source)) return [];
+    const dateAllowed = date ? exactDate(date) && date >= first && date <= last && !excluded.includes(date)
+      : inspiration && candidate.date == null;
+    if (!titre || !ville || !description || !dateAllowed || !source || !found.has(source) || seen.has(source)) return [];
     seen.add(source);
     return [{ titre, ville, description, date, source }];
-  }).slice(0, 6).sort((a, b) => a.date.localeCompare(b.date));
+  }).slice(0, inspiration ? 12 : 6).sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
 }
 
 function extractionDate(value: unknown, reference: string) {

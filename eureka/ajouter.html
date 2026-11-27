@@ -9,11 +9,12 @@
   <link rel="manifest" href="/eureka/manifest.webmanifest">
   <link rel="icon" href="/eureka/assets/monogramme.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/eureka/assets/apple-touch-icon.png">
-  <link rel="stylesheet" href="/eureka/assets/eureka.css?v=26">
+  <link rel="stylesheet" href="/eureka/assets/eureka.css?v=28">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
   <script defer src="/assets/js/config.js"></script>
-  <script defer src="/eureka/assets/eureka.js"></script>
-  <script defer src="/eureka/assets/p-ajouter.js"></script>
+  <script defer src="/eureka/assets/eureka.js?v=28"></script>
+  <script defer src="/eureka/assets/decouvertes.js?v=28"></script>
+  <script defer src="/eureka/assets/p-ajouter.js?v=28"></script>
 </head>
 <body>
   <main id="main" class="editer">
@@ -40,6 +41,13 @@
     </div>
     <p id="quick-status" role="status"></p>
   </form>
+  <section id="add-suggestions" hidden>
+    <h2>Suggestions</h2>
+    <label>Lieu de départ <select id="add-suggestions-place"></select></label>
+    <button id="add-suggestions-search" type="button">Trouver des idées</button>
+    <p id="add-suggestions-status" role="status"></p>
+    <ul id="add-suggestions-results" class="list"></ul>
+  </section>
   </main>
   <nav id="nav" class="nav" aria-label="Eurêka" hidden></nav>
   <noscript>Activez JavaScript pour utiliser Eurêka.</noscript>
