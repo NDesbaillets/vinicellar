@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#9A4A2B">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co https://photon.komoot.io; img-src 'self' https:; style-src 'self'; font-src 'self'; frame-src https://www.openstreetmap.org https://www.google.com; base-uri 'none'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://*.supabase.co https://photon.komoot.io https://api.open-meteo.com; img-src 'self' https:; style-src 'self'; font-src 'self'; frame-src https://www.openstreetmap.org https://www.google.com; base-uri 'none'; form-action 'self'">
   <title>Fiche idée · Eurêka</title>
   <link rel="manifest" href="/eureka/manifest.webmanifest">
   <link rel="icon" href="/eureka/assets/monogramme.svg" type="image/svg+xml">
@@ -12,9 +12,10 @@
   <link rel="stylesheet" href="/eureka/assets/eureka.css?v=30">
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
   <script defer src="/assets/js/config.js"></script>
-  <script defer src="/eureka/assets/eureka.js?v=25"></script>
-  <script defer src="/eureka/assets/creneaux.js?v=25"></script>
-  <script defer src="/eureka/assets/p-fiche.js?v=30"></script>
+  <script defer src="/eureka/assets/eureka.js?v=31"></script>
+  <script defer src="/eureka/assets/creneaux.js?v=31"></script>
+  <script defer src="/eureka/assets/meteo.js?v=31"></script>
+  <script defer src="/eureka/assets/p-fiche.js?v=31"></script>
 </head>
 <body>
   <main id="main" class="fiche">
@@ -80,6 +81,13 @@
         <label class="grow">Date prévue <input type="date" name="date" required></label>
         <button class="primary">Planifier</button>
       </form>
+      <section id="weather" hidden aria-labelledby="weather-title">
+        <h3 id="weather-title">Météo</h3>
+        <p id="weather-status" role="status"></p>
+        <ul class="list weather-days" id="weather-days"></ul>
+        <a id="weather-swiss-source" href="https://www.meteosuisse.admin.ch/services-et-publications/service/open-data.html" target="_blank" rel="noopener noreferrer" hidden>Données ICON · MétéoSuisse Open Data</a>
+        <a id="weather-generic-source" href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" hidden>API météo · Open-Meteo</a>
+      </section>
       <div class="actions form-end">
         <a id="edit" class="button" href="editer.html">Modifier l’idée</a>
         <a id="complete-idea" class="button" href="editer.html#completer-ia">Compléter avec l’IA</a>

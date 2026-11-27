@@ -104,7 +104,7 @@
   }
 
   window.EurekaWeather = async (idea, day) => {
-    const key = idea ? idea.id + "/" + day : "";
+    const key = idea ? [idea.id, idea.destination, idea.lat, idea.lng, day].join("/") : "";
     if (selection === key) return;
     selection = key;
     panel.hidden = !idea;

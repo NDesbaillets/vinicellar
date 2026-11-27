@@ -90,3 +90,9 @@ Quand le secret `TAVILY_API_KEY` est configuré, Tavily cherche des sources pour
 Appliquer `supabase/eureka-etape-13.sql` puis `supabase/eureka-etape-14.sql`, et redéployer `sorties-enrich` depuis la branche.
 
 Pour afficher la carte Google Maps standard dans les fiches, activer Google Maps Embed API, créer une clé navigateur restreinte à cette API et aux référents `https://vinicellar.ch/*` et `https://www.vinicellar.ch/*`, puis configurer `GOOGLE_MAPS_EMBED_API_KEY` dans Supabase. La clé est publique dans l’iframe et doit être distincte de `GOOGLE_MAPS_ROUTES_API_KEY`, qui reste côté serveur. Redéployer `sorties-enrich`. En l’absence de clé d’affichage, les fiches utilisent OpenStreetMap. Aucun SQL supplémentaire pour cette carte.
+
+## Destination à choisir en planification
+
+« Journée de ski depuis Nyon » propose les stations de la fiche dans un menu, depuis la fiche ou Planification. L’aller et le retour Google Maps sont calculés séparément pour l’accès retenu. Le créneau contrôle les chevauchements avec ces deux durées et la météo utilise les coordonnées de la station. La sortie confirmée garde le nom de la destination dans le calendrier. Les fiches sans option géographique suivent le parcours habituel.
+
+Appliquer `supabase/eureka-etape-15.sql` puis redéployer `sorties-enrich`. Le script enregistre les huit options de la fiche de ski de Viviane et Nicolas. Le calcul réutilise `GOOGLE_MAPS_ROUTES_API_KEY`.

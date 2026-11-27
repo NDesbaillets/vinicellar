@@ -127,6 +127,9 @@
     }).catch(() => null);
     const ratings = new Map();
     const drafts = new Map();
+    const destinations = new Map();
+    let previewId = null;
+    let weatherPreview = null;
     const draftKey = "eureka.planning." + ctx.user.id + "." + scope.espace;
     let active = null;
     let anchor = today;
@@ -266,7 +269,7 @@
 
     function saveDrafts() {
       try {
-        sessionStorage.setItem(draftKey, JSON.stringify([...drafts].map(([id, draft]) => [id, draft.day, draft.range.heure])));
+        sessionStorage.setItem(draftKey, JSON.stringify([...drafts].map(([id, draft]) => [id, draft.day, draft.range.heure, draft.range.optionId])));
       } catch { /* Les provisoires restent disponibles tant que la page est ouverte. */ }
     }
 
@@ -274,8 +277,15 @@
       if (!ctx.editor) return;
       try {
         const stored = JSON.parse(sessionStorage.getItem(draftKey) || "[]");
-        for (const [id, day, hour] of stored) {
-          const entry = entries.find(({ idea }) => idea.id === id);
+        for (const [id, day, hour, optionId] of stored) {
+          let entry = entries.find(({ idea }) => idea.id === id);
+          if (optionId && entry) {
+            const option = entry.idea.sorties_options?.find((row) => row.id === optionId);
+            const routed = slots.forDestination(entry.idea, option);
+            if (!routed) continue;
+            destinations.set(id, option);
+            entry = { ...entry, idea: routed };
+          } else if (entry?.idea.sorties_options?.some((row) => row.lieu)) continue;
           if (entry?.idea.parametres_creneau && /^\d{4}-\d\d-\d\d$/.test(day) && eligible(entry, day, today)) {
             const range = slots.candidates(entry.idea.parametres_creneau, day).find((candidate) => candidate.heure === (hour ?? null));
             if (range) drafts.set(id, { entry, day, range, busy: false });
@@ -293,7 +303,7 @@
     async function loadCalendar(first, end) {
       const range = `and(statut.eq.prevue,debut_planifie.lt.${midnight(end).toISOString()},fin_planifie.gt.${midnight(first).toISOString()}),and(statut.eq.prevue,debut_planifie.is.null,date_cible.gte.${first},date_cible.lt.${end}),and(statut.eq.faite,date_realisee.gte.${first},date_realisee.lt.${end}),and(statut.eq.faite,date_realisee.is.null,date_cible.gte.${first},date_cible.lt.${end})`;
       const [events, busy] = await Promise.allSettled([
-        pages(() => sb.from("sorties_occurrences").select("id,idee_id,date_cible,date_realisee,statut,debut_planifie,fin_planifie,sorties_idees!inner(titre,espace_id)")
+        pages(() => sb.from("sorties_occurrences").select("id,idee_id,date_cible,date_realisee,statut,debut_planifie,fin_planifie,destination,sorties_idees!inner(titre,espace_id)")
           .eq("sorties_idees.espace_id", scope.espace).or(range).order("id")),
         canReadICloud.then((enabled) => enabled ? pages(() => sb.from("sorties_occupation").select("calendrier_id,debut,fin,titre")
           .gt("fin", midnight(first).toISOString()).lt("debut", midnight(end).toISOString())
@@ -404,14 +414,19 @@
     async function renderTasks() {
       const request = ++suggestionRequest;
       const horizon = period;
+      weatherPreview = null;
+      if (!drafts.has(active)) window.EurekaWeather();
       const range = suggestionWindow(today, horizon);
       $("#planning-task-range").textContent = "Du " + E.date(range.first) + " au " + E.date(range.last);
       const placeName = departure?.nom || "ce lieu";
-      const local = entries.filter(({ idea }) => originFor(idea) === departure?.id);
+      const local = entries.filter(({ idea }) => originFor(idea) === departure?.id).map((entry) => {
+        const routed = slots.forDestination(entry.idea, destinations.get(entry.idea.id));
+        return routed ? { ...entry, idea: routed } : entry;
+      });
       const counts = { incomplete: 0, distance: 0, date: 0, booking: 0, busy: 0 };
       const possible = local.filter(({ idea }) => {
         if (!idea.parametres_creneau) { counts.incomplete++; return false; }
-        if (!withinTravelLimit(idea)) { counts.distance++; return false; }
+        if (!withinTravelLimit(idea) && !idea.sorties_options?.some((row) => row.lieu)) { counts.distance++; return false; }
         return true;
       });
       $("#planning-reasons").hidden = true;
@@ -433,19 +448,26 @@
         const candidates = possible.flatMap((entry) => {
           const draft = drafts.get(entry.idea.id);
           const inWindow = draft && draft.day >= range.first && draft.day <= range.last && !range.exclude?.includes(draft.day);
+          const options = entry.idea.sorties_options?.filter((row) => row.lieu) || [];
+          const ready = !options.length || entry.idea.parametres_creneau.optionId;
           const review = { hasDate: false, canReserve: false };
-          const choice = inWindow
+          const choice = !ready || !withinTravelLimit(entry.idea) ? null : inWindow
             ? { ...draft.range, reservation: booking(entry.idea, E.swissDay(new Date(draft.range.debut))) }
             : bestSlot(entry, range, availability, horizon, review);
-          if (!choice) {
-            if (!review.hasDate) counts.date++;
+          if (!choice && ready) {
+            if (!withinTravelLimit(entry.idea)) counts.distance++;
+            else if (!review.hasDate) counts.date++;
             else if (!review.canReserve) counts.booking++;
             else counts.busy++;
           }
-          return choice ? [{ entry, choice, score: priority(entry, choice, horizon) }] : [];
-        }).sort((a, b) => b.score - a.score || a.choice.debut - b.choice.debut
+          return choice || options.length ? [{ entry, choice, options,
+            score: choice ? priority(entry, choice, horizon) : -1 }] : [];
+        }).sort((a, b) => b.score - a.score || (a.choice?.debut ?? Infinity) - (b.choice?.debut ?? Infinity)
           || a.entry.idea.titre.localeCompare(b.entry.idea.titre, "fr"));
-        tasks.replaceChildren(...candidates.map(({ entry, choice }) => {
+        const preview = candidates.find(({ entry, choice }) => entry.idea.id === previewId && choice);
+        weatherPreview = preview ? { idea: preview.entry.idea, day: preview.choice.day } : null;
+        if (!drafts.has(active)) window.EurekaWeather(weatherPreview?.idea, weatherPreview?.day);
+        tasks.replaceChildren(...candidates.map(({ entry, choice, options }) => {
           const { idea, season } = entry;
           const item = el("li", null, "planning-card");
           const info = el("div");
@@ -456,16 +478,33 @@
           if (seasonName) info.append(el("span", seasonName, "season-badge"));
           if (idea.conditions_activite) info.append(el("p", E.withoutVerificationLabels(idea.conditions_activite), "planning-reason"));
           if (season) info.append(el("p", E.seasonLabel(season)));
-          const checked = coverage && E.swissDay(new Date(choice.fin)) < coverage;
-          info.append(el("p", (checked ? "Créneau libre dans les agendas synchronisés" : "Disponibilité des agendas inconnue")
-            + " · " + slots.describe(choice), "planning-reason"));
-          const deadline = choice.reservation.deadline;
-          if (deadline && (idea.date_limite_reservation || idea.delai_reservation_jours > 0)) {
-            info.append(el("p", "Réserver au plus tard le " + E.date(deadline), "planning-reason"));
-          } else if (choice.reservation.unknown) {
-            info.append(el("p", "Réservation non renseignée", "planning-reason"));
+          if (ctx.editor && options.length) {
+            const base = entries.find((item) => item.idea.id === idea.id);
+            const picker = slots.destinationPicker(scope.espace, base.idea, options, destinations.get(idea.id), (option) => {
+              if (option) destinations.set(idea.id, option);
+              else destinations.delete(idea.id);
+              previewId = option ? idea.id : null;
+              renderTasks();
+            });
+            if (drafts.has(idea.id)) {
+              picker.querySelector("select").disabled = true;
+              picker.append(el("small", "Retire le provisoire pour changer de destination."));
+            }
+            info.append(picker);
+            if (idea.destination && !choice) info.append(el("p", "Aucun créneau libre pour cette destination.", "planning-reason"));
           }
-          if (ctx.editor) {
+          if (choice) {
+            const checked = coverage && E.swissDay(new Date(choice.fin)) < coverage;
+            info.append(el("p", (checked ? "Créneau libre dans les agendas synchronisés" : "Disponibilité des agendas inconnue")
+              + " · " + slots.describe(choice), "planning-reason"));
+            const deadline = choice.reservation.deadline;
+            if (deadline && (idea.date_limite_reservation || idea.delai_reservation_jours > 0)) {
+              info.append(el("p", "Réserver au plus tard le " + E.date(deadline), "planning-reason"));
+            } else if (choice.reservation.unknown) {
+              info.append(el("p", "Réservation non renseignée", "planning-reason"));
+            }
+          }
+          if (ctx.editor && (choice || drafts.has(idea.id))) {
             const selected = drafts.has(idea.id);
             const button = el("button", selected ? "Voir le provisoire" : "Sélectionner");
             button.type = "button";
@@ -527,7 +566,7 @@
           button.addEventListener("click", action);
           actions.append(button);
         }
-        row.append(name, el("small", slots.describe(draft.range)), label, actions);
+        row.append(name, el("small", [draft.entry.idea.destination, slots.describe(draft.range)].filter(Boolean).join(" · ")), label, actions);
         return row;
       }));
     }
@@ -601,7 +640,7 @@
 
     function renderDays() {
       const selection = drafts.get(active);
-      window.EurekaWeather(selection?.entry.idea, selection?.day);
+      window.EurekaWeather(selection?.entry.idea || weatherPreview?.idea, selection?.day || weatherPreview?.day);
       const { first, end } = windowFor(anchor, view.value);
       const output = document.createDocumentFragment();
       for (let groupStart = first; groupStart < end; groupStart = view.value === "week" ? end : monthPlus(groupStart, 1)) {
@@ -626,6 +665,7 @@
             if (!visible || !event.sorties_idees) continue;
             const li = el("li");
             li.append(E.link(event.sorties_idees.titre, E.url("fiche.html", { ...scope, id: event.idee_id })));
+            if (event.destination) li.append(el("small", event.destination));
             if (event.statut === "faite") li.append(el("small", "Réalisée"));
             else if (event.debut_planifie) li.append(el("small", busyTimes(slots.eventSlot(event), midnight(day), midnight(dayPlus(day, 1)))));
             list.append(li);
@@ -705,7 +745,7 @@
     async function loadTasks() {
       const [annual, ideas, scores] = await Promise.all([
         E.annualPlanningTasks(scope.espace, true).catch(() => []),
-        pages(() => sb.from("sorties_idees").select("id,titre,accroche,description,ville,image_path,meilleure_periode,statut,urgence,date_debut,date_fin,date_limite_reservation,preavis_semaines,delai_reservation_jours,lieu_depart_id,format,saison_activite,conditions_activite,parametres_creneau,lat,lng,sorties_occurrences(statut)")
+        pages(() => sb.from("sorties_idees").select("id,titre,accroche,description,ville,image_path,meilleure_periode,statut,urgence,date_debut,date_fin,date_limite_reservation,preavis_semaines,delai_reservation_jours,lieu_depart_id,format,saison_activite,conditions_activite,parametres_creneau,lat,lng,sorties_options(id,nom,lieu,lat,lng,trajet_google),sorties_occurrences(statut)")
           .eq("espace_id", scope.espace).is("fusionnee_dans", null).in("statut", ["envie", "preselection"]).order("id")),
         pages(() => sb.from("sorties_scores_couple").select("idee_id,score").eq("espace_id", scope.espace).order("idee_id"))
       ]);

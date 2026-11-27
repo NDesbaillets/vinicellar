@@ -405,7 +405,8 @@
       node.append(el("strong", item.nom));
       if (item.lieu) node.append(el("p", item.lieu));
       if (item.note) node.append(el("p", item.note, "prose"));
-      for (const info of [external("Site de l’option", item.lien), position(item.lat, item.lng)]) {
+      for (const info of [external("Site de l’option", item.lien), coordinates(item.lat, item.lng) && external("Carte",
+        "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(item.lat + "," + item.lng))]) {
         if (info) {
           const line = el("div");
           line.append(info);
@@ -492,11 +493,12 @@
 
     async function occurrences() {
       history = await pages(() => sb.from("sorties_occurrences")
-        .select("id,date_cible,date_realisee,statut,debut_planifie,fin_planifie,sorties_notes_occurrence(user_id,note,commentaire)")
+        .select("id,date_cible,date_realisee,statut,debut_planifie,fin_planifie,destination,sorties_notes_occurrence(user_id,note,commentaire)")
         .eq("idee_id", id).order("date_cible", { ascending: false }).order("id"));
       const rows = history.map((item) => {
         const node = el("div", null, "occurrence");
         node.append(el("strong", E.date(item.date_cible) + " · " + occurrenceStates[item.statut]));
+        if (item.destination) node.append(el("p", item.destination));
         if (item.debut_planifie) node.append(el("p", window.EurekaSlots.describe(window.EurekaSlots.eventSlot(item))));
         if (item.date_realisee) node.append(el("p", "Réalisée le " + E.date(item.date_realisee)));
         const notes = item.sorties_notes_occurrence;
@@ -575,13 +577,26 @@
       planForm.before(el("p", "Complète le créneau dans la modification de la fiche avant de planifier."));
       planForm.hidden = true;
     }
+    const destinationOptions = options.filter((item) => item.lieu);
+    let routedIdea = destinationOptions.length ? null : idea;
+    let destinationSelect;
+    if (destinationOptions.length && idea.parametres_creneau && ctx.editor) {
+      const chooser = slots.destinationPicker(ctx.space.id, idea, destinationOptions, null, (option) => {
+        routedIdea = option ? slots.forDestination(idea, option) : null;
+        showPlannedRange();
+      });
+      destinationSelect = chooser.querySelector("select");
+      planForm.before(chooser);
+    }
     const plannedRange = el("p");
     plannedRange.setAttribute("role", "status");
     planForm.after(plannedRange);
     function showPlannedRange() {
       const date = dateInput.value;
-      const range = slots.slot(idea.parametres_creneau, date);
-      plannedRange.textContent = range ? (idea.parametres_creneau.demi_journee_flexible
+      const settings = routedIdea?.parametres_creneau;
+      const range = settings && slots.slot(settings, date);
+      if (destinationOptions.length) window.EurekaWeather(range ? routedIdea : null, range ? date : null);
+      plannedRange.textContent = range ? (settings.demi_journee_flexible
         ? "Une demi-journée libre sera recherchée à cette date." : slots.describe(range)) : "";
     }
     dateInput.addEventListener("input", showPlannedRange);
@@ -593,8 +608,10 @@
       if (seasons.length && (!season || date < season.start || date > season.end)) {
         throw new E.UserError("Choisis une date dans la saison sélectionnée.");
       }
+      if (destinationSelect?.disabled) throw new E.UserError("Attends le calcul du trajet.");
+      if (!routedIdea) throw new E.UserError("Choisis une destination.");
       if (savedDate !== date && !history.some((item) => item.date_cible === date && item.statut === "prevue")) {
-        const range = await slots.findForDate(ctx.space.id, idea.parametres_creneau, date);
+        const range = await slots.findForDate(ctx.space.id, routedIdea.parametres_creneau, date);
         await data(sb.from("sorties_occurrences").insert(slots.occurrence(id, range))).catch((error) => {
           if (error.code === "23P01") throw new E.UserError("Ce créneau chevauche une sortie déjà planifiée.");
           throw error;
