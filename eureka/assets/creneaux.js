@@ -46,12 +46,70 @@
     const flexible = settings?.demi_journee_flexible;
     return (flexible ? flexibleHours : [settings?.heure_activite]).flatMap((hour) => {
       const range = slot(settings, day, hour);
-      return range && range.debut > Date.now() ? [{ ...range, day, heure: flexible ? hour : null }] : [];
+      return range && range.debut > Date.now() ? [{ ...range, day, heure: flexible ? hour : null, optionId: settings?.optionId }] : [];
     });
   }
 
   function occurrence(id, range) {
-    return { idee_id: id, date_cible: range.day, ...(range.heure ? { heure_activite_planifiee: range.heure } : {}) };
+    return { idee_id: id, date_cible: range.day, ...(range.heure ? { heure_activite_planifiee: range.heure } : {}),
+      ...(range.optionId ? { option_id: range.optionId } : {}) };
+  }
+
+  function forDestination(idea, option) {
+    const trip = option?.trajet_google;
+    if (!idea.parametres_creneau || !trip || trip.depart !== idea.lieu_depart_id || trip.lieu !== option.lieu
+        || !Number.isInteger(trip.aller_minutes) || !Number.isInteger(trip.retour_minutes)) return null;
+    return {
+      ...idea, destination: option.nom, ville: option.nom, lat: option.lat ?? trip.lat, lng: option.lng ?? trip.lng,
+      parametres_creneau: { ...idea.parametres_creneau, aller_minutes: trip.aller_minutes,
+        retour_minutes: trip.retour_minutes, optionId: option.id }
+    };
+  }
+
+  function destinationPicker(space, idea, options, previous, onChange) {
+    const wrapper = el("div", null, "destination-choice");
+    const label = el("label", "Destination");
+    const picker = el("select");
+    const feedback = el("p");
+    feedback.setAttribute("role", "status");
+    E.options(picker, Object.fromEntries(options.map(({ id, nom }) => [id, nom])), "Choisir la destination");
+    let selected = previous?.id || "";
+    picker.value = selected;
+    function showTrip(routed) {
+      const { aller_minutes, retour_minutes } = routed.parametres_creneau;
+      E.message(feedback, "Voiture · " + aller_minutes + " min à l’aller, " + retour_minutes + " min au retour");
+    }
+    const initial = forDestination(idea, previous);
+    if (initial) showTrip(initial);
+    label.append(picker);
+    wrapper.append(label, feedback);
+    picker.addEventListener("change", async () => {
+      if (!picker.value) {
+        selected = "";
+        E.message(feedback, "");
+        onChange(null);
+        return;
+      }
+      picker.disabled = true;
+      E.message(feedback, "Calcul des trajets Google Maps…");
+      try {
+        const { option } = await data(sb.functions.invoke("sorties-enrich", {
+          body: { action: "destination_trajet", espace: space, id: idea.id, option_id: picker.value }
+        }));
+        const routed = forDestination(idea, option);
+        if (!routed) throw new E.UserError("Trajet indisponible pour cette destination.");
+        showTrip(routed);
+        selected = option.id;
+        onChange(option);
+      } catch (error) {
+        const response = await error.context?.json?.().catch(() => null);
+        E.message(feedback, response?.message || "Impossible de calculer le trajet de cette destination.", true);
+        picker.value = selected;
+      } finally {
+        picker.disabled = false;
+      }
+    });
+    return wrapper;
   }
 
   async function findForDate(space, settings, day) {
@@ -288,5 +346,5 @@
     return started ? { parametres_creneau: null, brouillon_creneau: { ...result, confirmation_requise: hasProposal(idea) } } : {};
   }
 
-  window.EurekaSlots = { slot, canPlan, candidates, occurrence, findForDate, bounds, eventSlot, overlap, describe, fields, formValues, read };
+  window.EurekaSlots = { forDestination, destinationPicker, slot, canPlan, candidates, occurrence, findForDate, bounds, eventSlot, overlap, describe, fields, formValues, read };
 })();

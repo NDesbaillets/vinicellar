@@ -6,7 +6,7 @@ import { Buffer } from "node:buffer";
 import { exactDate, localEvents, importedSlot, https, MAX_PHOTO, normalize, reel, text, today, UUID } from "./extraction.ts";
 
 import { searchTavily } from "./tavily.ts";
-import { googleCarTrip } from "./route.ts";
+import { googleCarDestination, googleCarTrip } from "./route.ts";
 import { transcribeVideo } from "./video.ts";
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void };
@@ -668,6 +668,30 @@ async function discoverIdeas(origin: string, espace: string, userId: string, pay
   }
 }
 
+async function destinationTrip(origin: string, espace: string, ideaId: string, optionId: string, userId: string) {
+  const { data: membership } = await admin.from("sorties_espace_membres").select("role")
+    .eq("espace_id", espace).eq("user_id", userId).in("role", ["owner", "membre"]).maybeSingle();
+  if (!membership) return reply(origin, { message: "Espace inaccessible." }, 403);
+
+  const [{ data: idea }, { data: option }] = await Promise.all([
+    admin.from("sorties_idees").select("lieu_depart_id").eq("espace_id", espace).eq("id", ideaId).maybeSingle(),
+    admin.from("sorties_options").select("id,nom,lieu,lat,lng,trajet_google").eq("idee_id", ideaId).eq("id", optionId).maybeSingle()
+  ]);
+  if (!idea?.lieu_depart_id || !option?.lieu) return reply(origin, { message: "Destination inaccessible." }, 404);
+  const cached = option.trajet_google;
+  if (cached?.depart === idea.lieu_depart_id && cached.lieu === option.lieu
+      && Date.now() - Date.parse(cached.calcule_le) < 86_400_000) return reply(origin, { option });
+
+  const place = await departureFor(espace, idea.lieu_depart_id).catch(() => null);
+  const trip = place && await googleCarDestination([place.ville, place.pays].join(", "), option.lieu,
+    Deno.env.get("GOOGLE_MAPS_ROUTES_API_KEY") || "");
+  if (!trip) return reply(origin, { message: "Google Maps ne renvoie pas de trajet en voiture pour cette destination." }, 422);
+  const values = { ...trip, depart: idea.lieu_depart_id, lieu: option.lieu, calcule_le: new Date().toISOString() };
+  const { data: saved } = await admin.from("sorties_options").update({ trajet_google: values })
+    .eq("idee_id", ideaId).eq("id", optionId).eq("lieu", option.lieu).select("id,nom,lieu,lat,lng,trajet_google").maybeSingle();
+  return saved ? reply(origin, { option: saved }) : reply(origin, { message: "La destination a changé. Réessaie." }, 409);
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get("origin") || "";
   if (origin && !origins.has(origin)) return reply("null", { message: "Origine refusée." }, 403);
@@ -692,6 +716,11 @@ Deno.serve(async (req) => {
   }
   if (typeof id !== "string" || typeof espace !== "string" || !UUID.test(id) || !UUID.test(espace)) {
     return reply(origin, { message: "Import invalide." }, 400);
+  }
+  if (payload.action === "destination_trajet") {
+    const optionId = payload.option_id;
+    if (typeof optionId !== "string" || !UUID.test(optionId)) return reply(origin, { message: "Destination invalide." }, 400);
+    return destinationTrip(origin, espace, id, optionId, user.id);
   }
   if (payload.action === "completer_fiche") return completeIdea(origin, id, espace, user.id, payload.lieu_depart_id);
   const inbox = () => admin.from("sorties_inbox");
