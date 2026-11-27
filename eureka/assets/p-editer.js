@@ -41,7 +41,7 @@
       const date = typeof rawDate === "string" && /^\d{4}-\d\d-\d\d$/.test(rawDate) ? rawDate : null;
       const short = (value, limit) => typeof value === "string" ? value.trim().slice(0, limit) : null;
       const source = E.safeUrl(event.source);
-      if (!date || !source) return {};
+      if (!source) return {};
       return { titre: short(event.titre, 160), ville: short(event.ville, 100),
         description: short(event.description, 300), date_debut: date, date_fin: date, source_url: source, type_lieu: "lieu", lieu_depart_id: E.params.get("depart") };
     } catch {

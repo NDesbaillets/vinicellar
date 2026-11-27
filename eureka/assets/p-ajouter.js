@@ -78,6 +78,48 @@
   });
   form.elements.source.addEventListener("input", () => { pending = null; });
 
+  async function setupSuggestions(ctx) {
+    const { places, principal } = await E.departureSettings(ctx);
+    if (!principal) return;
+    const discoveries = window.EurekaDiscoveries;
+    const section = $("#add-suggestions");
+    const picker = $("#add-suggestions-place"), button = $("#add-suggestions-search");
+    const output = $("#add-suggestions-status"), list = $("#add-suggestions-results");
+    const scope = { espace: ctx.space.id };
+    const key = "eureka.depart." + ctx.user.id + "." + scope.espace;
+    const cache = new Map();
+    E.options(picker, Object.fromEntries(places.map(({ id, nom }) => [id, nom])));
+    picker.value = principal.id;
+    section.hidden = false;
+
+    function render() {
+      const place = places.find(({ id }) => id === picker.value);
+      const result = cache.get(place.id);
+      button.disabled = !!result?.loading;
+      button.hidden = !!result?.items?.length;
+      E.message(output, result?.loading ? "Recherche sur les sites de référence…"
+        : result?.error || (result?.items?.length === 0 ? "Aucune nouvelle idée trouvée pour ce lieu." : ""), !!result?.error);
+      list.replaceChildren(...(result?.items || []).map((item) => discoveries.card(item, scope, place, false)));
+    }
+
+    picker.addEventListener("change", render);
+    button.addEventListener("click", async () => {
+      const place = places.find(({ id }) => id === picker.value);
+      if (!place || cache.get(place.id)?.loading) return;
+      cache.set(place.id, { loading: true });
+      render();
+      try {
+        const items = await discoveries.find(scope, { lieu_depart_id: place.id, inspiration: true,
+          sources: discoveries.searchSources(key, place) });
+        cache.set(place.id, { items: items.slice(0, 10) });
+      } catch (error) {
+        const response = await error.context?.json?.().catch(() => null);
+        cache.set(place.id, { error: response?.message || "Impossible de rechercher des idées pour le moment." });
+      }
+      if (picker.value === place.id) render();
+    });
+  }
+
   E.boot("ajout", async (ctx) => {
     if (!ctx.editor) throw new E.UserError("Cet espace est en lecture seule pour votre compte.");
     const scope = { espace: ctx.space.id };
@@ -118,5 +160,6 @@
       }
     }, "L’ajout est indisponible. Réessayez ou créez l’idée à la main.");
     form.hidden = false;
+    setupSuggestions(ctx).catch(() => {});
   });
 })();
