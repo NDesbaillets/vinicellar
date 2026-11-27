@@ -82,3 +82,9 @@ Dans « Ajouter une idée », la section « Suggestions » lance une recherche �
 À la fin d’un nouvel import, Eurêka propose par défaut 3 h d’activité et un début à 10 h lorsque les valeurs manquent. Les jours viennent de la source ou de la période annoncée, avec le week-end par défaut. Une fiche indique les valeurs par défaut utilisées. Les trajets aller et retour sont calculés séparément en voiture, hors trafic en direct, par Google Maps Routes API. Sans itinéraire disponible, l’import garde le créneau en brouillon. Un créneau complet devient éligible aux suggestions selon les agendas et les règles habituelles.
 
 Appliquer `supabase/eureka-etape-13.sql`, configurer le secret Supabase `GOOGLE_MAPS_ROUTES_API_KEY` avec une clé Google Cloud autorisée pour Routes API, puis redéployer `sorties-enrich`. Les imports passés gardent leurs valeurs tant qu’ils ne sont pas repris.
+
+## Recherche Tavily
+
+Quand le secret `TAVILY_API_KEY` est configuré, Tavily cherche des sources pour les découvertes, les fiches à compléter et les imports qui passent par la vérification web. Claude utilise ces résultats comme pistes et garde la recherche existante en secours. Tavily est comptabilisé dans le plafond de l’espace sous `sorties-tavily`, avec une réservation de 0,02 CHF par recherche (ajustable via `EUREKA_TAVILY_MAX_CHF`).
+
+Appliquer `supabase/eureka-etape-13.sql` puis `supabase/eureka-etape-14.sql`, et redéployer `sorties-enrich` depuis la branche.

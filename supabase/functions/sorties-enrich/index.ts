@@ -5,6 +5,7 @@ import { PNG } from "npm:pngjs@7.0.0";
 import { Buffer } from "node:buffer";
 import { exactDate, localEvents, importedSlot, https, MAX_PHOTO, normalize, reel, text, today, UUID } from "./extraction.ts";
 
+import { searchTavily } from "./tavily.ts";
 import { googleCarTrip } from "./route.ts";
 import { transcribeVideo } from "./video.ts";
 
@@ -62,7 +63,7 @@ function maximum(name: string): number {
 type Job = { id: string; tentative: string; type: string; contenu: string | null; image_path: string | null;
   idee_id?: string; espace_id?: string };
 
-async function paid<T>(job: Job, kind: "apify" | "claude" | "gemini", max: number, run: () => Promise<T>): Promise<T> {
+async function paid<T>(job: Job, kind: "apify" | "claude" | "gemini" | "tavily", max: number, run: () => Promise<T>): Promise<T> {
   const { data: log, error } = await admin.rpc("sorties_reserver_enrichissement", {
     p_inbox: job.id, p_tentative: job.tentative, p_kind: "sorties-" + kind, p_chf: max,
   });
@@ -76,6 +77,24 @@ async function paid<T>(job: Job, kind: "apify" | "claude" | "gemini", max: numbe
   } finally {
     await admin.from("ai_calls").update({ ok }).eq("id", log);
   }
+}
+
+async function webEvidence(job: Job, query: string | null) {
+  const key = Deno.env.get("TAVILY_API_KEY");
+  if (!key || !query) return [];
+  try {
+    const cost = Deno.env.get("EUREKA_TAVILY_MAX_CHF") ? maximum("EUREKA_TAVILY_MAX_CHF") : 0.02;
+    return await paid(job, "tavily", cost, () => searchTavily(key, query));
+  } catch {
+    // Les parcours Claude restent utilisables si la recherche supplémentaire ne répond pas.
+    return [];
+  }
+}
+
+function activityQuery(idea: Record<string, unknown>) {
+  const titre = text(idea.titre, 120), ville = text(idea.ville, 100);
+  if (!titre || !ville || /^(?:inviter|repas)\b/i.test(titre)) return null;
+  return [titre, ville, "site officiel horaires réservation activités"].join(" ");
 }
 
 async function departureFor(espace: string, id?: string | null) {
@@ -233,6 +252,7 @@ Si inspiration vaut true, propose jusqu’à douze idées variées pour étoffer
 Sinon, propose jusqu’à six événements ou visites datées dans la période demandée.
 La demande indique le premier et le dernier jour autorisés et les dates à exclure.
 Cherche dans les agendas municipaux et touristiques ou sur le site de l’organisateur, avec au plus trois recherches.
+Examine d’abord les extraits web fournis. Utilise-les comme pistes, puis contrôle la date et l’organisateur en cas de doute.
 La demande peut contenir des sources à privilégier. Utilise leur domaine ou leur URL comme indices de recherche, et élargis à d’autres sites officiels si nécessaire.
 Pour un départ à Nyon, La Torpille peut inspirer des idées de loisirs et de visites dans la région lausannoise. En mode planification, utilise le site de l’organisateur pour établir la date et donner le lien final. En mode inspiration, une page descriptive d’un site de référence est également recevable.
 Les URL deja_vus ont déjà été proposées : cherche d’autres événements. Si cette liste est renseignée, varie les requêtes (communes proches et catégories différentes).
@@ -264,7 +284,7 @@ Un marché de Noël est hivernal même s’il a lieu en novembre et décembre. U
 Distingue les mois propices des dates exactes, qui exigent une source officielle pour la bonne édition. Laisse saison et mois vides si tu ne peux pas les déduire solidement.
 Dans conditions_activite, donne uniquement des conditions concrètes qui changent la décision (enneigement, remontées ouvertes, temps sec, vent faible, etc.).
 Ne déduis pas l’état actuel de la neige ou des installations à partir de la saison.
-En priorité, cherche le site officiel pour les jours d’ouverture et la réservation. Les jours possibles sont les jours d’ouverture locaux pendant la période pertinente.
+En priorité, cherche le site officiel pour les jours d’ouverture et la réservation, en t’aidant des extraits web fournis. Les jours possibles sont les jours d’ouverture locaux pendant la période pertinente.
 Un délai minimal obligatoire se met dans delai_reservation_jours, en jours. Ne le confonds pas avec un préavis conseillé.
 Utilise 0 uniquement si la réservation le jour même ou l’accès sans réservation est attesté. Laisse le délai vide sans source fiable.
 Propose des durées réalistes, activité seule puis aller et retour depuis le lieu_depart indiqué séparément. Estime les trajets si le lieu est assez précis, sans les présenter comme du trafic en direct.
@@ -291,7 +311,7 @@ ${champs}`;
   }
   if (mode === "verifier") {
     return `${base}
-Tu reçois une fiche préparée. Vérifie avec la recherche web (3 recherches au maximum) les faits vérifiables des lieux, billets,
+Tu reçois une fiche préparée et éventuellement des extraits web. Utilise ces extraits comme pistes, puis vérifie avec la recherche web (3 recherches au maximum) les faits vérifiables des lieux, billets,
 forfaits et horaires nommés : site officiel, horaires d’ouverture, tarifs, réservation. Termine toujours en appelant
 enregistrer_verifications avec seulement ce que tu as confirmé sur une source fiable, chaque fait avec son URL.
 Laisse à null tout champ non confirmé. Si rien n’est confirmé, appelle l’outil avec une liste vide.
@@ -314,8 +334,8 @@ Décode le QR s’il est lisible.${mode === "tri" ?
 }
 
 async function claude(key: string, source: unknown, image: Awaited<ReturnType<typeof photo>> | null, reference: string,
-  timeout: number, mode: Mode) {
-  const content: unknown[] = [{ type: "text", text: JSON.stringify(source) }];
+  timeout: number, mode: Mode, evidence: Awaited<ReturnType<typeof webEvidence>> = []) {
+  const content: unknown[] = [{ type: "text", text: JSON.stringify(evidence.length ? { demande: source, extraits_web: evidence } : source) }];
   if (image) content.push({ type: "image", source: { type: "base64", media_type: image.mime, data: image.base64 } });
   const web = (uses: number) => ({ name: "web_search", type: "web_search_20250305", max_uses: uses });
   const setup = mode === "complet" || mode === "structure"
@@ -326,7 +346,7 @@ async function claude(key: string, source: unknown, image: Awaited<ReturnType<ty
         ? { tools: [web(3), discoveryTool], tool_choice: undefined, tokens: 3000 }
         : { tools: [web(2), ficheTool], tool_choice: undefined, tokens: 4500 };
   const wanted = mode === "verifier" ? verifTool.name : mode === "decouvrir" ? discoveryTool.name : ficheTool.name;
-  const foundUrls = new Set<string>();
+  const foundUrls = new Set(evidence.map(({ url }) => url));
   const limit = Date.now() + timeout;
   const messages: unknown[] = [{ role: "user", content }];
   let body;
@@ -452,11 +472,11 @@ async function processJob(job: Job) {
     const body = { type: job.type, contenu: job.contenu, lieu_depart, legende_reel: scraped?.caption,
       commentaires_auteur: scraped?.comments || undefined, qr: image?.qr };
     const extract = (source: unknown, mode: Mode = "fiche",
-      timeout = instagram ? 28_000 : 55_000) => paid(job, "claude", claudeMax, () => {
+      timeout = instagram ? 28_000 : 55_000, evidence: Awaited<ReturnType<typeof webEvidence>> = []) => paid(job, "claude", claudeMax, () => {
       const remaining = deadline - Date.now();
       if (remaining <= 0) throw new ImportError("Délai d’enrichissement dépassé. La fiche reste à compléter.");
       const context = source && typeof source === "object" ? { ...source, lieu_depart } : { source, lieu_depart };
-      return claude(key, context, image, reference, Math.min(remaining, timeout), mode);
+      return claude(key, context, image, reference, Math.min(remaining, timeout), mode, evidence);
     });
     let raw: Record<string, unknown> | null = null;
     if (instagram) {
@@ -482,8 +502,9 @@ async function processJob(job: Job) {
         raw = draft;
         if (deadline - Date.now() > 15_000) {
           try {
+            const evidence = await webEvidence(job, activityQuery(draft));
             const verified = await extract({ fiche: draft, source: body }, "verifier",
-              Math.min(deadline - Date.now() - 5_000, 55_000));
+              Math.min(deadline - Date.now() - 5_000, 55_000), evidence);
             raw = merge(draft, verified);
           } catch (error) {
             console.error("vérification web non aboutie", error instanceof Error ? error.message : String(error));
@@ -570,14 +591,25 @@ async function completeIdea(origin: string, id: string, espace: string, userId: 
       fiche: placeId === idea.lieu_depart_id
         ? { ...idea, proposition_creneau: idea.brouillon_creneau ? null : idea.proposition_creneau }
         : { ...idea, parametres_creneau: null, brouillon_creneau: null, proposition_creneau: null },
-    }, reference, "completer");
-    return reply(origin, { proposition: normalize(result, reference, null) });
+    }, reference, "completer", activityQuery(idea));
+    const proposition = normalize(result, reference, null);
+    if (!idea.parametres_creneau || placeId !== idea.lieu_depart_id) {
+      const destination = [idea.adresse || proposition.adresse, idea.ville || proposition.ville].filter(Boolean).join(", ");
+      const trip = await googleCarTrip([lieu_depart.ville, lieu_depart.pays].join(", "), destination,
+        Deno.env.get("GOOGLE_MAPS_ROUTES_API_KEY") || "");
+      if (trip) proposition.proposition_creneau = { ...proposition.proposition_creneau, ...trip };
+      else if (proposition.proposition_creneau) {
+        delete proposition.proposition_creneau.aller_minutes;
+        delete proposition.proposition_creneau.retour_minutes;
+      }
+    }
+    return reply(origin, { proposition });
   } catch (error) {
     return reply(origin, { message: error instanceof ImportError ? error.message : "Claude n’a pas pu compléter cette fiche." }, 422);
   }
 }
 
-async function askAboutIdeas(espace: string, userId: string, source: unknown, reference: string, mode: "completer" | "decouvrir") {
+async function askAboutIdeas(espace: string, userId: string, source: unknown, reference: string, mode: "completer" | "decouvrir", query: string | null) {
   const key = Deno.env.get("ANTHROPIC_API_KEY");
   if (!key) throw new ImportError("L’enrichissement n’est pas encore configuré.");
   const budget = maximum("EUREKA_CLAUDE_MAX_CHF");
@@ -590,7 +622,10 @@ async function askAboutIdeas(espace: string, userId: string, source: unknown, re
   }).select("id,tentative,type,contenu,image_path").single();
   if (error || !job) throw error || new Error();
   try {
-    return await paid(job, "claude", budget, () => claude(key, source, null, reference, 55_000, mode));
+    return await paid(job, "claude", budget, async () => {
+      const evidence = await webEvidence(job, query);
+      return claude(key, source, null, reference, 55_000, mode, evidence);
+    });
   } finally {
     await admin.from("sorties_inbox").delete().eq("id", jobId).eq("tentative", attempt);
   }
@@ -621,7 +656,11 @@ async function discoverIdeas(origin: string, espace: string, userId: string, pay
     const lieu_depart = await departureFor(espace, typeof lieu_depart_id === "string" ? lieu_depart_id : null);
     if (!lieu_depart) return reply(origin, { message: "Lieu de départ inaccessible." }, 404);
     const sources = sourceList(payload.sources, 7), deja_vus = sourceList(payload.deja_vus, 24);
-    const result = await askAboutIdeas(espace, userId, { debut, fin, exclure, lieu_depart, sources, deja_vus, inspiration }, reference, "decouvrir");
+    const city = lieu_depart.ville + " " + lieu_depart.pays;
+    const query = inspiration ? "activités loisirs visites sites touristiques autour de " + city
+      : "agenda événements sorties autour de " + city + " du " + debut + " au " + fin;
+    const result = await askAboutIdeas(espace, userId, { debut, fin, exclure, lieu_depart, sources, deja_vus, inspiration },
+      reference, "decouvrir", query);
     const shown = new Set(deja_vus);
     return reply(origin, { sorties: localEvents(result, debut, fin, exclure, inspiration).filter((event) => !shown.has(event.source)) });
   } catch (error) {
